@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+.heva-block {
+  display: inline-flex;
+  align-items: center;
+  margin: 12px 0;
+  vertical-align: middle;
+}
+
+.heva-brace {
+  font-size: 2.5rem;
+  font-weight: 300;
+  line-height: 1;
+  margin-right: 4px;
+  transform: scaleY(1.5);
+  color: #4f46e5; /* indigo-600 */
+}
+
+.heva-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heva-lines > div {
+  text-align: left;
+  line-height: 1.4;
+}
+
+.math-block-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.latex-table {
+  border-collapse: collapse;
+  width: auto;
+  margin: 1rem auto;
+}
+
+.latex-table td, .latex-table th {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+}
+
+.latex-table tr:nth-child(even) {
+  background-color: #f9fafb;
+}

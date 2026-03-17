@@ -1,0 +1,31 @@
+export interface Question {
+  id: string;
+  label: string;
+  number: number;
+  statementRaw: string;
+  solutionRaw: string;
+  sourceType: "word" | "tex";
+  raw?: string;
+  rawTikzBlocks?: string[];
+  rawImageRefs?: string[];
+  createdAt?: string;
+  active?: boolean;
+}
+
+export interface AccessCode {
+  code: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface User {
+  role: "student" | "teacher";
+  studentName?: string;
+  studentClass?: string;
+  accessCode?: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
