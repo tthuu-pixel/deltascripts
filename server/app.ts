@@ -3,6 +3,7 @@ import { publicQuestion, query, questionSelect, randomQuestionSql } from './data
 import { hashPassword, newToken, tokenHash, verifyPassword } from './auth.ts';
 import { parseTexText } from '../shared/texParser.ts';
 import { HttpError, requireValue } from './errors.ts';
+import { adminAiRoute } from './admin-ai.ts';
 import {
   contentRoute,
   contentRoutes,
@@ -92,6 +93,7 @@ export async function upsertQuestions(db: Database, questions: any[]) {
   if (statements.length) await db.batch(statements);
 }
 interface Options {
+  aiSettingsKey?: string;
   geminiKey?: string;
   geminiModel?: string;
   allowedOrigins?: string[];
@@ -259,6 +261,11 @@ export function createApp(db: Database, options: Options = {}) {
         if (route === '/api/health' && method === 'GET') {
           await query(db, 'SELECT number FROM question_counts LIMIT 1');
           return json({ success: true, status: 'ok', database: 'd1' });
+        }
+        if (route.startsWith('/api/admin/ai/')) {
+          await session(req, true);
+          if (method === 'POST') await limit(`admin-ai:${await tokenHash(cookieToken(req))}`, 20);
+          return json({ success: true, ...(await adminAiRoute(db, route, method, body, options)) });
         }
         if (['/api/auth/setup/check', '/api/auth/setup'].includes(route) && method === 'POST') {
           await limit(

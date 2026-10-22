@@ -95,6 +95,7 @@ ${body}
       ),
     });
     await expect(page.getByText('1 câu chờ lưu')).toBeVisible();
+    await page.getByRole('button', { name: 'Duyệt và dùng bản này', exact: true }).click();
     await expect(
       page.getByRole('group', { name: 'Chuyên đề cho bản nhập' }).getByRole('checkbox'),
     ).toBeChecked();

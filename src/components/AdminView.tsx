@@ -7,6 +7,10 @@ import MathScene from './MathScene';
 import type { TopicSummary } from '../../shared/content';
 import TopicPicker from './admin/TopicPicker';
 import BulkQuestionActions from './admin/BulkQuestionActions';
+import type { NormalizationReport } from '../../shared/importReview';
+import type { ReviewMode } from './admin/QuestionReview';
+const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
+const QuestionReview = lazy(() => import('./admin/QuestionReview'));
 const TopicManager = lazy(() => import('./admin/TopicManager'));
 const StudentSettingsManager = lazy(() => import('./admin/StudentSettingsManager'));
 const QuestionEditor = lazy(() => import('./admin/QuestionEditor'));
@@ -14,7 +18,7 @@ const LatexContent = lazy(() => import('./LatexContent'));
 const button = 'btn btn-secondary';
 
 export default function AdminView() {
-  const [tab, setTab] = useState<'topics' | 'questions' | 'student' | 'codes' | 'info'>(
+  const [tab, setTab] = useState<'topics' | 'questions' | 'student' | 'codes' | 'info' | 'ai'>(
     'questions',
   );
   const [topics, setTopics] = useState<TopicSummary[]>([]);
@@ -30,6 +34,13 @@ export default function AdminView() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [pending, setPending] = useState<Question[]>([]);
+  const [importReports, setImportReports] = useState<Record<string, NormalizationReport>>({});
+  const [importReviewed, setImportReviewed] = useState(false);
+  const [review, setReview] = useState<{
+    mode: ReviewMode;
+    questions: Question[];
+    reports?: Record<string, NormalizationReport>;
+  } | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [page, setPage] = useState(1),
@@ -135,6 +146,9 @@ export default function AdminView() {
         setNotice('');
       } else {
         setPending(event.data.questions);
+        setImportReports(event.data.reports);
+        setImportReviewed(false);
+        setReview({ mode: 'import', questions: event.data.questions, reports: event.data.reports });
         setNotice(`Đã đọc ${event.data.questions.length} câu. Kiểm tra trước khi lưu.`);
       }
       task.terminate();
@@ -149,13 +163,14 @@ export default function AdminView() {
     task.postMessage(files);
   }
   async function save() {
+    if (!importReviewed) return;
     await mutate(
       async () => {
         // Confirm each batch before removing it from the pending list. Retries reuse IDs.
         let remaining = pending.map((question) => ({
           ...question,
           number: importNumber || question.number,
-          topicIds: importTopicIds,
+          topicIds: [...new Set([...importTopicIds, ...(question.topicIds || [])])],
           published: importPublished,
         }));
         if (remaining.some((q) => q.number < 1 || q.number > 7))
@@ -233,6 +248,7 @@ export default function AdminView() {
             ['topics', 'Chuyên đề', 'topics'],
             ['questions', 'Ngân hàng câu hỏi', 'practice'],
             ['student', 'Trang học sinh', 'school'],
+            ['ai', 'Cấu hình AI', 'spark'],
             ['codes', 'Quản lý mã ôn tập', 'key'],
             ['info', 'Thông tin hệ thống', 'info'],
           ] as const
@@ -286,6 +302,36 @@ export default function AdminView() {
           />
         )}
         {tab === 'student' && <StudentSettingsManager onDirtyChange={setContentDirty} />}
+        {tab === 'ai' && <AiSettingsManager onDirtyChange={setContentDirty} />}
+        {review && (
+          <QuestionReview
+            key={review.questions.map((q) => q.id).join(',') + review.mode}
+            {...review}
+            topics={topics}
+            onClose={() => setReview(null)}
+            onApply={async (items) => {
+              if (review.mode === 'import') {
+                setPending(items);
+                setImportReviewed(true);
+                setNotice('Đã duyệt bản nhập. Chọn trạng thái rồi lưu lên hệ thống.');
+              } else if (review.mode === 'classify') {
+                for (const q of items)
+                  await apiService.classifyQuestions([q.id], {
+                    number: q.number,
+                    topicIds: q.topicIds || [],
+                    mode: 'replace',
+                  });
+                setNotice('Đã áp dụng phân loại đã duyệt.');
+                reload();
+              } else {
+                for (const q of items) await apiService.saveQuestions([q]);
+                setNotice('Đã lưu bản chuẩn hóa và giữ nguồn gốc để đối chiếu.');
+                reload();
+              }
+              setReview(null);
+            }}
+          />
+        )}
         {editingQuestion && (
           <QuestionEditor
             question={editingQuestion}
@@ -410,7 +456,20 @@ export default function AdminView() {
                       </button>
                     ))}
                   </div>
-                  <button className="btn btn-primary" disabled={busy} onClick={save}>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      setReview({ mode: 'import', questions: pending, reports: importReports })
+                    }
+                  >
+                    {importReviewed ? 'Xem lại bản đã duyệt' : 'Chuẩn hóa & kiểm tra bản nhập'}
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    disabled={busy || !importReviewed}
+                    onClick={save}
+                  >
                     Lưu lên hệ thống
                     <Icon name="arrow" size={18} />
                   </button>
@@ -540,6 +599,34 @@ export default function AdminView() {
               </button>
             </form>
             {selection.length > 0 && (
+              <div className="review-actions">
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    setReview({
+                      mode: 'normalize',
+                      questions: questions.filter((q) => selection.includes(q.id)),
+                    })
+                  }
+                >
+                  Chuẩn hóa &amp; kiểm tra câu đã chọn
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    setReview({
+                      mode: 'classify',
+                      questions: questions.filter((q) => selection.includes(q.id)),
+                    })
+                  }
+                >
+                  AI phân loại câu đã chọn
+                </button>
+              </div>
+            )}
+            {selection.length > 0 && (
               <BulkQuestionActions
                 count={selection.length}
                 topics={topics}
@@ -638,9 +725,15 @@ export default function AdminView() {
                         <span>Chưa gắn chuyên đề</span>
                       )}
                     </div>
-                    <p className="bank-question-excerpt">
-                      {q.statementRaw.replace(/<[^>]*>/g, '').slice(0, 160)}
-                    </p>
+                    <div className="bank-question-excerpt">
+                      <Suspense fallback={<span>Đang mở tóm tắt đề bài…</span>}>
+                        <LatexContent
+                          html={q.statementRaw}
+                          preamble={q.latexPreamble}
+                          renderFigures={false}
+                        />
+                      </Suspense>
+                    </div>
                     <div className="bank-question-actions">
                       <button className="text-button" onClick={() => setEditingQuestion(q)}>
                         <Icon name="practice" size={18} />

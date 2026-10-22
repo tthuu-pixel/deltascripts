@@ -2,3 +2,6 @@
 # GEMINI_API_KEY=your-key
 GEMINI_MODEL=gemini-2.5-flash
 # APP_ORIGIN=https://your-domain.example
+
+# Khóa mã hóa cấu hình AI của admin, ít nhất 32 ký tự ngẫu nhiên. Không dùng giá trị thật trong Git.
+# AI_SETTINGS_KEY=replace-with-a-random-secret-of-at-least-32-characters

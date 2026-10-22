@@ -10,6 +10,7 @@ export async function createRuntime(
     port?: number;
     origin?: string;
     fetchGemini?: typeof fetch;
+    aiSettingsKey?: string;
     initialize?: boolean;
   } = {},
 ) {
@@ -34,6 +35,7 @@ export async function createRuntime(
       resourcePersistencePath: options.directory,
       telemetry: { enabled: false },
       bindings: {
+        ...(options.aiSettingsKey ? { AI_SETTINGS_KEY: options.aiSettingsKey } : {}),
         APP_ORIGIN: options.origin || '',
         ...(options.fetchGemini ? { GEMINI_API_KEY: 'test-fixture-key' } : {}),
       },

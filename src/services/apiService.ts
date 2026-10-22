@@ -1,5 +1,6 @@
 import type { AccessCode, ChatMessage, Question, User } from '../types';
 import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/content';
+import type { AiSettings, AiSuggestion } from '../../shared/ai';
 
 export class ApiError extends Error {
   constructor(
@@ -33,7 +34,9 @@ export async function apiRequest<T = any>(route: string, body?: unknown, ttl = 0
         credentials: 'same-origin',
         headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(route.startsWith('/ai') ? 55_000 : 20_000),
+        signal: AbortSignal.timeout(
+          route.startsWith('/ai') || route.startsWith('/admin/ai/') ? 55_000 : 20_000,
+        ),
       });
     } catch {
       throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.', 0);
@@ -65,6 +68,20 @@ export async function apiRequest<T = any>(route: string, body?: unknown, ttl = 0
   return request;
 }
 export const apiService = {
+  async getAiSettings(): Promise<AiSettings> {
+    return (await apiRequest('/admin/ai/settings')).settings;
+  },
+  async saveAiSettings(settings: AiSettings & { apiKey?: string }): Promise<AiSettings> {
+    return (await apiRequest('/admin/ai/settings', settings)).settings;
+  },
+  async testAiSettings(settings: AiSettings & { apiKey?: string }): Promise<string[]> {
+    return (await apiRequest('/admin/ai/test', settings)).models;
+  },
+  async suggestQuestionTopics(
+    questions: Pick<Question, 'id' | 'statementRaw'>[],
+  ): Promise<AiSuggestion[]> {
+    return (await apiRequest('/admin/ai/classify', { questions })).items;
+  },
   async me(): Promise<User> {
     return (await apiRequest('/auth/me')).user;
   },

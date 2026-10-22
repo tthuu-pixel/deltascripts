@@ -160,6 +160,7 @@ test('teacher imports Word/TeX in worker, confirms persistence, deletes question
     .getByLabel('Chọn file câu hỏi')
     .setInputFiles({ name: 'sample.TEX', mimeType: 'text/plain', buffer: Buffer.from(tex) });
   await expect(page.getByText('1 câu chờ lưu')).toBeVisible();
+  await page.getByRole('button', { name: 'Duyệt và dùng bản này', exact: true }).click();
   await page.getByRole('button', { name: 'Lưu lên hệ thống' }).click();
   await expect(page.getByText('E2E unique import', { exact: false })).toBeVisible();
   const imported = page.locator('article').filter({ hasText: 'E2E unique import' });
@@ -181,6 +182,7 @@ test('teacher imports Word/TeX in worker, confirms persistence, deletes question
     buffer: await zip.generateAsync({ type: 'nodebuffer' }),
   });
   await expect(page.getByText('1 câu chờ lưu')).toBeVisible();
+  await page.getByRole('button', { name: 'Duyệt và dùng bản này', exact: true }).click();
   await page.getByRole('button', { name: 'Lưu lên hệ thống' }).click();
   await expect(page.getByText('DOCX worker import', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Quản lý mã ôn tập', exact: true }).click();

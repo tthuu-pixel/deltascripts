@@ -14,12 +14,14 @@ const LatexContent = React.memo(
     plainText = false,
     preamble = '',
     context = '',
+    renderFigures = true,
   }: {
     html: string;
     className?: string;
     plainText?: boolean;
     preamble?: string;
     context?: string;
+    renderFigures?: boolean;
   }) => {
     const ref = useRef<HTMLDivElement>(null);
     const prepared = useMemo(() => {
@@ -60,6 +62,10 @@ const LatexContent = React.memo(
       for (const block of prepared.tikz) {
         const target = root.querySelector<HTMLElement>(`[data-tikz-id="${block.key}"]`);
         if (!target) continue;
+        if (!renderFigures) {
+          target.textContent = 'Hình minh họa — mở đề bài để xem.';
+          continue;
+        }
         const show = () => {
           void compileTikz(block.source)
             .then((result) => {
@@ -84,7 +90,7 @@ const LatexContent = React.memo(
       return () => {
         active = false;
       };
-    }, [prepared]);
+    }, [prepared, renderFigures]);
     return (
       <>
         {prepared.error && (

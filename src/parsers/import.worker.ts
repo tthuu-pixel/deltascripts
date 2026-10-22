@@ -1,5 +1,6 @@
 import { parseTexFile } from './texParser';
 import { parseWordFile } from './wordParser';
+import { normalizeQuestion } from '../../shared/importReview';
 self.onmessage = async (event: MessageEvent<File[]>) => {
   try {
     const questions = [];
@@ -10,10 +11,13 @@ self.onmessage = async (event: MessageEvent<File[]>) => {
       else throw new Error(`Không hỗ trợ file ${file.name}.`);
     }
     if (!questions.length) throw new Error('Không tìm thấy câu hỏi.');
-    const invalid = questions.filter((q) => q.number < 1 || q.number > 7 || !q.statementRaw.trim());
-    if (invalid.length)
-      throw new Error('Có câu bị thiếu đề hoặc số câu ngoài 1–7. Hãy kiểm tra file trước khi lưu.');
-    self.postMessage({ questions });
+    const invalid = questions.filter((q) => !q.statementRaw.trim());
+    if (invalid.length) throw new Error('Có câu bị thiếu đề. Hãy kiểm tra file trước khi lưu.');
+    const reviewed = questions.map(normalizeQuestion);
+    self.postMessage({
+      questions: reviewed.map((item) => item.question),
+      reports: Object.fromEntries(reviewed.map((item) => [item.question.id, item.report])),
+    });
   } catch (error) {
     self.postMessage({ error: (error as Error).message });
   }

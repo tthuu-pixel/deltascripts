@@ -5,6 +5,7 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  AI_SETTINGS_KEY?: string;
   APP_ORIGIN?: string;
 }
 export default {
@@ -26,6 +27,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/api' || url.pathname.startsWith('/api/'))
       return createApp(env.DB, {
+        aiSettingsKey: env.AI_SETTINGS_KEY,
         geminiKey: env.GEMINI_API_KEY,
         geminiModel: env.GEMINI_MODEL,
         allowedOrigins: [
