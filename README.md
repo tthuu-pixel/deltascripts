@@ -14,7 +14,7 @@ Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo vi
 
 Mỗi chuyên đề có ba mục **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Lý thuyết/ví dụ nhập TeX riêng; bài vận dụng hiển thị danh sách đề bài trong đúng chuyên đề, mỗi bài có nút **Đáp án** để mở/ẩn lời giải. Danh sách tải 10 bài mỗi trang. Bảng chọn có 50 icon toán cấp 2, chỉ hiện hình.
 
-Trang admin có **Chuẩn hóa & kiểm tra** khi nhập bài và cho các câu đã chọn: đối chiếu nguồn gốc, sửa lỗi cú pháp, xem trước rồi duyệt. Mục **Cấu hình AI** hỗ trợ Gemini, GPT, Claude và DeepSeek để gợi ý chuyên đề; key mã hóa ở máy chủ và phân loại chỉ được áp dụng sau khi người quản trị duyệt.
+Trang admin có **Chuẩn hóa & kiểm tra** khi nhập bài và cho các câu đã chọn: đối chiếu nguồn gốc, sửa lỗi cú pháp, xem trước rồi duyệt. Mục **Cấu hình AI** hỗ trợ Gemini, GPT, Claude và DeepSeek: nhập file sẽ tự quét tất cả câu và xếp vào chuyên đề đã có, giữ dạng Câu 1–7 ghi rõ trong nguồn; bạn duyệt cả đợt trước khi lưu. Nút **AI quét và sắp xếp toàn bộ kho** tự xử lý mọi trang và ghi liên kết chuyên đề, có tiến độ/dừng/tiếp tục và báo cáo câu cần kiểm tra. Key mã hóa ở máy chủ.
 
 Xem [hướng dẫn quản trị nội dung](docs/curriculum.md). Chuyên đề, bài học, cấu hình tab và câu hỏi nằm trong D1. GitHub lưu mã nguồn, ảnh, phông chữ và tài liệu. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
 

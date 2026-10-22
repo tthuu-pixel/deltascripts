@@ -265,7 +265,10 @@ export function createApp(db: Database, options: Options = {}) {
         if (route.startsWith('/api/admin/ai/')) {
           await session(req, true);
           if (method === 'POST') await limit(`admin-ai:${await tokenHash(cookieToken(req))}`, 20);
-          return json({ success: true, ...(await adminAiRoute(db, route, method, body, options)) });
+          return json({
+            success: true,
+            ...(await adminAiRoute(db, route, method, body, options, url)),
+          });
         }
         if (['/api/auth/setup/check', '/api/auth/setup'].includes(route) && method === 'POST') {
           await limit(

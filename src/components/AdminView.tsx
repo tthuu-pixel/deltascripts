@@ -10,6 +10,7 @@ import BulkQuestionActions from './admin/BulkQuestionActions';
 import type { NormalizationReport } from '../../shared/importReview';
 import type { ReviewMode } from './admin/QuestionReview';
 const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
+const AiBankScan = lazy(() => import('./admin/AiBankScan'));
 const QuestionReview = lazy(() => import('./admin/QuestionReview'));
 const TopicManager = lazy(() => import('./admin/TopicManager'));
 const StudentSettingsManager = lazy(() => import('./admin/StudentSettingsManager'));
@@ -36,10 +37,12 @@ export default function AdminView() {
   const [pending, setPending] = useState<Question[]>([]);
   const [importReports, setImportReports] = useState<Record<string, NormalizationReport>>({});
   const [importReviewed, setImportReviewed] = useState(false);
+  const [bankScanning, setBankScanning] = useState(false);
   const [review, setReview] = useState<{
     mode: ReviewMode;
     questions: Question[];
     reports?: Record<string, NormalizationReport>;
+    autoClassify?: boolean;
   } | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
@@ -148,7 +151,12 @@ export default function AdminView() {
         setPending(event.data.questions);
         setImportReports(event.data.reports);
         setImportReviewed(false);
-        setReview({ mode: 'import', questions: event.data.questions, reports: event.data.reports });
+        setReview({
+          mode: 'import',
+          questions: event.data.questions,
+          reports: event.data.reports,
+          autoClassify: true,
+        });
         setNotice(`Đã đọc ${event.data.questions.length} câu. Kiểm tra trước khi lưu.`);
       }
       task.terminate();
@@ -303,6 +311,7 @@ export default function AdminView() {
         )}
         {tab === 'student' && <StudentSettingsManager onDirtyChange={setContentDirty} />}
         {tab === 'ai' && <AiSettingsManager onDirtyChange={setContentDirty} />}
+        {bankScanning && <AiBankScan onClose={() => setBankScanning(false)} onChanged={reload} />}
         {review && (
           <QuestionReview
             key={review.questions.map((q) => q.id).join(',') + review.mode}
@@ -397,7 +406,7 @@ export default function AdminView() {
               </div>
               <div className="import-instructions">
                 <span>01</span>
-                <p>Nhập file và kiểm tra bản xem trước.</p>
+                <p>Tự tách Câu 1–7, chuẩn hóa và quét AI toàn bộ file khi đã cấu hình.</p>
                 <span>02</span>
                 <p>
                   Chọn chuyên đề, kiểm tra trạng thái rồi <strong>Lưu lên hệ thống</strong>.
@@ -506,6 +515,18 @@ export default function AdminView() {
               >
                 <Icon name="refresh" size={21} />
               </button>
+            </div>
+            <div className="review-actions">
+              <button
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => setBankScanning(true)}
+              >
+                <Icon name="spark" size={19} /> AI quét và sắp xếp toàn bộ kho
+              </button>
+              <span className="field-help">
+                Quét mọi trang và mọi dạng câu, tự gắn vào các chuyên đề đã tạo.
+              </span>
             </div>
             <div className="bank-toolbar">
               <label htmlFor="question-filter">
@@ -618,6 +639,7 @@ export default function AdminView() {
                   onClick={() =>
                     setReview({
                       mode: 'classify',
+                      autoClassify: true,
                       questions: questions.filter((q) => selection.includes(q.id)),
                     })
                   }

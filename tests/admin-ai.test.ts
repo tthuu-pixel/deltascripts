@@ -204,7 +204,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
   assert.equal((await req('/admin/ai/classify', { questions: [question] }, admin)).status, 502);
   refused = true;
   const refusal = await req('/admin/ai/test', config, admin);
-  assert.equal(refusal.status, 502);
+  assert.equal(refusal.status, 503);
   assert(!JSON.stringify(refusal.data).includes(apiKey));
   assert.equal(calls, 10);
 });

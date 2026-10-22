@@ -1,6 +1,7 @@
 import type { Database } from './database';
 import { HttpError, requireValue } from './errors';
 import { aiProviders, type AiProvider, type AiSettings, type AiSuggestion } from '../shared/ai';
+import { readAiScanPage } from './ai-scan';
 
 interface StoredSettings {
   provider: AiProvider;
@@ -156,7 +157,7 @@ async function providerRequest(
     response.status === 429
       ? 'Dịch vụ AI đang hết hạn mức. Hãy thử lại sau.'
       : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
-    502,
+    response.status === 429 ? 429 : [401, 403].includes(response.status) ? 503 : 502,
   );
   const reader = response.body?.getReader();
   requireValue(reader, 'Dịch vụ AI trả dữ liệu trống.', 502);
@@ -219,7 +220,9 @@ export async function adminAiRoute(
   method: string,
   body: any,
   options: AdminAiOptions,
+  url?: URL,
 ) {
+  if (route === '/api/admin/ai/scan' && method === 'GET' && url) return readAiScanPage(db, url);
   const row = await stored(db);
   if (route === '/api/admin/ai/settings' && method === 'GET')
     return { settings: publicSettings(row, options.aiSettingsKey) };
@@ -295,7 +298,15 @@ export async function adminAiRoute(
       );
       ids.push(q.id);
       size += q.statementRaw.length;
-      return { id: q.id, statement: q.statementRaw };
+      return {
+        id: q.id,
+        statement: q.statementRaw,
+        currentNumber:
+          Number.isInteger(q.number) && q.number >= 1 && q.number <= 7 ? q.number : null,
+        numberOrigin: ['explicit', 'order', 'manual', 'ai'].includes(q.numberOrigin)
+          ? q.numberOrigin
+          : 'manual',
+      };
     });
     requireValue(size <= 80_000, 'Lượt phân loại vượt 80.000 ký tự. Hãy chọn ít câu hơn.');
     const topics = (

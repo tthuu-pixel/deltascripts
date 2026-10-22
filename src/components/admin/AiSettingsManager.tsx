@@ -63,8 +63,8 @@ export default function AiSettingsManager({
         <span className="section-kicker">HỖ TRỢ NGƯỜI BIÊN SOẠN</span>
         <h2>Cấu hình AI</h2>
         <p className="muted">
-          Dùng AI để gợi ý dạng câu và chuyên đề khi nhập bài hoặc phân loại câu đã có. Bạn duyệt
-          trước khi lưu.
+          AI tự quét toàn bộ file khi nhập bài. Với kho đã có, dùng nút quét toàn bộ để tự gắn
+          chuyên đề. Bản nhập mới được duyệt theo cả đợt trước khi lưu.
         </p>
       </div>
       {error && (
@@ -185,9 +185,9 @@ export default function AiSettingsManager({
             từ tài khoản API của bạn. Khi đổi nhà cung cấp hoặc Base URL, hãy nhập lại key.
           </p>
           <p className="field-help">
-            Chỉ khi bạn bấm phân loại, đề bài và danh sách chuyên đề mới được gửi đến dịch vụ đã
-            chọn. API có thể tính phí theo tài khoản của bạn. Cấu hình này dành riêng cho phân loại
-            trong admin.
+            Khi đã lưu cấu hình, AI tự chạy với toàn bộ bản nhập; cũng chạy khi bạn quét kho hoặc
+            câu đã chọn. Đề bài và chuyên đề được gửi đến dịch vụ đã chọn. API có thể tính phí theo
+            tài khoản của bạn. Cấu hình này dành riêng cho phân loại trong admin.
           </p>
           <div className="review-actions">
             <button

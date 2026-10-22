@@ -398,6 +398,21 @@ export async function contentRoute(
         );
       }
     if (body.topicIds !== undefined)
+      if (body.mode === 'add' && body.topicIds.length) {
+        for (let i = 0; i < body.ids.length; i += 90) {
+          const ids = body.ids.slice(i, i + 90);
+          const existing = await query(
+            db,
+            `SELECT question_id,count(*) AS n FROM question_topics WHERE question_id IN (${marks(ids.length)}) AND topic_id NOT IN (${marks(body.topicIds.length)}) GROUP BY question_id`,
+            [...ids, ...body.topicIds],
+          );
+          requireValue(
+            existing.rows.every((row) => Number(row.n) + body.topicIds.length <= 10),
+            'Kết quả vượt 10 chuyên đề cho một câu. Hãy kiểm tra lại phân loại.',
+          );
+        }
+      }
+    if (body.topicIds !== undefined)
       updates.push(
         ...membershipStatements(
           db,

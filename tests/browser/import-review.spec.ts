@@ -89,7 +89,6 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     await expect(review.getByLabel('Nguồn gốc', { exact: true })).toHaveValue(
       /\[1,0 điểm\]%\[9H4V1-4\]/,
     );
-    await review.getByRole('button', { name: 'AI gợi ý chuyên đề', exact: true }).click();
     await expect(review.locator('.ai-reason')).toContainText('Cùng nội dung căn thức');
     await expect(
       review.getByRole('checkbox', { name: 'Căn thức do thầy tạo · nháp', exact: true }),
@@ -123,7 +122,8 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
       )
     ).rows;
     expect(saved).toHaveLength(2);
-    expect(saved.every((q) => q.published === 0 && q.number === 3)).toBeTruthy();
+    expect(saved.every((q) => q.published === 0)).toBeTruthy();
+    expect(saved.map((q) => q.number).sort()).toEqual([2, 3]);
     expect(
       saved.some(
         (q) =>
@@ -148,7 +148,6 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     await page.locator('.bank-question-card').first().getByRole('checkbox').check();
     await page.getByRole('button', { name: 'AI phân loại câu đã chọn', exact: true }).click();
     const classification = page.getByRole('dialog', { name: 'Duyệt phân loại AI', exact: true });
-    await classification.getByRole('button', { name: 'AI gợi ý chuyên đề', exact: true }).click();
     await expect(classification.locator('.ai-reason')).toBeVisible();
     await classification
       .getByRole('checkbox', { name: 'Căn thức do thầy tạo · nháp', exact: true })

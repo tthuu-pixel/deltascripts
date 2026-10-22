@@ -19,7 +19,12 @@ export function clearApiCache() {
   pending.clear();
 }
 
-export async function apiRequest<T = any>(route: string, body?: unknown, ttl = 0): Promise<T> {
+export async function apiRequest<T = any>(
+  route: string,
+  body?: unknown,
+  ttl = 0,
+  signal?: AbortSignal,
+): Promise<T> {
   if (body === undefined) {
     const saved = cache.get(route);
     if (saved && saved.expires > Date.now()) return saved.value;
@@ -34,11 +39,15 @@ export async function apiRequest<T = any>(route: string, body?: unknown, ttl = 0
         credentials: 'same-origin',
         headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(
-          route.startsWith('/ai') || route.startsWith('/admin/ai/') ? 55_000 : 20_000,
-        ),
+        signal: AbortSignal.any([
+          ...(signal ? [signal] : []),
+          AbortSignal.timeout(
+            route.startsWith('/ai') || route.startsWith('/admin/ai/') ? 55_000 : 20_000,
+          ),
+        ]),
       });
     } catch {
+      if (signal?.aborted) throw new DOMException('Đã dừng quét AI.', 'AbortError');
       throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.', 0);
     }
     let data: any;
@@ -78,9 +87,22 @@ export const apiService = {
     return (await apiRequest('/admin/ai/test', settings)).models;
   },
   async suggestQuestionTopics(
-    questions: Pick<Question, 'id' | 'statementRaw'>[],
+    questions: Pick<Question, 'id' | 'statementRaw' | 'number' | 'label' | 'numberOrigin'>[],
+    signal?: AbortSignal,
   ): Promise<AiSuggestion[]> {
-    return (await apiRequest('/admin/ai/classify', { questions })).items;
+    return (await apiRequest('/admin/ai/classify', { questions }, 0, signal)).items;
+  },
+  async getAiScanPage(
+    cutoff = '',
+    cursor = '',
+    signal?: AbortSignal,
+  ): Promise<{ items: Question[]; total?: number; cutoff: string; nextCursor: string | null }> {
+    return apiRequest(
+      `/admin/ai/scan?${new URLSearchParams({ cutoff, cursor })}`,
+      undefined,
+      0,
+      signal,
+    );
   },
   async me(): Promise<User> {
     return (await apiRequest('/auth/me')).user;
@@ -155,8 +177,9 @@ export const apiService = {
       topicIds?: string[];
       mode?: 'add' | 'replace' | 'remove';
     },
+    signal?: AbortSignal,
   ) {
-    return apiRequest('/questions/classify', { ids, ...changes });
+    return apiRequest('/questions/classify', { ids, ...changes }, 0, signal);
   },
   async getRandomQuestion(number: number, topicId?: string): Promise<Question> {
     const route = topicId

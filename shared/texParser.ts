@@ -214,6 +214,7 @@ export function parseTexText(input: string): Question[] {
         id: crypto.randomUUID(),
         label: label ? `${label[1]} ${number}` : `Câu ${number}`,
         number,
+        numberOrigin: label ? ('explicit' as const) : ('order' as const),
         statementRaw: label ? statement.slice(label[0].length).trim() : statement,
         solutionRaw: solution,
         sourceType: 'tex' as const,

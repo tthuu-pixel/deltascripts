@@ -2,6 +2,8 @@ export interface Question {
   id: string;
   label: string;
   number: number;
+  numberOrigin?: 'explicit' | 'order' | 'ai' | 'manual';
+  sourceLength?: number;
   statementRaw: string;
   solutionRaw: string;
   sourceType: 'word' | 'tex';

@@ -131,6 +131,7 @@ export async function parseWordFile(file: File): Promise<Question[]> {
       id: crypto.randomUUID(),
       label: `Câu ${current.number}`,
       number: current.number,
+      numberOrigin: 'explicit',
       sourceType: 'word',
       statementRaw: current.statement.join('\n'),
       solutionRaw: current.solution.join('\n'),

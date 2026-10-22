@@ -9,6 +9,11 @@ import {
 } from '../../../shared/importReview';
 import { apiService } from '../../services/apiService';
 import TopicPicker from './TopicPicker';
+import {
+  applySuggestion,
+  scanQuestions,
+  type ClassificationOutcome,
+} from '../../services/autoClassify';
 
 const LatexContent = lazy(() => import('../LatexContent'));
 const emptyReports: Record<string, NormalizationReport> = {};
@@ -18,6 +23,7 @@ export default function QuestionReview({
   topics,
   reports = emptyReports,
   mode,
+  autoClassify = false,
   onClose,
   onApply,
 }: {
@@ -25,6 +31,7 @@ export default function QuestionReview({
   topics: TopicSummary[];
   reports?: Record<string, NormalizationReport>;
   mode: ReviewMode;
+  autoClassify?: boolean;
   onClose: () => void;
   onApply: (questions: Question[]) => Promise<void>;
 }) {
@@ -44,7 +51,10 @@ export default function QuestionReview({
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [index, setIndex] = useState(0);
   const [source, setSource] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(autoClassify);
+  const [outcomes, setOutcomes] = useState<Record<string, ClassificationOutcome>>({});
+  const scanController = useRef<AbortController | null>(null);
+  const completed = useRef(new Set<string>());
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
@@ -53,10 +63,19 @@ export default function QuestionReview({
     previousFocus.current = document.activeElement as HTMLElement;
     dialog.current?.showModal();
     return () => {
+      scanController.current?.abort();
       dialog.current?.close();
       previousFocus.current?.focus();
     };
   }, []);
+  useEffect(() => {
+    if (!autoClassify) return;
+    const timer = setTimeout(() => void classify(true), 0);
+    return () => {
+      clearTimeout(timer);
+      scanController.current?.abort();
+    };
+  }, [autoClassify]);
   useEffect(() => {
     dialog.current?.querySelector('.review-body')?.scrollTo({ top: 0 });
   }, [index, error]);
@@ -80,44 +99,88 @@ export default function QuestionReview({
   );
   function update(patch: Partial<Question>) {
     setDrafts((items) => items.map((q) => (q.id === current.id ? { ...q, ...patch } : q)));
+    if (patch.number !== undefined || patch.topicIds !== undefined) {
+      const next = { ...current, ...patch };
+      setOutcomes((old) =>
+        old[current.id]
+          ? {
+              ...old,
+              [current.id]: {
+                ...old[current.id],
+                state:
+                  next.number >= 1 && next.number <= 7 && !!next.topicIds?.length
+                    ? 'assigned'
+                    : 'unassigned',
+                number: next.number,
+                reason: 'Đã điều chỉnh thủ công trong bản duyệt.',
+              },
+            }
+          : old,
+      );
+    }
   }
   function close() {
     if (!busy && confirm('Đóng bản duyệt? Các chỉnh sửa trong cửa sổ này chưa được áp dụng.'))
       onClose();
   }
-  async function classify() {
+  async function classify(automatic = false) {
     setBusy(true);
     setError('');
+    const controller = new AbortController();
+    scanController.current = controller;
     try {
-      // Each accepted batch remains in the review if a later batch fails. Nothing is saved here.
-      for (let offset = 0; offset < drafts.length; offset += 10) {
-        setProgress(
-          `AI đang phân loại ${offset + 1}–${Math.min(offset + 10, drafts.length)} / ${drafts.length} câu…`,
-        );
-        const suggestions = await apiService.suggestQuestionTopics(
-          drafts.slice(offset, offset + 10),
-        );
-        setReasons((old) => ({
-          ...old,
-          ...Object.fromEntries(suggestions.map((s) => [s.id, s.reason])),
-        }));
-        setDrafts((items) =>
-          items.map((q) => {
-            const suggestion = suggestions.find((s) => s.id === q.id);
-            return suggestion
-              ? {
-                  ...q,
-                  number: suggestion.number ?? q.number,
-                  topicIds: [...new Set([...(q.topicIds || []), ...suggestion.topicIds])],
-                }
-              : q;
-          }),
-        );
+      if (automatic) {
+        setProgress('Đang chuẩn bị AI tự quét toàn bộ bản nhập…');
+        const settings = await apiService.getAiSettings();
+        if (controller.signal.aborted) return;
+        if (!settings.hasKey) {
+          setProgress(
+            'Chưa có API key. Hệ thống đã tách câu và chuẩn hóa; hãy cấu hình AI để tự nhận dạng chuyên đề.',
+          );
+          return;
+        }
       }
-      setProgress('AI đã gợi ý. Kiểm tra dạng câu và chuyên đề của từng bài trước khi áp dụng.');
+      if (!(automatic ? await apiService.getTopics() : topics).length) {
+        setProgress('Chưa có chuyên đề. Tạo chuyên đề trước để AI tự sắp xếp câu hỏi.');
+        return;
+      }
+      const result = await scanQuestions(drafts, {
+        signal: controller.signal,
+        completed: completed.current,
+        apply: (question, suggestion) => {
+          setReasons((old) => ({ ...old, [question.id]: suggestion.reason }));
+          setDrafts((items) =>
+            items.map((q) => (q.id === question.id ? applySuggestion(q, suggestion) : q)),
+          );
+        },
+        onOutcome: (outcome) => {
+          setOutcomes((old) => ({ ...old, [outcome.id]: outcome }));
+          if (outcome.state === 'failed')
+            setDrafts((items) =>
+              items.map((q) =>
+                q.id === outcome.id && q.numberOrigin === 'order' ? { ...q, number: 0 } : q,
+              ),
+            );
+          if (outcome.state !== 'failed') completed.current.add(outcome.id);
+        },
+        onProgress: (value) =>
+          setProgress(
+            value.waiting
+              ? 'Đang chờ hạn mức AI; sẽ tự tiếp tục sau một phút…'
+              : `AI đang quét ${value.processed} / ${value.total} câu còn lại…`,
+          ),
+      });
+      setProgress(
+        result?.stopped
+          ? 'AI chưa quét xong do lỗi kết nối hoặc cấu hình. Các kết quả đã nhận được giữ nguyên.'
+          : 'Đã quét hết các câu. Câu phù hợp được tự gắn chuyên đề; bạn có thể duyệt cả đợt hoặc sửa các câu cần kiểm tra.',
+      );
     } catch (e) {
-      setError((e as Error).message);
+      if (!controller.signal.aborted) setError((e as Error).message);
+      else
+        setProgress('Đã dừng quét. Kết quả đã nhận được giữ nguyên; có thể tiếp tục phần còn lại.');
     } finally {
+      scanController.current = null;
       setBusy(false);
     }
   }
@@ -204,14 +267,68 @@ export default function QuestionReview({
             {progress}
           </p>
         )}
+        {!!Object.keys(outcomes).length && (
+          <section className="scan-summary" aria-label="Tổng hợp phân loại">
+            <p>
+              Đã quét{' '}
+              <strong>
+                {Object.keys(outcomes).length} / {drafts.length}
+              </strong>{' '}
+              câu · Cần kiểm tra{' '}
+              <strong>
+                {Object.values(outcomes).filter((o) => o.state !== 'assigned').length}
+              </strong>
+            </p>
+            <div className="scan-counts">
+              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                <button
+                  key={n}
+                  className="soft-badge"
+                  disabled={busy || !drafts.some((q) => q.number === n)}
+                  onClick={() => setIndex(drafts.findIndex((q) => q.number === n))}
+                >
+                  Câu {n}: {drafts.filter((q) => q.number === n).length}
+                </button>
+              ))}
+            </div>
+            <details>
+              <summary>Câu cần kiểm tra</summary>
+              <ul>
+                {Object.values(outcomes)
+                  .filter((o) => o.state !== 'assigned')
+                  .map((o) => (
+                    <li key={o.id}>
+                      <button
+                        className="text-button"
+                        disabled={busy}
+                        onClick={() => setIndex(drafts.findIndex((q) => q.id === o.id))}
+                      >
+                        {o.label}
+                      </button>{' '}
+                      — {o.reason}
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          </section>
+        )}
         <div className="review-actions">
           <button
             className="btn btn-secondary"
-            disabled={busy || !topics.length}
+            disabled={busy || !topics.length || completed.current.size === drafts.length}
             onClick={() => void classify()}
           >
-            AI gợi ý chuyên đề
+            {completed.current.size === drafts.length
+              ? 'AI đã quét hết bản nhập'
+              : Object.keys(outcomes).length
+                ? 'Tiếp tục quét câu chưa xử lý được'
+                : 'AI quét toàn bộ bản nhập'}
           </button>
+          {busy && scanController.current && (
+            <button className="btn btn-quiet" onClick={() => scanController.current?.abort()}>
+              Dừng quét AI
+            </button>
+          )}
           {mode !== 'classify' && (
             <button
               className="btn btn-quiet"
@@ -238,7 +355,7 @@ export default function QuestionReview({
               aria-label="Dạng câu của bài đang duyệt"
               disabled={busy}
               value={current.number >= 1 && current.number <= 7 ? current.number : 0}
-              onChange={(e) => update({ number: Number(e.target.value) })}
+              onChange={(e) => update({ number: Number(e.target.value), numberOrigin: 'manual' })}
             >
               <option value={0}>Chọn dạng câu</option>
               {[1, 2, 3, 4, 5, 6, 7].map((n) => (
