@@ -1,51 +1,30 @@
 import { normalizeTexContent } from '../parsers/texParser';
-import { compileTikz } from '../services/compileTikz';
+import { extractTikz } from '../../shared/tikz';
 
-export const processContentForDisplay = async (raw: string): Promise<string> => {
-  if (!raw || typeof raw !== 'string') {
-    return "Câu hỏi này chưa có nội dung.";
-  }
-
-  console.log("Before normalize length:", raw?.length);
-
-  // 0. Escape < in math to prevent HTML truncation
-  // We only escape < that are not part of valid HTML tags
-  const safeRaw = raw.replace(/<(?!\/?(p|div|br|strong|table|tr|td|ol|ul|li|img|span|a|b|i|u|em|h[1-6])(?=>|\s|\/))/gi, '&lt;');
-
-  // 1. Normalize raw content
-  let normalized = normalizeTexContent(safeRaw);
-  console.log("After normalize length:", normalized?.length);
-
-  // 2. Extract TikZ blocks
-  const tikzRegex = /\\begin\{tikzpicture\}(.*?)\\end\{tikzpicture\}/gs;
-  const matches = [...normalized.matchAll(tikzRegex)];
-
-  if (matches.length > 0) {
-    console.log(`processContentForDisplay: ${matches.length} tikz block(s) found`);
-    
-    // 3. Process each block
-    for (const match of matches) {
-      const fullBlock = match[0];
-      
-      // Fix corrupted TikZ block if it was already normalized
-      const tikzSource = fullBlock
-        .replace(/<br\s*\/?>/gi, '\\\\')
-        .replace(/<div[^>]*>/gi, '\n')
-        .replace(/<\/div>/gi, '\n')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>');
-      
-      try {
-        const resultHtml = await compileTikz(tikzSource);
-        normalized = normalized.replace(fullBlock, resultHtml);
-      } catch (error) {
-        console.error("processContentForDisplay: tikz compile error", error);
-        const placeholder = `<div class="tikz-placeholder p-4 bg-gray-100 border border-gray-300 rounded text-center text-gray-500 italic my-2">[Hình minh họa TikZ]</div>`;
-        normalized = normalized.replace(fullBlock, placeholder);
-      }
-    }
-  }
-
-  console.log("processContentForDisplay: final rendered html ready");
-  return normalized;
-};
+export function prepareContent(
+  raw: string,
+  preamble = '',
+): {
+  html: string;
+  tikz: { key: string; source: string }[];
+} {
+  const tikz: { key: string; source: string }[] = [];
+  let source = String(raw || '');
+  const extracted = extractTikz(source, preamble);
+  const replacements = [
+    ...extracted.blocks.map((block, index) => {
+      const key = String(index);
+      tikz.push({ key, source: block.source });
+      return { ...block, replacement: `DSTIKZTOKEN${key}END` };
+    }),
+    ...extracted.declarations.map((declaration) => ({ ...declaration, replacement: '' })),
+  ].sort((a, b) => b.start - a.start);
+  for (const range of replacements)
+    source = source.slice(0, range.start) + range.replacement + source.slice(range.end);
+  const html = normalizeTexContent(source).replace(
+    /DSTIKZTOKEN(\d+)END/g,
+    (_, key) =>
+      `<div data-tikz-id="${key}" class="my-3 text-gray-500" role="status">Đang tải hình TikZ…</div>`,
+  );
+  return { html, tikz };
+}

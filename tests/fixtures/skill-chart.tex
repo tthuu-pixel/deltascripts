@@ -1,0 +1,28 @@
+\begin{bt}[Câu 4]
+	Biểu đồ tỉ lệ $43\%$, $36\%$, $14\%$ và $7\%$.
+	\begin{center}
+		\begin{tikzpicture}[join=round,cap=round,font=\scriptsize]
+			\def\R{3}
+			\def\patA{dots}
+			\def\patB{north east lines}
+			\def\patC{crosshatch}
+			\def\patD{horizontal lines}
+			\foreach \name/\p/\pat [count=\i from 0,remember=\gockt as \gocbd (initially 90)] in
+			{%
+				{Phần thứ nhất}/43/\patA,
+				{Phần thứ hai}/36/\patB,
+				{Phần thứ ba}/14/\patC,
+				{Phần thứ tư}/7/\patD
+			}
+			{
+				\pgfmathsetmacro\gockt{\gocbd-\p*3.6}
+				\draw[pattern=\pat] (0,0)--(\gocbd:\R) arc (\gocbd:\gockt:\R)--cycle;
+				\node[fill=white,inner sep=1pt] at ({(\gocbd+\gockt)/2}:0.65*\R) {$\p\%$};
+				\draw[pattern=\pat] (\R+1.5,\R-0.7*\i) rectangle +(0.5,-0.5);
+				\node[right] at (\R+2.1,\R-0.7*\i-0.25) {\name};
+			}
+			\node[above=10pt,font=\bfseries,align=center] at (current bounding box.north) {BIỂU ĐỒ\\TỈ LỆ};
+		\end{tikzpicture}
+	\end{center}
+	\loigiai{Tổng các tỉ lệ bằng $100\%$.}
+\end{bt}

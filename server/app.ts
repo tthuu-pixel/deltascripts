@@ -1,0 +1,589 @@
+import type { Database, Statement } from './database.ts';
+import { publicQuestion, query, questionSelect, randomQuestionSql } from './database.ts';
+import { hashPassword, newToken, tokenHash, verifyPassword } from './auth.ts';
+import { parseTexText } from '../shared/texParser.ts';
+
+export class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+const text = (value: unknown, max = 200) =>
+  typeof value === 'string' ? value.trim().slice(0, max) : '';
+const requireValue = (value: unknown, message: string, status = 400) => {
+  if (!value) throw new HttpError(status, message);
+};
+const placeholders = (length: number) => Array.from({ length }, () => '?').join(',');
+
+export function validateQuestion(q: any): unknown[] {
+  requireValue(
+    q &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(q.id || ''),
+    'ID câu hỏi không hợp lệ.',
+  );
+  requireValue(
+    Number.isInteger(q.number) && q.number >= 1 && q.number <= 7,
+    'Dạng câu phải từ 1 đến 7.',
+  );
+  requireValue(['word', 'tex'].includes(q.sourceType), 'Nguồn câu hỏi phải là Word hoặc TeX.');
+  requireValue(typeof q.statementRaw === 'string' && q.statementRaw.trim(), 'Đề bài trống.');
+  for (const key of ['statementRaw', 'solutionRaw', 'raw', 'latexPreamble'])
+    requireValue(
+      typeof (q[key] ?? '') === 'string' && (q[key] || '').length <= 1_000_000,
+      'Nội dung TeX quá dài hoặc không hợp lệ.',
+    );
+  requireValue(
+    new TextEncoder().encode([q.statementRaw, q.solutionRaw, q.raw, q.latexPreamble].join(''))
+      .length <= 1_500_000,
+    'Câu hỏi vượt 1,5 MB. Hãy rút gọn nguồn hoặc nén ảnh.',
+  );
+  return [
+    q.id,
+    text(q.label) || `Câu ${q.number}`,
+    q.number,
+    q.sourceType,
+    q.statementRaw,
+    q.solutionRaw || '',
+    q.raw || '',
+    q.latexPreamble || '',
+  ];
+}
+export function questionStatements(db: Database, questions: any[]): Statement[] {
+  const rows = [...new Map(questions.map(validateQuestion).map((row) => [row[0], row])).values()];
+  const statements: Statement[] = [];
+  // D1 allows 100 bound parameters per statement; each group uses at most 96.
+  for (let i = 0; i < rows.length; i += 12) {
+    const group = rows.slice(i, i + 12);
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO questions(id,label,number,source_type,statement_raw,solution_raw,raw,latex_preamble)
+      VALUES ${group.map(() => `(${placeholders(8)})`).join(',')}
+      ON CONFLICT(id) DO UPDATE SET label=excluded.label,
+      slot=CASE WHEN questions.number!=excluded.number THEN NULL ELSE questions.slot END,
+      number=excluded.number,source_type=excluded.source_type,statement_raw=excluded.statement_raw,
+      solution_raw=excluded.solution_raw,raw=excluded.raw,latex_preamble=excluded.latex_preamble,active=1`,
+        )
+        .bind(...group.flat()),
+    );
+  }
+  return statements;
+}
+export async function upsertQuestions(db: Database, questions: any[]) {
+  const statements = questionStatements(db, questions);
+  if (statements.length) await db.batch(statements);
+}
+interface Options {
+  geminiKey?: string;
+  geminiModel?: string;
+  allowedOrigins?: string[];
+  fetchGemini?: typeof fetch;
+}
+export function createApp(db: Database, options: Options = {}) {
+  const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =>
+    Response.json(data, {
+      status,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'X-Frame-Options': 'DENY',
+        ...extra,
+      },
+    });
+  const cookieToken = (req: Request) =>
+    req.headers
+      .get('cookie')
+      ?.split(';')
+      .map((s) => s.trim())
+      .find((s) => s.startsWith('ds_session='))
+      ?.slice(11) || '';
+  async function session(req: Request, teacher = false) {
+    const { rows } = await query(
+      db,
+      `SELECT s.*,a.active AS code_active FROM sessions s LEFT JOIN access_codes a ON a.code=s.access_code
+      WHERE s.token_hash=? AND s.expires_at>?`,
+      [await tokenHash(cookieToken(req)), Date.now()],
+    );
+    const s = rows[0];
+    requireValue(
+      s && (s.role === 'teacher' || s.code_active === 1),
+      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      401,
+    );
+    requireValue(!teacher || s.role === 'teacher', 'Chức năng này dành cho giáo viên.', 403);
+    return s;
+  }
+  async function limit(key: string, max: number, duration = 60_000) {
+    const now = Date.now();
+    const row = await db
+      .prepare(
+        `INSERT INTO rate_limits(key,count,expires_at) VALUES(?,1,?)
+      ON CONFLICT(key) DO UPDATE SET count=CASE WHEN expires_at<=? THEN 1 ELSE count+1 END,
+      expires_at=CASE WHEN expires_at<=? THEN excluded.expires_at ELSE expires_at END RETURNING count`,
+      )
+      .bind(key, now + duration, now, now)
+      .first<{ count: number }>();
+    requireValue(row && row.count <= max, 'Quá nhiều yêu cầu. Vui lòng thử lại sau.', 429);
+  }
+  const publicUser = (s: any) => ({
+    role: s.role,
+    studentName: s.student_name,
+    studentClass: s.student_class,
+    expiresAt: s.expires_at,
+  });
+  const cookie = (req: Request, token: string, age: number) =>
+    `ds_session=${token}; Path=/api; HttpOnly; SameSite=Lax; Max-Age=${age}${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`;
+  async function issue(req: Request, user: any) {
+    const token = newToken(),
+      expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+    const insert = db
+      .prepare(
+        `INSERT INTO sessions(token_hash,role,teacher_id,student_name,student_class,access_code,expires_at)
+      SELECT ?,?,?,?,?,?,? WHERE ${user.role === 'teacher' ? 'EXISTS(SELECT 1 FROM teachers WHERE id=? AND password_hash=?)' : 'EXISTS(SELECT 1 FROM access_codes WHERE code=? AND active=1)'}`,
+      )
+      .bind(
+        await tokenHash(token),
+        user.role,
+        user.teacher_id || null,
+        user.student_name || null,
+        user.student_class || null,
+        user.access_code || null,
+        expiresAt,
+        ...(user.role === 'teacher' ? [user.teacher_id, user.password_hash] : [user.access_code]),
+      );
+    const statements = [
+      db.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await tokenHash(cookieToken(req))),
+      insert,
+    ];
+    if (user.role === 'student')
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO student_logins(id,student_name,student_class,access_code,login_time)
+      SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM sessions WHERE token_hash=?)`,
+          )
+          .bind(
+            crypto.randomUUID(),
+            user.student_name,
+            user.student_class,
+            user.access_code,
+            Date.now(),
+            await tokenHash(token),
+          ),
+      );
+    const results = await db.batch(statements);
+    requireValue(
+      results[1].meta.changes === 1,
+      'Thông tin đăng nhập vừa thay đổi. Vui lòng thử lại.',
+      401,
+    );
+    return json({ success: true, user: publicUser({ ...user, expires_at: expiresAt }) }, 200, {
+      'Set-Cookie': cookie(req, token, 8 * 60 * 60),
+    });
+  }
+  async function readBody(req: Request) {
+    const max = 2_000_000;
+    if (Number(req.headers.get('content-length') || 0) > max)
+      throw new HttpError(413, 'Lần nhập vượt 2 MB. Hãy chia nhỏ.');
+    const reader = req.body?.getReader();
+    if (!reader) return {};
+    const chunks: Uint8Array[] = [];
+    let length = 0;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > max) {
+        await reader.cancel();
+        throw new HttpError(413, 'Lần nhập vượt 2 MB. Hãy chia nhỏ.');
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const part of chunks) {
+      bytes.set(part, offset);
+      offset += part.length;
+    }
+    try {
+      const value = JSON.parse(new TextDecoder().decode(bytes));
+      requireValue(
+        value && typeof value === 'object' && !Array.isArray(value),
+        'JSON phải là đối tượng.',
+      );
+      return value;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(400, 'JSON không hợp lệ.');
+    }
+  }
+  return {
+    async fetch(req: Request): Promise<Response> {
+      try {
+        const url = new URL(req.url),
+          route = url.pathname,
+          method = req.method;
+        const origin = req.headers.get('origin');
+        requireValue(
+          !origin || [url.origin, ...(options.allowedOrigins || [])].includes(origin),
+          'Nguồn yêu cầu không hợp lệ.',
+          403,
+        );
+        requireValue(['GET', 'POST'].includes(method), 'Phương thức không được hỗ trợ.', 405);
+        if (method === 'POST')
+          requireValue(
+            req.headers.get('content-type')?.split(';')[0].trim() === 'application/json',
+            'Yêu cầu phải dùng JSON.',
+            415,
+          );
+        const body = method === 'POST' ? await readBody(req) : {};
+        if (route === '/api/health' && method === 'GET') {
+          await query(db, 'SELECT number FROM question_counts LIMIT 1');
+          return json({ success: true, status: 'ok', database: 'd1' });
+        }
+        if (['/api/auth/setup/check', '/api/auth/setup'].includes(route) && method === 'POST') {
+          await limit(
+            `setup:${await tokenHash(req.headers.get('CF-Connecting-IP') || 'local')}`,
+            20,
+            10 * 60_000,
+          );
+          const unavailable = 'Liên kết không hợp lệ, đã hết hạn hoặc đã sử dụng.';
+          requireValue(
+            typeof body.token === 'string' && /^[a-f0-9]{64}$/.test(body.token),
+            unavailable,
+            410,
+          );
+          const hashedToken = await tokenHash(body.token);
+          const link = await db
+            .prepare(
+              `SELECT expires_at FROM teacher_setup_links
+              WHERE id=1 AND token_hash=? AND used_at IS NULL AND expires_at>?
+              AND NOT EXISTS(SELECT 1 FROM teachers)`,
+            )
+            .bind(hashedToken, Date.now())
+            .first();
+          requireValue(link, unavailable, 410);
+          if (route.endsWith('/check')) return json({ success: true });
+
+          const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+          const password = typeof body.password === 'string' ? body.password : '';
+          requireValue(
+            email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+            'Vui lòng nhập email hợp lệ.',
+          );
+          requireValue(
+            password.length >= 12 && password.length <= 256,
+            'Mật khẩu cần từ 12 đến 256 ký tự.',
+          );
+          const id = crypto.randomUUID();
+          const passwordHash = await hashPassword(password);
+          const now = Date.now();
+          // Recheck eligibility inside the atomic batch, after password derivation.
+          // Concurrent submissions can create only the first teacher.
+          const results = await db.batch([
+            db
+              .prepare(
+                `INSERT INTO teachers(id,email,password_hash)
+                SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM teachers)
+                AND EXISTS(SELECT 1 FROM teacher_setup_links
+                  WHERE id=1 AND token_hash=? AND used_at IS NULL AND expires_at>?)`,
+              )
+              .bind(id, email, passwordHash, hashedToken, now),
+            db
+              .prepare(
+                `UPDATE teacher_setup_links SET used_at=?
+                WHERE id=1 AND token_hash=? AND used_at IS NULL
+                AND EXISTS(SELECT 1 FROM teachers WHERE id=?)`,
+              )
+              .bind(now, hashedToken, id),
+          ]);
+          requireValue(results[0].meta.changes === 1, unavailable, 410);
+          return issue(req, { role: 'teacher', teacher_id: id, password_hash: passwordHash });
+        }
+        if (route === '/api/auth/teacher' && method === 'POST') {
+          await limit(
+            `teacher:${await tokenHash(req.headers.get('CF-Connecting-IP') || 'local')}`,
+            10,
+            10 * 60_000,
+          );
+          const email = text(body.email, 254).toLowerCase(),
+            password = typeof body.password === 'string' ? body.password : '';
+          requireValue(password.length <= 256, 'Email hoặc mật khẩu không đúng.', 401);
+          const { rows } = await query(db, 'SELECT id,password_hash FROM teachers WHERE email=?', [
+            email,
+          ]);
+          const teacher = rows[0];
+          const valid = await verifyPassword(
+            password,
+            teacher?.password_hash as string | undefined,
+          );
+          requireValue(teacher && valid, 'Email hoặc mật khẩu không đúng.', 401);
+          return issue(req, {
+            role: 'teacher',
+            teacher_id: teacher.id,
+            password_hash: teacher.password_hash,
+          });
+        }
+        if (route === '/api/auth/student' && method === 'POST') {
+          await limit(
+            `student:${await tokenHash(req.headers.get('CF-Connecting-IP') || 'local')}`,
+            120,
+          );
+          const code = text(body.accessCode, 32).toUpperCase(),
+            name = text(body.studentName, 120),
+            studentClass = text(body.studentClass, 50);
+          requireValue(
+            name && studentClass && /^[A-Z0-9]{8}$/.test(code),
+            'Nhập đủ họ tên, lớp và mã 8 ký tự.',
+          );
+          const row = await db
+            .prepare('SELECT code FROM access_codes WHERE code=? AND active=1')
+            .bind(code)
+            .first();
+          requireValue(row, 'Mã vào ôn tập không hợp lệ hoặc đã ngừng hoạt động.', 401);
+          return issue(req, {
+            role: 'student',
+            student_name: name,
+            student_class: studentClass,
+            access_code: code,
+          });
+        }
+        if (route === '/api/auth/me' && method === 'GET')
+          return json({ success: true, user: publicUser(await session(req)) });
+        if (route === '/api/auth/logout' && method === 'POST') {
+          await db
+            .prepare('DELETE FROM sessions WHERE token_hash=?')
+            .bind(await tokenHash(cookieToken(req)))
+            .run();
+          return json({ success: true }, 200, { 'Set-Cookie': cookie(req, '', 0) });
+        }
+        if (route === '/api/questions' && method === 'GET') {
+          await session(req, true);
+          const page = Math.max(
+            1,
+            Math.min(100_000, Math.floor(Number(url.searchParams.get('page')) || 1)),
+          );
+          const size = Math.max(
+            1,
+            Math.min(50, Math.floor(Number(url.searchParams.get('pageSize')) || 20)),
+          );
+          const number = Number(url.searchParams.get('number') || 0);
+          requireValue(
+            Number.isInteger(number) && number >= 0 && number <= 7,
+            'Dạng câu phải từ 1 đến 7.',
+          );
+          const results = await db.batch<Record<string, unknown>>([
+            db
+              .prepare(
+                `SELECT ${questionSelect} FROM questions q WHERE q.active=1 ${number ? 'AND q.number=?' : ''}
+              ORDER BY q.created_at DESC,q.id LIMIT ? OFFSET ?`,
+              )
+              .bind(...(number ? [number] : []), size, (page - 1) * size),
+            db
+              .prepare(
+                `SELECT COALESCE(SUM(total),0) AS total FROM question_counts ${number ? 'WHERE number=?' : ''}`,
+              )
+              .bind(...(number ? [number] : [])),
+          ]);
+          return json({
+            success: true,
+            items: results[0].results.map(publicQuestion),
+            total: results[1].results[0].total,
+            page,
+            pageSize: size,
+          });
+        }
+        if ((route === '/api/questions/random' || route === '/api/exam') && method === 'GET') {
+          await session(req);
+          const single = route.endsWith('/random'),
+            number = Number(url.searchParams.get('number'));
+          if (single)
+            requireValue(
+              Number.isInteger(number) && number >= 1 && number <= 7,
+              'Dạng câu phải từ 1 đến 7.',
+            );
+          const { rows } = await query(db, randomQuestionSql(single), single ? [number] : []);
+          if (single) {
+            requireValue(rows.length, `Chưa có câu hỏi cho Câu ${number}.`, 404);
+            return json({ success: true, question: publicQuestion(rows[0]) });
+          }
+          const missing = [1, 2, 3, 4, 5, 6, 7].filter((n) => !rows.some((q) => q.number === n));
+          requireValue(
+            !missing.length,
+            `Chưa đủ dữ liệu tạo đề. Thiếu Câu ${missing.join(', ')}.`,
+            422,
+          );
+          return json({ success: true, items: rows.map(publicQuestion) });
+        }
+        if (route === '/api/questions' && method === 'POST') {
+          await session(req, true);
+          requireValue(
+            Array.isArray(body.questions) &&
+              body.questions.length > 0 &&
+              body.questions.length <= 100,
+            'Mỗi lần lưu từ 1 đến 100 câu hỏi.',
+          );
+          await upsertQuestions(db, body.questions);
+          return json({ success: true, count: body.questions.length });
+        }
+        if (route === '/api/questions/delete' && method === 'POST') {
+          await session(req, true);
+          const ids = body.ids;
+          requireValue(
+            Array.isArray(ids) &&
+              ids.length > 0 &&
+              ids.length <= 100 &&
+              ids.every((id) => typeof id === 'string'),
+            'Danh sách ID không hợp lệ.',
+          );
+          await db
+            .prepare(`UPDATE questions SET active=0 WHERE id IN (${placeholders(ids.length)})`)
+            .bind(...ids)
+            .run();
+          return json({ success: true });
+        }
+        if (route === '/api/access-codes' && method === 'GET') {
+          await session(req, true);
+          const { rows } = await query(
+            db,
+            'SELECT code,active,created_at AS createdAt FROM access_codes ORDER BY created_at DESC,code',
+          );
+          return json({
+            success: true,
+            items: rows.map((row) => ({ ...row, active: row.active === 1 })),
+          });
+        }
+        if (route === '/api/access-codes' && method === 'POST') {
+          await session(req, true);
+          const code = text(body.code, 32).toUpperCase();
+          requireValue(/^[A-Z0-9]{8}$/.test(code), 'Mã phải có đúng 8 chữ cái hoặc chữ số.');
+          const result = await db
+            .prepare('INSERT OR IGNORE INTO access_codes(code) VALUES(?)')
+            .bind(code)
+            .run();
+          requireValue(result.meta.changes === 1, 'Mã đã tồn tại. Hãy tạo mã khác.', 409);
+          return json({ success: true });
+        }
+        if (route === '/api/access-codes/delete' && method === 'POST') {
+          await session(req, true);
+          const codes = body.codes;
+          requireValue(
+            Array.isArray(codes) &&
+              codes.length > 0 &&
+              codes.length <= 100 &&
+              codes.every((c) => typeof c === 'string' && /^[A-Z0-9]{8}$/.test(c)),
+            'Danh sách mã không hợp lệ.',
+          );
+          await db.batch([
+            db
+              .prepare(
+                `UPDATE access_codes SET active=0 WHERE code IN (${placeholders(codes.length)})`,
+              )
+              .bind(...codes),
+            db
+              .prepare(`DELETE FROM sessions WHERE access_code IN (${placeholders(codes.length)})`)
+              .bind(...codes),
+          ]);
+          return json({ success: true });
+        }
+        if ((route === '/api/ai' || route === '/api/ai/similar') && method === 'POST') {
+          await session(req);
+          await limit(`ai:${await tokenHash(cookieToken(req))}`, 10);
+          const similar = route.endsWith('/similar'),
+            key = options.geminiKey || text(body.apiKey, 256),
+            context = text(body.context, 20_000);
+          requireValue(key, 'Chưa cấu hình Gemini API Key trong Cài đặt.', 503);
+          const message = similar
+            ? 'Tạo một bài Toán 9 tương tự với số liệu khác, độ khó tương đương. Trả duy nhất LaTeX trong môi trường bt, phải có lời giải đầy đủ trong \\loigiai{...}. Kiểm chứng số liệu và đáp án. Không dùng Markdown.'
+            : text(body.message, 5000);
+          if (similar)
+            requireValue(
+              context && Number.isInteger(body.number) && body.number >= 1 && body.number <= 7,
+              'Cần chọn câu hỏi gốc để tạo bài tương tự.',
+            );
+          requireValue(message, 'Vui lòng nhập câu hỏi.');
+          const history =
+            !similar && Array.isArray(body.history)
+              ? body.history
+                  .slice(-12)
+                  .filter(
+                    (m: any) =>
+                      ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string',
+                  )
+              : [];
+          const contents = history.map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content.slice(0, 5000) }],
+          }));
+          while (contents[0]?.role === 'model') contents.shift();
+          contents.push({
+            role: 'user',
+            parts: [{ text: `Đề bài hiện tại:\n${context}\n\nYêu cầu: ${message}` }],
+          });
+          const response = await (options.fetchGemini || fetch)(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(options.geminiModel || 'gemini-2.5-flash')}:generateContent`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+              signal: AbortSignal.timeout(45_000),
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [
+                    {
+                      text: 'Bạn là trợ giảng Toán 9 bằng tiếng Việt. Gợi ý từng bước; chỉ giải đầy đủ khi học sinh yêu cầu. Giữ nguyên dữ kiện gốc. Khi viết LaTeX, dùng $...$, \\dfrac, \\heva cho hệ phương trình; giữ nguyên cases cho hàm từng đoạn. TikZ mới phải thuần TikZ, không dùng tkz-euclide/pgfplots. Đặt tikzset ngoài hình, giữ dấu chấm thập phân trong tọa độ. Khi soạn bài mới, kiểm chứng mọi dữ kiện và đáp án.',
+                    },
+                  ],
+                },
+                contents,
+                generationConfig: { maxOutputTokens: similar ? 4000 : 2000 },
+              }),
+            },
+          );
+          requireValue(
+            response.ok,
+            response.status === 429
+              ? 'Gemini đang hết hạn mức, vui lòng thử lại sau.'
+              : 'Không thể kết nối Gemini. Kiểm tra API key và model.',
+            response.status === 429 ? 429 : 502,
+          );
+          const payload = (await response.json()) as any;
+          const reply = payload.candidates?.[0]?.content?.parts
+            ?.map((p: any) => p.text || '')
+            .join('');
+          requireValue(reply, 'Gemini chưa trả lời được yêu cầu này.', 502);
+          if (!similar) return json({ success: true, reply });
+          let parsed;
+          try {
+            parsed = parseTexText(reply.replace(/^```(?:latex|tex)?\s*|\s*```$/g, ''));
+          } catch {
+            throw new HttpError(502, 'Bài AI tạo chưa có cấu trúc hợp lệ. Vui lòng thử lại.');
+          }
+          requireValue(
+            parsed.length === 1 && parsed[0].statementRaw && parsed[0].solutionRaw,
+            'AI chưa tạo đủ đề và lời giải. Vui lòng thử lại.',
+            502,
+          );
+          return json({
+            success: true,
+            question: { ...parsed[0], number: body.number, label: `Câu ${body.number} (tương tự)` },
+          });
+        }
+        throw new HttpError(404, 'API không tồn tại.');
+      } catch (error) {
+        if (error instanceof HttpError)
+          return json({ success: false, error: error.message }, error.status);
+        if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))
+          return json(
+            { success: false, error: 'Dịch vụ xử lý quá thời gian. Vui lòng thử lại.' },
+            504,
+          );
+        // Never send SQL, source text, cookies or provider keys to the browser/logs.
+        return json({ success: false, error: 'Máy chủ gặp lỗi. Vui lòng thử lại.' }, 500);
+      }
+    },
+  };
+}

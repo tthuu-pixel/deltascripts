@@ -4,8 +4,9 @@ export interface Question {
   number: number;
   statementRaw: string;
   solutionRaw: string;
-  sourceType: "word" | "tex";
+  sourceType: 'word' | 'tex';
   raw?: string;
+  latexPreamble?: string;
   rawTikzBlocks?: string[];
   rawImageRefs?: string[];
   createdAt?: string;
@@ -19,13 +20,14 @@ export interface AccessCode {
 }
 
 export interface User {
-  role: "student" | "teacher";
+  role: 'student' | 'teacher';
   studentName?: string;
   studentClass?: string;
   accessCode?: string;
+  expiresAt: number;
 }
 
 export interface ChatMessage {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }

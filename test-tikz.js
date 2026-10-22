@@ -1,28 +1,14 @@
-async function test() {
-  const source = `\\documentclass[tikz,border=2pt]{standalone}
-\\usepackage[utf8]{inputenc}
-\\usepackage[T5]{fontenc}
-\\usepackage{amsmath,amssymb,amsfonts}
-\\usetikzlibrary{calc,angles,quotes,intersections,through,backgrounds,patterns}
-\\begin{document}
-\\begin{tikzpicture}
-\\draw (0,0) -- (1,1) node[above] {Điểm A};
-\\end{tikzpicture}
-\\end{document}`;
+import { spawn } from 'node:child_process';
 
-  const response = await fetch('https://tikz-fly.fly.dev/compile', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      source: source
-    }),
-  });
-
-  const text = await response.text();
-  console.log(response.status);
-  console.log(text.substring(text.length - 500));
-}
-
-test();
+const child = spawn(
+  process.execPath,
+  ['node_modules/@playwright/test/cli.js', 'test', 'tests/browser/tikz-live.spec.ts'],
+  { stdio: 'inherit', env: { ...process.env, TIKZ_LIVE: '1' } },
+);
+child.on('error', () => {
+  console.error('Không khởi động được kiểm thử TikZ. Chạy npm ci trước.');
+  process.exitCode = 1;
+});
+child.on('exit', (code) => {
+  process.exitCode = code ?? 1;
+});

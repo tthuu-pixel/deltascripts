@@ -1,353 +1,683 @@
-import React, { useState, useEffect } from 'react';
-import { User, Question } from '../types';
-import LatexContent from './LatexContent';
-import AIAssistantPanel from './AIAssistantPanel';
-import { BookOpen, FileText, HelpCircle, RefreshCw, Eye, EyeOff, Play, Clock, CheckCircle2, Loader2 } from 'lucide-react';
-import { googleSheetsService } from '../services/googleSheetsService';
-import { processContentForDisplay } from '../utils/displayContent';
-
-interface StudentViewProps {
-  user: User;
-  questionBank: Question[];
-}
-
-const StudentView: React.FC<StudentViewProps> = ({ user, questionBank }) => {
-  const [activeTab, setActiveTab] = useState<'practice' | 'exam' | 'guide'>('practice');
-  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
-  const [showSolution, setShowSolution] = useState(false);
-  
-  const [renderedStatement, setRenderedStatement] = useState<string>('');
-  const [renderedSolution, setRenderedSolution] = useState<string>('');
-  const [isRenderingQuestion, setIsRenderingQuestion] = useState(false);
-
-  const [examQuestions, setExamQuestions] = useState<Question[]>([]);
-  const [renderedExamStatements, setRenderedExamStatements] = useState<Record<number, string>>({});
-  const [renderedExamSolutions, setRenderedExamSolutions] = useState<Record<number, string>>({});
-  const [examStarted, setExamStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(120 * 60);
-  const [showExamAnswers, setShowExamAnswers] = useState(false);
-
-  const [isLoading, setIsLoading] = useState(false);
-
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { Question, User } from '../types';
+import { apiService } from '../services/apiService';
+import {
+  EXAM_DURATION,
+  formatTime,
+  remainingSeconds,
+  validExam,
+  type SavedExam,
+} from '../utils/exam';
+import { readStorage, writeStorage } from '../utils/storage';
+import Icon, { type IconName } from './Icons';
+import MathScene from './MathScene';
+const Topics = lazy(() => import('./Topics'));
+const studyTabs: {
+  key: 'topics' | 'practice' | 'exam' | 'guide';
+  label: string;
+  description: string;
+  icon: IconName;
+  color: string;
+}[] = [
+  {
+    key: 'topics',
+    label: 'Chuyên đề lớp 9',
+    description: 'Hiểu chắc từ gốc',
+    icon: 'topics',
+    color: 'blue',
+  },
+  {
+    key: 'practice',
+    label: 'Luyện câu hỏi',
+    description: 'Rèn từng dạng bài',
+    icon: 'practice',
+    color: 'red',
+  },
+  {
+    key: 'exam',
+    label: 'Tạo đề thi',
+    description: 'Thử sức, bứt phá',
+    icon: 'exam',
+    color: 'yellow',
+  },
+  {
+    key: 'guide',
+    label: 'Góc học tập',
+    description: 'Học sao cho hiệu quả?',
+    icon: 'guide',
+    color: 'blue',
+  },
+];
+const LatexContent = lazy(() => import('./LatexContent'));
+const AIAssistantPanel = lazy(() => import('./AIAssistantPanel'));
+const button = 'btn btn-secondary';
+function ExamTimer({ endAt }: { endAt: number | null }) {
+  const [seconds, setSeconds] = useState(endAt ? remainingSeconds(endAt) : 7200);
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (examStarted && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [examStarted, timeLeft]);
-
-  const handlePracticeQuestion = async (number: number) => {
-    setIsLoading(true);
-    setIsRenderingQuestion(true);
-    try {
-      const questions = await googleSheetsService.getQuestionsByNumber(number);
-      console.log("Questions fetched for number", number, ":", questions);
-      if (questions && questions.length > 0) {
-        const q = questions[Math.floor(Math.random() * questions.length)];
-        console.log("Selected question:", q);
-        console.log("Selected question raw length:", q?.statementRaw?.length);
-        console.log("Selected question raw:", q?.statementRaw);
-        setSelectedQuestion(q);
-        setShowSolution(false);
-        
-        const statementHtml = await processContentForDisplay(q.statementRaw || q.raw || "");
-        setRenderedStatement(statementHtml);
-        
-        if (q.solutionRaw) {
-          const solutionHtml = await processContentForDisplay(q.solutionRaw);
-          setRenderedSolution(solutionHtml);
-        } else {
-          setRenderedSolution("Chưa có lời giải cho câu hỏi này.");
-        }
-      } else {
-        setSelectedQuestion(null);
-        setRenderedStatement('');
-        setRenderedSolution('');
-        alert(`Không tìm thấy câu hỏi nào cho Câu ${number}`);
-      }
-    } catch (error) {
-      console.error("Error fetching practice question:", error);
-      alert("Có lỗi xảy ra khi tải câu hỏi. Vui lòng thử lại.");
-    } finally {
-      setIsLoading(false);
-      setIsRenderingQuestion(false);
-    }
-  };
-
-  const generateExam = async () => {
-    setIsLoading(true);
-    try {
-      const newExam: Question[] = [];
-      const statements: Record<number, string> = {};
-      const solutions: Record<number, string> = {};
-      
-      for (let i = 1; i <= 7; i++) {
-        const questions = await googleSheetsService.getQuestionsByNumber(i);
-        if (questions && questions.length > 0) {
-          const q = questions[Math.floor(Math.random() * questions.length)];
-          newExam.push(q);
-          
-          statements[i - 1] = await processContentForDisplay(q.statementRaw || q.raw || "");
-          solutions[i - 1] = await processContentForDisplay(q.solutionRaw || "Chưa có lời giải.");
-        }
-      }
-      console.log("examQuestions before start:", newExam);
-      setExamQuestions(newExam);
-      setRenderedExamStatements(statements);
-      setRenderedExamSolutions(solutions);
-      setExamStarted(false);
-      setTimeLeft(120 * 60);
-      setShowExamAnswers(false);
-    } catch (error) {
-      console.error("Error generating exam:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStartExam = () => {
-    console.log("examQuestions after start:", examQuestions);
-    setExamStarted(true);
-  };
-
-  const handleToggleAnswers = () => {
-    console.log("showAllAnswers toggled:", !showExamAnswers);
-    setShowExamAnswers(!showExamAnswers);
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
+    const update = () => setSeconds(endAt ? remainingSeconds(endAt) : 7200);
+    update();
+    if (!endAt) return;
+    const id = setInterval(update, 1000);
+    const wake = () => update();
+    document.addEventListener('visibilitychange', wake);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', wake);
+    };
+  }, [endAt]);
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-gray-50">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-gray-200 px-6 py-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Không gian học tập của Học sinh!</h1>
-          <p className="text-lg text-indigo-600 font-medium">Xin chào, {user.studentName} - Lớp {user.studentClass}</p>
+    <span role="timer" className="exam-timer">
+      {formatTime(seconds)}
+      {endAt && seconds === 0 ? ' – Đã hết giờ' : ''}
+    </span>
+  );
+}
+export default function StudentView({ user }: { user: User }) {
+  const tabStorageKey = `deltascript_tab:${user.studentName}:${user.studentClass}`;
+  const [tab, setTab] = useState<'topics' | 'practice' | 'exam' | 'guide'>(() => {
+    const saved = readStorage<unknown>(tabStorageKey, 'topics', sessionStorage);
+    return studyTabs.find((item) => item.key === saved)?.key || 'topics';
+  });
+  useEffect(() => {
+    writeStorage(tabStorageKey, tab, sessionStorage);
+  }, [tab, tabStorageKey]);
+  const [question, setQuestion] = useState<Question | null>(null),
+    [solution, setSolution] = useState(false);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  const [aiQuestion, setAiQuestion] = useState<Question | null>(null),
+    [mobileAI, setMobileAI] = useState(false);
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+  const [aiLoaded, setAiLoaded] = useState(false);
+  const assistantDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = assistantDialog.current;
+    if (mobileAI && aiLoaded) {
+      if (!dialog?.open) dialog?.showModal();
+    } else dialog?.close();
+  }, [mobileAI, aiLoaded]);
+  function openAssistant(q?: Question) {
+    if (q) setAiQuestion(q);
+    setAiLoaded(true);
+    setMobileAI(true);
+  }
+  const storageKey = `deltascript_exam:${user.studentName}:${user.studentClass}`;
+  const [exam, setExam] = useState<SavedExam | null>(() => {
+    const saved = readStorage<unknown>(storageKey, null, sessionStorage);
+    return validExam(saved) ? saved : null;
+  });
+  const [storageError, setStorageError] = useState('');
+  const requestId = useRef(0);
+  useEffect(
+    () => () => {
+      requestId.current++;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (exam && !writeStorage(storageKey, exam, sessionStorage))
+      setStorageError(
+        'Không lưu được bài thi trong trình duyệt. Đừng tải lại trang khi đang làm bài.',
+      );
+  }, [exam, storageKey]);
+  async function practice(number: number) {
+    setSelectedNumber(number);
+    const id = ++requestId.current;
+    setBusy(true);
+    setError('');
+    setQuestion(null);
+    setSolution(false);
+    setAiQuestion(null);
+    try {
+      const value = await apiService.getRandomQuestion(number);
+      if (id === requestId.current) {
+        setQuestion(value);
+        setAiQuestion(value);
+      }
+    } catch (error) {
+      if (id === requestId.current) setError((error as Error).message);
+    } finally {
+      if (id === requestId.current) setBusy(false);
+    }
+  }
+  async function similar() {
+    if (!question || busy) return;
+    const id = ++requestId.current;
+    setBusy(true);
+    setError('');
+    setSolution(false);
+    let key = '';
+    try {
+      key = sessionStorage.getItem('gemini_api_key') || '';
+    } catch {}
+    try {
+      const value = await apiService.similarQuestion(question, key);
+      if (id === requestId.current) {
+        setQuestion(value);
+        setAiQuestion(value);
+      }
+    } catch (error) {
+      if (id === requestId.current) setError((error as Error).message);
+    } finally {
+      if (id === requestId.current) setBusy(false);
+    }
+  }
+  async function generate() {
+    if (
+      exam?.endAt &&
+      remainingSeconds(exam.endAt) > 0 &&
+      !confirm('Bạn đang làm bài. Tạo đề mới và đặt lại đồng hồ?')
+    )
+      return;
+    const id = ++requestId.current;
+    setBusy(true);
+    setError('');
+    try {
+      const questions = await apiService.generateExam();
+      if (id !== requestId.current) return;
+      const next = { questions, endAt: null, showAnswers: false, createdAt: Date.now() };
+      if (!validExam(next))
+        throw new Error('Đề thi phải đủ 7 dạng câu khác nhau. Vui lòng thử lại.');
+      setExam(next);
+      setAiQuestion(null);
+    } catch (error) {
+      if (id === requestId.current) setError((error as Error).message);
+    } finally {
+      if (id === requestId.current) setBusy(false);
+    }
+  }
+  function changeTab(value: typeof tab) {
+    requestId.current++;
+    setBusy(false);
+    setError('');
+    setTab(value);
+    setMobileAI(false);
+    setAiQuestion(value === 'practice' ? question : null);
+  }
+  return (
+    <div className="study-page page-width">
+      <section className="study-hero">
+        <div className="study-hero-copy">
+          <span className="eyebrow">
+            XIN CHÀO, {user.studentName?.toUpperCase()} <span className="hello-dot" />
+          </span>
+          <h1>
+            Không gian học tập<span>Của bạn. Theo cách của bạn.</span>
+          </h1>
+          <p>
+            Vững kiến thức hôm nay.
+            <br className="mobile-break" /> Tự tin cho những bước tiếp theo.
+          </p>
+          <div className="hero-tags">
+            <span>
+              <i className="dot dot-blue" /> Toán lớp 9
+            </span>
+            <span>
+              <i className="dot dot-red" /> Ôn tập vào 10
+            </span>
+            <span>
+              <i className="dot dot-yellow" /> Học chủ động
+            </span>
+          </div>
         </div>
-
-        <div className="flex border-b border-gray-200 bg-white px-6">
-          <button
-            onClick={() => setActiveTab('practice')}
-            className={`flex items-center gap-2 px-4 py-4 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === 'practice' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <BookOpen size={18} />
-            Ôn tập theo câu
-          </button>
-          <button
-            onClick={() => setActiveTab('exam')}
-            className={`flex items-center gap-2 px-4 py-4 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === 'exam' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <FileText size={18} />
-            Đề thi tham khảo
-          </button>
-          <button
-            onClick={() => setActiveTab('guide')}
-            className={`flex items-center gap-2 px-4 py-4 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === 'guide' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <HelpCircle size={18} />
-            Hướng dẫn
-          </button>
+        <div className="study-hero-art">
+          <MathScene compact />
         </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'practice' && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Chọn câu hỏi để ôn tập</h3>
-                <div className="flex flex-wrap gap-3">
-                  {[1, 2, 3, 4, 5, 6, 7].map(num => (
+        <span className="hero-corner-note">Cứ hỏi. Cứ thử. Cứ tiến lên.</span>
+      </section>
+      <nav className="study-tabs" aria-label="Học tập" role="tablist">
+        {studyTabs.map((item, index) => (
+          <button
+            key={item.key}
+            role="tab"
+            id={`student-tab-${item.key}`}
+            aria-controls={`student-panel-${item.key}`}
+            aria-label={item.label}
+            aria-selected={tab === item.key}
+            tabIndex={tab === item.key ? 0 : -1}
+            className={`study-tab tab-${item.color} ${tab === item.key ? 'active' : ''}`}
+            onClick={() => changeTab(item.key)}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+                next = (index + 1) % studyTabs.length;
+              else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+                next = (index - 1 + studyTabs.length) % studyTabs.length;
+              else if (event.key === 'Home') next = 0;
+              else if (event.key === 'End') next = studyTabs.length - 1;
+              else return;
+              event.preventDefault();
+              changeTab(studyTabs[next].key);
+              document.getElementById(`student-tab-${studyTabs[next].key}`)?.focus();
+            }}
+          >
+            <span className={`icon-tile tone-${item.color}`}>
+              <Icon name={item.icon} size={30} />
+            </span>
+            <span>
+              <strong>{item.label}</strong>
+              <small>{item.description}</small>
+            </span>
+            <Icon name="chevron" size={17} />
+          </button>
+        ))}
+      </nav>
+      {error && (
+        <div role="alert" className="notice notice-error">
+          <Icon name="info" size={21} />
+          {error}
+        </div>
+      )}
+      {storageError && (
+        <div role="alert" className="notice notice-info">
+          <Icon name="info" size={21} />
+          {storageError}
+        </div>
+      )}
+      <div
+        className="study-panel"
+        role="tabpanel"
+        id={`student-panel-${tab}`}
+        aria-labelledby={`student-tab-${tab}`}
+      >
+        <Suspense
+          fallback={
+            <div role="status" className="loading-state">
+              <span className="loading-dot" />
+              Đang tải nội dung…
+            </div>
+          }
+        >
+          {tab === 'topics' && (
+            <Topics
+              storageKey={`deltascript_topics:kntt9:${user.studentName}:${user.studentClass}`}
+            />
+          )}
+          {tab === 'practice' && (
+            <>
+              <div className="section-heading">
+                <div>
+                  <span className="section-kicker">GIỎI HƠN TỪNG CÂU MỘT</span>
+                  <h2>Luyện tập theo dạng câu</h2>
+                  <p className="muted">
+                    Chọn một dạng, tự tìm lời giải rồi đối chiếu. Không cần vội.
+                  </p>
+                </div>
+                <span className="soft-badge tone-red">
+                  <Icon name="practice" size={18} /> 7 dạng câu hỏi
+                </span>
+              </div>
+              <section className="question-picker surface" aria-label="Chọn câu hỏi để ôn tập">
+                <div className="question-choices">
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                     <button
-                      key={num}
-                      onClick={() => handlePracticeQuestion(num)}
-                      disabled={isLoading || isRenderingQuestion}
-                      className={`px-6 py-3 font-medium rounded-xl border transition-all shadow-sm ${
-                        (isLoading || isRenderingQuestion)
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
-                          : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600'
-                      }`}
+                      key={n}
+                      aria-label={`Câu ${n}`}
+                      aria-pressed={selectedNumber === n}
+                      className={`question-choice ${selectedNumber === n ? 'active' : ''}`}
+                      disabled={busy}
+                      onClick={() => practice(n)}
                     >
-                      Câu {num}
+                      <span>{String(n).padStart(2, '0')}</span>
+                      <strong>Câu {n}</strong>
+                      <Icon name="arrow" size={18} />
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {(isLoading || isRenderingQuestion) ? (
-                <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-indigo-600">
-                  <Loader2 size={40} className="animate-spin mb-4" />
-                  <p className="text-gray-500 font-medium">Đang tải và xử lý câu hỏi...</p>
+              </section>
+              {busy ? (
+                <div role="status" className="surface loading-state question-loading">
+                  <span className="loading-dot" />
+                  Đang chuẩn bị câu hỏi cho bạn…
                 </div>
-              ) : selectedQuestion ? (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900">{selectedQuestion.label}</h3>
-                    <button
-                      onClick={() => handlePracticeQuestion(selectedQuestion.number || 1)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                    >
-                      <RefreshCw size={16} />
+              ) : question ? (
+                <article className="surface exercise-card">
+                  <div className="exercise-heading">
+                    <span className="exercise-label">
+                      <span className="icon-tile tone-red">
+                        <Icon name="practice" size={24} />
+                      </span>
+                      <span>
+                        <small>CÙNG THỬ SỨC NHÉ</small>
+                        <h2>{question.label}</h2>
+                      </span>
+                    </span>
+                    <button className="btn btn-quiet" onClick={() => practice(question.number)}>
+                      <Icon name="refresh" size={19} />
                       Lấy câu hỏi khác
                     </button>
                   </div>
-                  
-                  <div className="prose max-w-none mb-8">
-                    <LatexContent html={renderedStatement} />
+                  <div className="exercise-body">
+                    <LatexContent html={question.statementRaw} preamble={question.latexPreamble} />
                   </div>
-                  
-                  <div className="border-t border-gray-100 pt-6">
+                  <div className="exercise-actions">
                     <button
-                      onClick={() => setShowSolution(!showSolution)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-200"
+                      className="btn btn-primary"
+                      aria-expanded={solution}
+                      aria-controls="practice-solution"
+                      onClick={() => setSolution((v) => !v)}
                     >
-                      {showSolution ? <EyeOff size={18} /> : <Eye size={18} />}
-                      {showSolution ? "Ẩn lời giải" : "Xem lời giải"}
+                      <Icon name="eye" size={20} />
+                      {solution ? 'Ẩn lời giải' : 'Xem lời giải'}
                     </button>
-                    
-                    {showSolution && (
-                      <div className="mt-6 p-6 bg-green-50/50 border border-green-100 rounded-xl">
-                        <h4 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
-                          <CheckCircle2 size={18} />
-                          Lời giải chi tiết
-                        </h4>
-                        <LatexContent html={renderedSolution} />
-                      </div>
+                    <button className={button} disabled={busy} onClick={similar}>
+                      <Icon name="spark" size={19} />
+                      Bài tập tương tự
+                    </button>
+                    <button className="text-button" onClick={() => openAssistant(question)}>
+                      <Icon name="spark" size={19} />
+                      Hỏi AI về câu này
+                    </button>
+                  </div>
+                  {solution && (
+                    <section id="practice-solution" className="solution-panel">
+                      <h3>
+                        <Icon name="check" size={22} />
+                        Lời giải chi tiết
+                      </h3>
+                      <LatexContent
+                        preamble={question.latexPreamble}
+                        context={question.statementRaw}
+                        html={question.solutionRaw || 'Chưa có lời giải.'}
+                      />
+                    </section>
+                  )}
+                </article>
+              ) : (
+                !error && (
+                  <div className="surface empty-state practice-empty">
+                    <div className="empty-illustration">
+                      <Icon name="practice" size={64} />
+                      <i />
+                      <i />
+                    </div>
+                    <h3>Một câu hỏi, thêm một cơ hội hiểu bài.</h3>
+                    <p>
+                      Chọn Câu 1 đến Câu 7 phía trên để bắt đầu.
+                      <br />
+                      Bút, giấy và một chút tò mò là đủ.
+                    </p>
+                  </div>
+                )
+              )}
+              <div className="study-tip">
+                <span className="icon-tile tone-yellow">
+                  <Icon name="guide" size={24} />
+                </span>
+                <p>
+                  <strong>Thử trước, xem lời giải sau.</strong> Dành vài phút tự suy nghĩ sẽ giúp
+                  bạn nhớ cách giải lâu hơn.
+                </p>
+              </div>
+            </>
+          )}
+          {tab === 'exam' && (
+            <>
+              <div className="section-heading">
+                <div>
+                  <span className="section-kicker">LÀM QUEN TRƯỚC NGÀY THI</span>
+                  <h2>Đề thi tham khảo</h2>
+                  <p className="muted">
+                    Một không gian tập trung để thử sức và nhìn lại kiến thức.
+                  </p>
+                </div>
+                <span className="soft-badge tone-yellow">
+                  <Icon name="clock" size={18} />
+                  120 phút
+                </span>
+              </div>
+              <section className="exam-create-card">
+                <div className="exam-cover">
+                  <span>
+                    DELTA
+                    <br />
+                    SCRIPT
+                  </span>
+                  <Icon name="exam" size={86} />
+                  <strong>TOÁN 9</strong>
+                  <small>TỰ TIN CHO BƯỚC TIẾP THEO</small>
+                </div>
+                <div className="exam-create-copy">
+                  <span className="eyebrow">MỖI ĐỀ, MỘT LẦN TIẾN BỘ</span>
+                  <h3>Sẵn sàng thử sức?</h3>
+                  <p>
+                    7 câu hỏi, 7 dạng bài. Tạo một đề mới từ kho câu hỏi của giáo viên và bắt đầu
+                    khi bạn sẵn sàng.
+                  </p>
+                  <div className="exam-specs">
+                    <span>
+                      <Icon name="exam" size={19} />7 câu hỏi
+                    </span>
+                    <span>
+                      <Icon name="clock" size={19} />
+                      120 phút
+                    </span>
+                    <span>
+                      <Icon name="guide" size={19} />
+                      Có lời giải đối chiếu
+                    </span>
+                  </div>
+                  <button className="btn btn-primary" disabled={busy} onClick={generate}>
+                    {busy ? 'Đang tạo đề…' : 'Tạo đề tham khảo'}
+                    <Icon name="arrow" size={21} />
+                  </button>
+                  {exam && (
+                    <span className="exam-existing">
+                      Bạn đã có một đề {exam.endAt ? 'đang làm' : 'sẵn sàng'} bên dưới.
+                    </span>
+                  )}
+                </div>
+              </section>
+              {exam && (
+                <section className="exam-workspace">
+                  <div className="exam-toolbar surface">
+                    <span className="exam-clock">
+                      <Icon name="clock" size={24} />
+                      <span>
+                        <small>{exam.endAt ? 'THỜI GIAN CÒN LẠI' : 'THỜI GIAN LÀM BÀI'}</small>
+                        <ExamTimer endAt={exam.endAt} />
+                      </span>
+                    </span>
+                    {exam.endAt === null ? (
+                      <button
+                        className="btn btn-primary"
+                        onClick={() =>
+                          setExam((v) => v && { ...v, endAt: Date.now() + EXAM_DURATION })
+                        }
+                      >
+                        Bắt đầu làm bài
+                        <Icon name="arrow" size={20} />
+                      </button>
+                    ) : (
+                      <button
+                        className={button}
+                        onClick={() => setExam((v) => v && { ...v, showAnswers: !v.showAnswers })}
+                      >
+                        <Icon name="eye" size={19} />
+                        {exam.showAnswers ? 'Ẩn tất cả đáp án' : 'Hiện tất cả đáp án'}
+                      </button>
                     )}
                   </div>
-                </div>
-              ) : (
-                <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
-                  Hãy chọn một câu ở trên để bắt đầu ôn tập.
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'exam' && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">Đề thi tham khảo</h3>
-                  <p className="text-sm text-gray-500 mt-1">Hệ thống sẽ tạo ngẫu nhiên một đề thi gồm 7 câu.</p>
-                </div>
-                <button
-                  onClick={generateExam}
-                  disabled={isLoading}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl transition-colors font-medium shadow-sm ${
-                    isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                  }`}
-                >
-                  {isLoading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                  {isLoading ? 'Đang tạo đề...' : 'Tạo đề tham khảo'}
-                </button>
-              </div>
-
-              {isLoading ? (
-                <div className="bg-white p-12 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-indigo-600">
-                  <Loader2 size={40} className="animate-spin mb-4" />
-                  <p className="text-gray-500 font-medium">Đang tải và xử lý đề thi...</p>
-                </div>
-              ) : examQuestions.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  {!examStarted ? (
-                    <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full mb-4">
-                        <Clock size={32} />
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Đề thi đã sẵn sàng</h3>
-                      <p className="text-gray-600 mb-8">Thời gian làm bài: 120 phút. Chúc bạn làm bài tốt!</p>
-                      <button
-                        onClick={handleStartExam}
-                        className="inline-flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-bold text-lg shadow-md shadow-green-200"
-                      >
-                        <Play size={20} />
-                        Bắt đầu làm bài
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="sticky top-0 bg-white/90 backdrop-blur-sm z-10 pb-4 mb-6 border-b border-gray-100 flex justify-between items-center">
-                        <div className="flex items-center gap-3 text-2xl font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
-                          <Clock size={24} />
-                          {formatTime(timeLeft)}
+                  {exam.endAt !== null ? (
+                    exam.questions.map((q, index) => (
+                      <article key={q.id} className="surface exercise-card exam-question">
+                        <div className="exercise-heading">
+                          <h3>
+                            <span className="quiz-number">
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            {q.label}
+                          </h3>
+                          <span className="small-label">DẠNG {q.number}</span>
                         </div>
-                        <button
-                          onClick={handleToggleAnswers}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 text-white rounded-xl hover:bg-gray-900 transition-colors font-medium shadow-sm"
-                        >
-                          {showExamAnswers ? <EyeOff size={18} /> : <Eye size={18} />}
-                          {showExamAnswers ? "Ẩn tất cả đáp án" : "Hiện tất cả đáp án"}
+                        <div className="exercise-body">
+                          <LatexContent html={q.statementRaw} preamble={q.latexPreamble} />
+                        </div>
+                        <button className="text-button" onClick={() => openAssistant(q)}>
+                          <Icon name="spark" size={19} />
+                          Hỏi AI về câu này
                         </button>
-                      </div>
-
-                      <div className="space-y-12">
-                        {examQuestions.map((q, idx) => {
-                          return (
-                          <div key={idx} className="pb-8 border-b border-gray-100 last:border-0">
-                            <h4 className="text-lg font-bold text-gray-900 mb-4">{q.label}</h4>
-                            <div className="prose max-w-none mb-6">
-                              <LatexContent html={renderedExamStatements[idx] || "Đang tải..."} />
-                            </div>
-                            
-                            {showExamAnswers && (
-                              <div className="mt-4 p-6 bg-green-50/50 border border-green-100 rounded-xl">
-                                <h5 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
-                                  <CheckCircle2 size={18} />
-                                  Lời giải
-                                </h5>
-                                <LatexContent html={renderedExamSolutions[idx] || "Chưa có lời giải."} />
-                              </div>
-                            )}
-                          </div>
-                        )})}
+                        {exam.showAnswers && (
+                          <section className="solution-panel">
+                            <h4>Lời giải</h4>
+                            <LatexContent
+                              preamble={q.latexPreamble}
+                              context={q.statementRaw}
+                              html={q.solutionRaw || 'Chưa có lời giải.'}
+                            />
+                          </section>
+                        )}
+                      </article>
+                    ))
+                  ) : (
+                    <div className="exam-ready">
+                      <span className="icon-tile tone-blue">
+                        <Icon name="check" size={32} />
+                      </span>
+                      <div>
+                        <h3>Đề thi của bạn đã sẵn sàng.</h3>
+                        <p>
+                          Bấm “Bắt đầu làm bài” để mở đề và chạy đồng hồ. Hãy chuẩn bị giấy nháp và
+                          chọn một góc yên tĩnh nhé.
+                        </p>
                       </div>
                     </div>
                   )}
-                </div>
+                  <p className="topics-footnote">
+                    <Icon name="info" size={17} />
+                    Đề và thời gian kết thúc được giữ khi tải lại trang trong cùng tab.
+                  </p>
+                </section>
               )}
-            </div>
+            </>
           )}
-
-          {activeTab === 'guide' && (
-            <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <HelpCircle className="text-indigo-600" />
-                Hướng dẫn sử dụng
-              </h3>
-              <div className="space-y-6 text-gray-600 leading-relaxed">
+          {tab === 'guide' && (
+            <div>
+              <div className="section-heading">
                 <div>
-                  <h4 className="font-semibold text-gray-900 text-lg mb-2">1. Ôn tập theo câu</h4>
-                  <p>Chọn từng câu từ 1 đến 7 để ôn tập. Hệ thống sẽ lấy ngẫu nhiên một bài toán trong ngân hàng câu hỏi tương ứng với dạng bài đó. Bạn có thể xem đề bài, tự giải, và sau đó bấm "Xem lời giải" để đối chiếu kết quả.</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 text-lg mb-2">2. Đề thi tham khảo</h4>
-                  <p>Bấm "Tạo đề tham khảo" để hệ thống tự động sinh ra một đề thi hoàn chỉnh gồm 7 câu. Khi bạn bấm "Bắt đầu làm bài", đồng hồ đếm ngược 120 phút sẽ chạy. Sau khi làm xong, bạn có thể xem đáp án của toàn bộ đề thi.</p>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 text-lg mb-2">3. Trợ lý AI DeltaScript</h4>
-                  <p>Bên phải màn hình là Trợ lý AI. Nếu gặp khó khăn, bạn có thể hỏi AI để xin gợi ý. Lưu ý: AI chỉ đưa ra gợi ý từng bước, nhắc lại kiến thức, hoặc kiểm tra hướng làm của bạn, chứ không giải sẵn toàn bộ bài toán.</p>
+                  <span className="section-kicker">HỌC NHẸ NHÀNG, NHỚ LÂU HƠN</span>
+                  <h2>Một góc nhỏ cho cách học hay</h2>
+                  <p className="muted">Bạn không cần giỏi ngay. Chỉ cần bắt đầu và tiếp tục.</p>
                 </div>
               </div>
+              <div className="guide-grid">
+                {[
+                  {
+                    icon: 'topics' as const,
+                    color: 'blue',
+                    title: 'Hiểu trước khi nhớ',
+                    text: 'Đọc kiến thức cốt lõi, tự làm lại ví dụ rồi thử câu tự kiểm tra. Sai cũng là một phần của việc học.',
+                    action: 'Mở chuyên đề',
+                    tab: 'topics' as const,
+                  },
+                  {
+                    icon: 'practice' as const,
+                    color: 'red',
+                    title: 'Tự giải, rồi đối chiếu',
+                    text: 'Chọn dạng câu, ghi hướng giải ra giấy. Mở lời giải khi đã thử và tìm xem mình vướng ở bước nào.',
+                    action: 'Luyện ngay',
+                    tab: 'practice' as const,
+                  },
+                  {
+                    icon: 'exam' as const,
+                    color: 'yellow',
+                    title: 'Tập trung như đang thi',
+                    text: 'Chuẩn bị giấy nháp, đặt điện thoại sang một bên và thử một đề 120 phút. Sau đó dành thời gian chữa bài.',
+                    action: 'Tới trang tạo đề',
+                    tab: 'exam' as const,
+                  },
+                ].map((item) => (
+                  <section key={item.title} className="surface guide-card">
+                    <span className={`icon-tile tone-${item.color}`}>
+                      <Icon name={item.icon} size={36} />
+                    </span>
+                    <h3>{item.title}</h3>
+                    <p>{item.text}</p>
+                    <button className="text-button" onClick={() => changeTab(item.tab)}>
+                      {item.action}
+                      <Icon name="arrow" size={19} />
+                    </button>
+                  </section>
+                ))}
+              </div>
+              <section className="surface faq-section">
+                <h3>Bạn có thể đang thắc mắc…</h3>
+                <details>
+                  <summary>Mã ôn tập lấy ở đâu?</summary>
+                  <p>
+                    Mã gồm 8 chữ hoặc số, do giáo viên cung cấp. Nếu mã không còn hoạt động, bạn hãy
+                    liên hệ giáo viên để được cấp mã mới.
+                  </p>
+                </details>
+                <details>
+                  <summary>Hỏi trợ lý AI như thế nào cho hiệu quả?</summary>
+                  <p>
+                    Mở một câu hỏi, chọn “Hỏi AI về câu này”, rồi hỏi cụ thể điều bạn chưa hiểu. Bạn
+                    có thể hỏi tiếp trong cùng cuộc trò chuyện. Hãy đối chiếu câu trả lời với kiến
+                    thức và lời giải của giáo viên.
+                  </p>
+                </details>
+                <details>
+                  <summary>Tiến độ và bài đang làm có được lưu lại không?</summary>
+                  <p>
+                    Tiến độ chuyên đề được lưu trên trình duyệt đang dùng. Đề thi và đồng hồ được
+                    giữ trong tab hiện tại khi tải lại. Xóa dữ liệu trình duyệt có thể làm mất những
+                    phần lưu này.
+                  </p>
+                </details>
+              </section>
             </div>
           )}
-        </div>
+        </Suspense>
       </div>
-      
-      <div className="w-96 hidden lg:block flex-shrink-0">
-        <AIAssistantPanel currentQuestionRaw={selectedQuestion?.statementRaw} />
-      </div>
+      <footer className="study-footer">
+        <BrandFooter />
+        <span>Đi một chút mỗi ngày, bạn sẽ đi rất xa.</span>
+      </footer>
+      <button className="assistant-launcher" onClick={() => openAssistant()}>
+        <Icon name="spark" size={24} />
+        <span>Mở trợ lý AI</span>
+        <i />
+      </button>
+      {aiLoaded && (
+        <dialog
+          ref={assistantDialog}
+          onCancel={() => setMobileAI(false)}
+          className="assistant-dialog"
+          aria-labelledby="assistant-title"
+        >
+          <div className="assistant-dialog-heading">
+            <span className="icon-tile tone-blue">
+              <Icon name="spark" size={26} />
+            </span>
+            <div>
+              <h2 id="assistant-title">Trợ lý Toán học</h2>
+              <p>Cùng nghĩ, cùng hiểu bài.</p>
+            </div>
+            <button
+              className="icon-button"
+              onClick={() => setMobileAI(false)}
+              aria-label="Đóng trợ lý AI"
+            >
+              <Icon name="close" size={22} />
+            </button>
+          </div>
+          <Suspense fallback={<p className="loading-state">Đang tải trợ lý…</p>}>
+            <AIAssistantPanel
+              key={aiQuestion?.id || 'general'}
+              currentQuestionRaw={aiQuestion?.statementRaw}
+            />
+          </Suspense>
+        </dialog>
+      )}
     </div>
   );
-};
-
-export default StudentView;
+}
+function BrandFooter() {
+  return (
+    <span className="footer-wordmark">
+      Delta<span>Script</span>
+      <i>✦</i>
+    </span>
+  );
+}

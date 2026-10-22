@@ -1,71 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { X, Key, Save } from 'lucide-react';
-
-interface SettingsModalProps {
+import { useEffect, useRef, useState } from 'react';
+import Icon from './Icons';
+export default function SettingsModal({
+  isOpen,
+  onClose,
+}: {
   isOpen: boolean;
   onClose: () => void;
-}
-
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const [apiKey, setApiKey] = useState('');
-  const [isSaved, setIsSaved] = useState(false);
-
+}) {
+  const [key, setKey] = useState(''),
+    [status, setStatus] = useState('');
+  const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    if (isOpen) {
-      const storedKey = localStorage.getItem('gemini_api_key');
-      if (storedKey) setApiKey(storedKey);
-      setIsSaved(false);
-    }
+    if (!isOpen) return;
+    try {
+      setKey(sessionStorage.getItem('gemini_api_key') || '');
+      localStorage.removeItem('gemini_api_key');
+      localStorage.removeItem('deltascript_gemini_api_key');
+    } catch {}
+    dialog.current?.showModal();
+    return () => dialog.current?.close();
   }, [isOpen]);
-
-  const handleSave = () => {
-    localStorage.setItem('gemini_api_key', apiKey);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
-
   if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-800">Cài đặt</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="p-6">
-          <div className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
-            <div className="flex items-center gap-2 mb-3 text-indigo-800 font-medium">
-              <Key size={18} />
-              <span>Gemini API Key</span>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Nhập API Key của Google Gemini để sử dụng tính năng Trợ lý AI. Key sẽ được lưu trữ an toàn trên trình duyệt của bạn.
-            </p>
-            <div className="space-y-3">
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-              />
-              <button
-                onClick={handleSave}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg transition-colors font-medium"
-              >
-                <Save size={18} />
-                {isSaved ? 'Đã lưu thành công!' : 'Lưu API Key'}
-              </button>
-            </div>
-          </div>
-        </div>
+    <dialog
+      ref={dialog}
+      onCancel={onClose}
+      className="settings-dialog"
+      aria-labelledby="settings-title"
+    >
+      <div className="settings-dialog-heading">
+        <span className="icon-tile tone-blue">
+          <Icon name="settings" size={27} />
+        </span>
+        <h2 id="settings-title">Cài đặt</h2>
+        <button className="icon-button" aria-label="Đóng" onClick={onClose}>
+          <Icon name="close" size={21} />
+        </button>
       </div>
-    </div>
+      <p className="settings-description">
+        Nếu quản trị viên đã cấu hình Gemini trên máy chủ, bạn không cần nhập key. Key cá nhân chỉ
+        được giữ trong phiên tab hiện tại và gửi tới máy chủ khi hỏi AI.
+      </p>
+      <label>
+        Gemini API Key (tùy chọn)
+        <input
+          type="password"
+          autoComplete="off"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          className="account-input"
+        />
+      </label>
+      <div className="settings-actions">
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('gemini_api_key', key.trim());
+              setStatus('Đã lưu cho phiên tab này.');
+            } catch {
+              setStatus('Không lưu được key trong trình duyệt.');
+            }
+          }}
+        >
+          Lưu API Key
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            try {
+              sessionStorage.removeItem('gemini_api_key');
+            } catch {}
+            setKey('');
+            setStatus('Đã xóa key.');
+          }}
+        >
+          Xóa key
+        </button>
+      </div>
+      <p role="status" className="settings-status">
+        {status}
+      </p>
+    </dialog>
   );
-};
-
-export default SettingsModal;
+}

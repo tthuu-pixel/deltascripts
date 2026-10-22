@@ -1,168 +1,111 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Lightbulb, BookOpen, CheckCircle } from 'lucide-react';
-import { ChatMessage } from '../types';
-import { getAIResponse } from '../services/aiService';
+import { useEffect, useRef, useState } from 'react';
+import type { ChatMessage } from '../types';
+import { apiService } from '../services/apiService';
 import LatexContent from './LatexContent';
+import Icon from './Icons';
 
-interface AIAssistantPanelProps {
-  currentQuestionRaw?: string;
-}
-
-const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ currentQuestionRaw }) => {
+export default function AIAssistantPanel({ currentQuestionRaw }: { currentQuestionRaw?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Chào bạn! Mình là Trợ lý AI DeltaScript. Mình có thể giúp gì cho bạn với bài toán này?' }
+    {
+      role: 'assistant',
+      content: 'Chào bạn! Mình có thể gợi ý cách giải và nhắc kiến thức Toán 9.',
+    },
   ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('ai_model') || 'gemini-1.5-flash';
-  });
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  const [input, setInput] = useState(''),
+    [busy, setBusy] = useState(false);
+  const active = useRef(true),
+    locked = useRef(false),
+    end = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    scrollToBottom();
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'nearest' });
   }, [messages]);
-
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newModel = e.target.value;
-    setSelectedModel(newModel);
-    localStorage.setItem('ai_model', newModel);
-  };
-
-  const handleSend = async (text: string = input) => {
-    if (!text.trim()) return;
-
-    const apiKey = localStorage.getItem('gemini_api_key');
-    if (!apiKey) {
-      setMessages(prev => [...prev, { role: 'user', content: text }, { role: 'assistant', content: 'Vui lòng nhập Gemini API Key trong phần Cài đặt để sử dụng tính năng này.' }]);
-      setInput('');
-      return;
-    }
-
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: text }];
-    setMessages(newMessages);
+  async function send(value = input) {
+    const message = value.trim();
+    if (!message || locked.current) return;
+    locked.current = true;
+    setBusy(true);
     setInput('');
-    setIsLoading(true);
-
+    const history = messages.filter((m) => !m.content.startsWith('Lỗi:')).slice(-12);
+    setMessages((items) => [...items, { role: 'user', content: message }]);
     try {
-      let prompt = text;
-      if (currentQuestionRaw) {
-        prompt = `Câu hỏi hiện tại: ${currentQuestionRaw}\n\nYêu cầu của học sinh: ${text}`;
-      }
-
-      let response;
+      let key = '';
       try {
-        response = await getAIResponse(prompt, apiKey, selectedModel);
-      } catch (error: any) {
-        if (error.message === "QUOTA_EXCEEDED_FALLBACK") {
-          setMessages(prev => [...prev, { role: 'assistant', content: "Model này đang hết hạn mức. Đã chuyển sang Flash." }]);
-          setSelectedModel('gemini-1.5-flash');
-          localStorage.setItem('ai_model', 'gemini-1.5-flash');
-          response = await getAIResponse(prompt, apiKey, 'gemini-1.5-flash');
-        } else {
-          throw error;
-        }
-      }
-      
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    } catch (error: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Lỗi: ${error.message}` }]);
+        key = sessionStorage.getItem('gemini_api_key') || '';
+      } catch {}
+      const reply = await apiService.askAI(message, currentQuestionRaw || '', history, key);
+      if (active.current) setMessages((items) => [...items, { role: 'assistant', content: reply }]);
+    } catch (error) {
+      if (active.current)
+        setMessages((items) => [
+          ...items,
+          { role: 'assistant', content: `Lỗi: ${(error as Error).message}` },
+        ]);
     } finally {
-      setIsLoading(false);
+      locked.current = false;
+      if (active.current) setBusy(false);
     }
-  };
-
-  const quickActions = [
-    { label: 'Gợi ý bước 1', icon: <Lightbulb size={16} />, text: 'Hãy gợi ý cho mình bước đầu tiên để giải bài toán này.' },
-    { label: 'Gợi ý tiếp theo', icon: <Lightbulb size={16} />, text: 'Mình đã làm được một phần, hãy gợi ý bước tiếp theo.' },
-    { label: 'Nhắc kiến thức', icon: <BookOpen size={16} />, text: 'Bài toán này cần áp dụng những kiến thức nào?' },
-    { label: 'Kiểm tra hướng làm', icon: <CheckCircle size={16} />, text: 'Mình định làm theo hướng này, bạn kiểm tra giúp mình xem có đúng không?' },
-  ];
-
+  }
   return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
-      <div className="p-4 border-b border-gray-200 bg-indigo-50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bot className="text-indigo-600" />
-          <h2 className="font-semibold text-indigo-900">Trợ lý AI DeltaScript</h2>
-        </div>
-        <select
-          value={selectedModel}
-          onChange={handleModelChange}
-          className="text-xs border border-indigo-200 rounded-md bg-white text-indigo-800 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        >
-          <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-          <option value="gemini-1.5-pro">gemini-1.5-pro</option>
-          <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-        </select>
+    <section className="chat-panel" aria-label="Trợ lý AI">
+      <div className="chat-context">
+        <Icon name="practice" size={16} />
+        {currentQuestionRaw
+          ? 'Đang cùng bạn tìm hiểu câu hỏi đã chọn'
+          : 'Một góc nhỏ để hỏi kiến thức Toán 9'}
       </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl p-3 ${
-              msg.role === 'user' 
-                ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                : 'bg-gray-100 text-gray-800 rounded-tl-sm'
-            }`}>
-              {msg.role === 'assistant' ? (
-                <LatexContent html={msg.content} />
-              ) : (
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              )}
-            </div>
+      <div className="chat-messages" aria-live="polite">
+        {messages.map((message, index) => (
+          <div key={index} className={`chat-bubble chat-${message.role}`}>
+            <LatexContent html={message.content} plainText />
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-tl-sm p-3 flex items-center gap-2 text-gray-500">
-              <Loader2 className="animate-spin" size={16} />
-              <span>Đang suy nghĩ...</span>
-            </div>
-          </div>
+        {busy && (
+          <p role="status" className="muted">
+            Đang suy nghĩ…
+          </p>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={end} />
       </div>
-
-      <div className="p-3 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap gap-2 mb-3">
-          {quickActions.map((action, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleSend(action.text)}
-              disabled={isLoading}
-              className="flex items-center gap-1 text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:text-indigo-600 px-2 py-1.5 rounded-full transition-colors disabled:opacity-50"
-            >
-              {action.icon}
-              {action.label}
-            </button>
-          ))}
+      <div className="chat-compose">
+        <div className="chat-suggestions">
+          {['Gợi ý bước đầu tiên', 'Nhắc lại kiến thức cần dùng', 'Gợi ý bước tiếp theo'].map(
+            (value) => (
+              <button key={value} disabled={busy} onClick={() => send(value)}>
+                {value}
+              </button>
+            ),
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <form
+          className="chat-input-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void send();
+          }}
+        >
           <input
-            type="text"
+            aria-label="Tin nhắn cho trợ lý AI"
+            maxLength={5000}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Nhập câu hỏi..."
-            disabled={isLoading}
-            className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-100"
+            disabled={busy}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Mình đang vướng ở bước nào?"
           />
-          <button
-            onClick={() => handleSend()}
-            disabled={isLoading || !input.trim()}
-            className="bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            <Send size={20} />
+          <button aria-label="Gửi" disabled={busy || !input.trim()}>
+            <Icon name="send" size={19} />
+            Gửi
           </button>
-        </div>
+        </form>
+        <p className="chat-disclaimer">
+          AI có thể nhầm. Hãy đối chiếu với bài học và giáo viên nhé.
+        </p>
       </div>
-    </div>
+    </section>
   );
-};
-
-export default AIAssistantPanel;
+}

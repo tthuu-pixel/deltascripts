@@ -1,93 +1,132 @@
-import React, { useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import Header from './components/Header';
 import Login from './components/Login';
-import StudentView from './components/StudentView';
-import QuestionBank from './components/QuestionBank';
-import SettingsModal from './components/SettingsModal';
-import { User, Question } from './types';
-import { googleSheetsService } from './services/googleSheetsService';
+import Icon from './components/Icons';
+import { apiService, ApiError, clearApiCache } from './services/apiService';
+import type { User } from './types';
+
+const StudentView = lazy(() => import('./components/StudentView'));
+const QuestionBank = lazy(() => import('./components/QuestionBank'));
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const SetupTeacher = lazy(() => import('./components/SetupTeacher'));
+const Loading = () => (
+  <p role="status" className="loading-state">
+    <span className="loading-dot" />
+    Đang tải…
+  </p>
+);
 
 export default function App() {
+  const [setupToken, setSetupToken] = useState<string | null>(() =>
+    window.location.pathname === '/setup'
+      ? new URLSearchParams(window.location.hash.slice(1)).get('token') || ''
+      : null,
+  );
   const [user, setUser] = useState<User | null>(null);
-  const [questionBank, setQuestionBank] = useState<Question[]>([]);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
+  const [checking, setChecking] = useState(setupToken === null);
+  const [settings, setSettings] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => {
-    const storedUser = localStorage.getItem('deltascript_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user from localStorage", e);
-      }
-    }
-
-    const storedBank = localStorage.getItem('deltascript_question_bank');
-    if (storedBank) {
-      try {
-        setQuestionBank(JSON.parse(storedBank));
-      } catch (e) {
-        console.error("Failed to parse question bank from localStorage", e);
-      }
-    }
+    const openSetup = () => {
+      if (window.location.pathname === '/setup')
+        setSetupToken(new URLSearchParams(window.location.hash.slice(1)).get('token') || '');
+    };
+    window.addEventListener('hashchange', openSetup);
+    return () => window.removeEventListener('hashchange', openSetup);
   }, []);
-
   useEffect(() => {
-    if (user && user.role === 'student') {
-      fetchQuestions();
+    if (setupToken !== null) {
+      // Keep the one-time credential only in memory, out of history and referrers.
+      window.history.replaceState(null, '', '/setup');
+      return;
     }
-  }, [user]);
-
-  const fetchQuestions = async () => {
-    setLoading(true);
+    let active = true;
+    apiService
+      .me()
+      .then((value) => {
+        if (active) setUser(value);
+      })
+      .catch((error) => {
+        if (active && !(error instanceof ApiError && error.status === 401)) setError(error.message);
+      })
+      .finally(() => {
+        if (active) setChecking(false);
+      });
     try {
-      const questions = await googleSheetsService.getAllQuestions();
-      if (questions.length > 0) {
-        setQuestionBank(questions);
-        localStorage.setItem('deltascript_question_bank', JSON.stringify(questions));
-      }
+      localStorage.removeItem('deltascript_user');
+    } catch {}
+    const expired = () => {
+      clearApiCache();
+      setUser(null);
+      setSettings(false);
+      setError('Phiên đăng nhập đã hết hạn hoặc mã đã ngừng hoạt động.');
+    };
+    window.addEventListener('auth-expired', expired);
+    return () => {
+      active = false;
+      window.removeEventListener('auth-expired', expired);
+    };
+  }, [setupToken]);
+  async function logout() {
+    try {
+      await apiService.logout();
+      setUser(null);
+      setSettings(false);
+      setError('');
     } catch (error) {
-      console.error("Error fetching questions:", error);
-    } finally {
-      setLoading(false);
+      setError((error as Error).message);
     }
-  };
-
-  const handleLogin = (loggedInUser: User) => {
-    setUser(loggedInUser);
-    localStorage.setItem('deltascript_user', JSON.stringify(loggedInUser));
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('deltascript_user');
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      {user && (
-        <Header 
-          user={user} 
-          onLogout={handleLogout} 
-          onOpenSettings={() => setIsSettingsOpen(true)} 
+  }
+  if (setupToken !== null)
+    return (
+      <Suspense fallback={<Loading />}>
+        <SetupTeacher
+          token={setupToken}
+          onComplete={(value) => {
+            clearApiCache();
+            window.history.replaceState(null, '', '/');
+            setUser(value);
+            setSetupToken(null);
+            setError('');
+          }}
         />
+      </Suspense>
+    );
+  if (checking) return <Loading />;
+  return (
+    <div className="min-h-screen flex flex-col font-sans">
+      {user && <Header user={user} onLogout={logout} onOpenSettings={() => setSettings(true)} />}
+      {error && (
+        <div role="alert" className="notice notice-info app-alert">
+          <Icon name="info" size={21} />
+          {error}
+          <button className="icon-button" onClick={() => setError('')} aria-label="Đóng thông báo">
+            <Icon name="close" size={18} />
+          </button>
+        </div>
       )}
-      
-      <main className="flex-1 flex flex-col">
-        {!user ? (
-          <Login onLogin={handleLogin} />
-        ) : user.role === 'student' ? (
-          <StudentView user={user} questionBank={questionBank} />
-        ) : (
-          <QuestionBank questionBank={questionBank} setQuestionBank={setQuestionBank} />
-        )}
+      <main className="flex-1 min-w-0">
+        <Suspense fallback={<Loading />}>
+          {!user ? (
+            <Login
+              onLogin={(value) => {
+                clearApiCache();
+                setUser(value);
+                setError('');
+              }}
+            />
+          ) : user.role === 'student' ? (
+            <StudentView user={user} />
+          ) : (
+            <QuestionBank />
+          )}
+        </Suspense>
       </main>
-
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
+      {settings && (
+        <Suspense fallback={<Loading />}>
+          <SettingsModal isOpen onClose={() => setSettings(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

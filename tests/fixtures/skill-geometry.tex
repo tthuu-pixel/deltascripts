@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{calc,angles,quotes,intersections,decorations.markings}
+\def\R{3}
+\DeclareMathOperator{\longueur}{longueur}
+\tikzset{netchinh/.style={line width=.8pt}}
+\begin{document}
+\begin{bt}[Câu 3]
+	Cho tam giác $ABC$ nội tiếp đường tròn $(O)$, $AH$ là đường cao.
+	\begin{center}
+		\begin {tikzpicture}[scale=.8,font=\footnotesize,line join=round,line cap=round,>=stealth]
+			\def\gocA{110}
+			\path (0,0) coordinate (O)
+				(\gocA:\R) coordinate (A)
+				(210:\R) coordinate (B)
+				(-30:\R) coordinate (C)
+				($(B)!(A)!(C)$) coordinate (H);
+			\draw[netchinh] (A)--(B)--(C)--cycle (O) circle(\R) (A)--(H);
+			\foreach \x/\y/\z in {A/H/C}
+				\path pic[draw=black,angle radius=6pt] {right angle=\x--\y--\z};
+			\foreach \d/\g in {O/-45,A/100,B/-135,C/-30,H/-90}
+				\path[draw,fill=white] (\d) circle(1pt) +(\g:9pt) node {$\d$};
+		\end {tikzpicture}
+	\end{center}
+	\loigiai{
+		Hình minh họa giữ nguyên quan hệ $AH\perp BC$.
+	}
+\end{bt}
+\end{document}

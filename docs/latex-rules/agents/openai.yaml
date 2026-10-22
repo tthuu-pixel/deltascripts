@@ -1,0 +1,14 @@
+interface:
+  display_name: Chuẩn hóa LaTeX Toán
+  short_description: Chuẩn hóa và biên soạn LaTeX Toán học
+  default_prompt: Dùng $chuan-hoa-latex-toan để xử lý tài liệu Toán này theo đúng
+    chế độ tôi yêu cầu.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  allow_implicit_invocation: true
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas

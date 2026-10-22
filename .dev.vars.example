@@ -1,0 +1,4 @@
+# Sao chép thành .dev.vars để dùng cục bộ. Không commit file chứa giá trị thật.
+# GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-2.5-flash
+# APP_ORIGIN=https://your-domain.example

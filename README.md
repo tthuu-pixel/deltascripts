@@ -1,20 +1,149 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DeltaScript – Hỗ trợ học tập Toán 9
 
-# Run and deploy your AI Studio app
+React/Vite cho giao diện, Cloudflare Workers cho API và Cloudflare D1 (SQLite) cho dữ liệu. Web và API dùng cùng tên miền. Không cần máy chủ Node chạy thường trực, PostgreSQL, Google Sheets hoặc kho ảnh riêng khi chỉ nhập nguồn TeX.
 
-This contains everything you need to run your app locally.
+## Giao diện và không gian học tập
 
-View your app in AI Studio: https://ai.studio/apps/f1329141-002e-4662-8aba-98041eda92ca
+Nhận diện dùng xanh dương, đỏ san hô và vàng; logo/favicon và bộ icon SVG riêng. Phông Manrope được phục vụ từ `public/fonts` kèm giấy phép OFL, không gọi Google Fonts khi mở trang. Giao diện có bố cục cho máy tính và điện thoại, điều khiển bằng bàn phím, trạng thái đang tải/trống/lỗi và hỗ trợ giảm chuyển động.
 
-## Run Locally
+Ảnh nền hình học được tạo riêng cho dự án và phục vụ tại `public/images`: WebP khoảng 27 KB cho máy tính, 9 KB cho điện thoại. Minh họa SVG dùng tam giác vuông, đường tròn và căn thức; không dùng phương trình đường tròn trong hệ tọa độ. Xem [nội dung chuyên đề và cách thêm nguồn](docs/curriculum.md).
 
-**Prerequisites:**  Node.js
+Học sinh có bốn tab lớn: **Chuyên đề lớp 9**, **Luyện câu hỏi**, **Tạo đề thi** và **Góc học tập**. Tab đang học được nhớ trong phiên trình duyệt. Có sẵn 10 chuyên đề sắp theo các chương Toán 9 Kết nối tri thức, mỗi chuyên đề gồm tóm tắt tự biên soạn, ví dụ và 2 câu tự kiểm tra; hỗ trợ lọc nhóm và tìm không dấu. Đây là bài học ôn tập ngắn, không thay thế toàn bộ sách. Chỉ ghi hoàn thành khi trả lời đúng cả hai câu. Tiến độ chuyên đề lưu trên thiết bị, không phải điểm số hay tiến độ đồng bộ qua tài khoản.
 
+Nội dung nền tảng nằm tại [`src/data/topics.ts`](src/data/topics.ts); thêm một phần tử theo kiểu `Topic` để mở rộng danh sách. Chuyên đề này tách biệt với nguồn câu hỏi giáo viên nhập. Giao diện giáo viên hiện quản lý kho Word/TeX và mã truy cập; chưa có trình biên soạn chuyên đề trên web. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Bản đang chạy
+
+Đã triển khai ngày 22/10/2026: **https://deltascript.tthuu-pixel.workers.dev**. Kiểm tra trình duyệt thực tế tải trang thành công, không có lỗi JavaScript; `/api/health` xác nhận kết nối D1. API từ chối người chưa đăng nhập và thông tin đăng nhập không hợp lệ. Chưa kiểm tra luồng giáo viên trên bản thật vì chưa tạo tài khoản.
+
+D1 bắt đầu với kho câu hỏi trống. Người quản lý triển khai có thể cấp một liên kết riêng để chủ web tự tạo tài khoản giáo viên bằng trình duyệt, không cần cài Node.js trên máy cá nhân:
+
+```sh
+npm run admin:setup -- --remote --origin https://deltascript.tthuu-pixel.workers.dev
+```
+
+Liên kết nằm trong `.data/admin-setup-link.json` (file riêng, quyền 0600, không đưa vào Git), hết hạn sau 24 giờ và chỉ dùng một lần. Gửi riêng cho chủ web. Chủ web mở liên kết, chọn email, nhập mật khẩu ít nhất 12 ký tự và xác nhận lại để đăng nhập. Token nằm trong fragment URL, được bỏ khỏi thanh địa chỉ sau khi mở và không được lưu vào localStorage/sessionStorage; D1 chỉ lưu hash. API không nhận đăng ký nếu chưa cấp liên kết, liên kết sai/hết hạn/đã dùng, hoặc đã có bất kỳ giáo viên nào. Tạo lại liên kết khi DB chưa có giáo viên sẽ thu hồi liên kết cũ. Đây là bước thiết lập tài khoản đầu tiên, không dùng để đổi mật khẩu hay thêm giáo viên.
+
+Người quản lý cũng có thể tạo hoặc đổi mật khẩu bằng terminal trong thư mục dự án có cấu hình Cloudflare:
+
+```sh
+npm run admin:create -- email-cua-ban@example.com --remote
+```
+
+Thay email bằng email bạn muốn dùng, nhập mật khẩu khi terminal hỏi, rồi đăng nhập trên web để tạo mã học sinh và nhập nguồn TeX. Mật khẩu không hiển thị; không gửi mật khẩu qua chat.
+
+## Chạy cục bộ
+
+Yêu cầu Node.js 22.12+ (đã kiểm tra trên Node 24), npm.
+
+```sh
+npm ci
+npm run build
+npm run db:migrate
+npm run admin:create -- email-cua-ban@example.com
+npm run dev
+```
+
+CLI hỏi mật khẩu trong terminal, không hiển thị và không nhận mật khẩu qua tham số. Mật khẩu dài 12–256 ký tự. Không có tài khoản mặc định. Tạo lại email có sẵn sẽ đổi mật khẩu và thu hồi các phiên giáo viên cũ.
+
+`npm run dev` áp dụng migrations cục bộ rồi chạy Vite cổng 3000 và Workers cổng 3001. Vite chuyển `/api` đến Workers. `npm run start` phục vụ bản build bằng Workers ở cổng 3000; chạy `npm run db:migrate` trước. Hai cách dùng cùng dữ liệu D1 cục bộ trong `.data/d1`. Các lệnh mặc định này không ghi vào Cloudflare thật. Không xóa thư mục dữ liệu khi khắc phục lỗi.
+
+Wrangler giữ log và cấu hình CLI trong `.data`, trừ khi môi trường đã cung cấp đường dẫn XDG/log riêng. Dùng các lệnh npm hoặc `node scripts/wrangler.mjs ...` để dùng thống nhất vị trí đăng nhập. `.data`, `.dev.vars`, `.env`, `.wrangler` và kết quả kiểm thử đều bị loại khỏi Git. Dữ liệu PGlite cũ trong `.data/postgres` được giữ nguyên nhưng ứng dụng mới không dùng nữa.
+
+Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file chưa tự ghi dữ liệu. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới bắt đầu từ DB trống, không cần nhập lại Google Sheets. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
+
+## Triển khai Cloudflare
+
+Dùng tài khoản Cloudflare của bạn trên gói Workers Free; tên miền `workers.dev` đủ để bắt đầu. Không cần mua domain hoặc bật Workers Paid. Free có giới hạn và không đảm bảo miễn phí ở mọi quy mô; ứng dụng không tự nâng gói hoặc thanh toán.
+
+Tại terminal trên máy có thể mở trình duyệt:
+
+```sh
+npm run cf:login
+npm run cf:setup
+npm run deploy
+npm run admin:create -- email-cua-ban@example.com --remote
+```
+
+- `cf:setup` kiểm tra đăng nhập, tạo DB `deltascript` với gợi ý vùng APAC, rồi ghi ID thật vào binding `DB` trong `wrangler.jsonc`. Gợi ý vùng không bảo đảm vị trí cụ thể. Lệnh không tạo lại khi ID đã được cấu hình. Nếu tên đã tồn tại hoặc không đọc được ID sau khi tạo, kiểm tra D1 Dashboard thay vì tạo thêm database.
+- `deploy` build giao diện, kiểm tra bundle Workers bằng dry-run, kiểm tra ID/đăng nhập, áp dụng migrations lên D1 và triển khai Workers cùng static assets. Lỗi migration dừng triển khai. Các thay đổi schema về sau cần migration mới và sao lưu trước.
+- Lệnh tạo giáo viên chỉ tác động D1 thật khi có `--remote`; nó gửi truy vấn có tham số qua HTTPS đến API D1, chỉ chuyển hash mật khẩu và không đưa SQL/hash vào tham số lệnh hoặc log. Hỗ trợ token cấu hình bảo mật và đăng nhập Wrangler. Trigger DB thu hồi phiên cũ cùng transaction đổi mật khẩu. Không gửi mật khẩu qua chat, Git, logs hay tham số dòng lệnh.
+- Mở URL mà Wrangler trả về, kiểm tra `/api/health`, đăng nhập, tạo mã, nhập một câu, ôn tập và tạo đề.
+
+Trong môi trường cloud không mở được luồng OAuth, cung cấp **qua phần cấu hình bảo mật**:
+
+| Biến                    | Mục đích                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`  | Token cho tài khoản đích, có quyền Workers Scripts Edit, D1 Edit và quyền đọc thông tin tài khoản cần cho Wrangler |
+| `CLOUDFLARE_ACCOUNT_ID` | ID tài khoản Cloudflare đích                                                                                       |
+
+Không đặt token trong `wrangler.jsonc`, `.env.example`, `VITE_*` hoặc chat. Không cần đưa token vào Workers đang chạy: chỉ công cụ triển khai dùng nó. Dùng token giới hạn ở tài khoản đích. `npm run cf:whoami` kiểm tra trạng thái đăng nhập; không dùng token làm tham số lệnh.
+
+Dữ liệu D1 cục bộ không tự được chuyển lên Cloudflare; sau khi triển khai, nhập các file TeX trên web thật. Không có tài khoản hoặc database thật được tạo bởi build/dry-run, các lệnh chạy cục bộ hoặc bộ test. Placeholder `database_id` toàn số 0 chỉ dùng cục bộ; lệnh deploy từ chối nó.
+
+## Hiệu năng, dung lượng và gói miễn phí
+
+Tài liệu Cloudflare được đối chiếu ngày 22/10/2026:
+
+- [D1 Free](https://developers.cloudflare.com/d1/platform/limits/): tối đa 500 MB mỗi DB, 5 GB cộng dồn trên tài khoản.
+- [D1 usage](https://developers.cloudflare.com/d1/platform/pricing/): 5 triệu hàng đọc/ngày, 100.000 hàng ghi/ngày. Quota đếm hàng bị quét và cả cập nhật chỉ mục, không chỉ số câu trả về/lưu.
+- [Workers Free](https://developers.cloudflare.com/workers/platform/pricing/): 100.000 lượt gọi động/ngày, 10 ms CPU mỗi lần gọi. Static assets không tính như lượt gọi Worker động khi được phục vụ trực tiếp. Cần theo dõi mức dùng thực tế trên Cloudflare; kiểm thử local không chứng minh mức CPU hoặc độ trễ trên host thật.
+
+Ứng dụng phục vụ static assets trực tiếp và chỉ ưu tiên Workers cho `/api`. API dùng Web APIs/Web Crypto; không mang Express, driver PostgreSQL hoặc PGlite vào bundle. Mật khẩu băm bằng PBKDF2-SHA256 có salt, 100.000 vòng; token phiên ngẫu nhiên chỉ lưu hash trong DB. Cookie HttpOnly/SameSite, Secure khi qua HTTPS. Rate limit lưu trong D1 để không mất hiệu lực khi chuyển isolate.
+
+Lấy câu ngẫu nhiên dùng vị trí liên tiếp theo dạng câu và tra chỉ mục, không `ORDER BY random()` trên kho nguồn. Trigger duy trì vị trí và số lượng khi thêm, xóa, chuyển dạng hoặc nhập lại. Tạo đề dùng một truy vấn, lấy đủ 7 dạng trong cùng snapshot; thiếu dạng sẽ báo rõ. Danh sách giáo viên phân trang 20 câu và đọc tổng từ bộ đếm. Xem đề/lời giải và AI giữ các luồng đã có.
+
+Bài đo có thể chạy lại bằng `node --import tsx tests/d1.test.ts`. Với **10.000 nguồn giả lập đúng 2.048 byte/câu**, lưu cả nguồn và phần đề/lời giải, D1 cục bộ có kết quả:
+
+| Chỉ số                                  | Kết quả                                        |
+| --------------------------------------- | ---------------------------------------------- |
+| Tổng nguồn                              | 20.480.000 byte                                |
+| DB, gồm dữ liệu và chỉ mục              | Khoảng 49,6 MB; thay đổi nhẹ giữa các lần chạy |
+| Lấy một câu                             | 5 hàng đọc                                     |
+| Lấy đề 7 câu                            | 35 hàng đọc                                    |
+| Cách cũ `ORDER BY random()` lấy một câu | 2.859 hàng đọc                                 |
+
+Kết quả được ghi vào `.data/d1-capacity-check.json`. Đây là phép đo trên workerd/D1 cục bộ với nguồn giả lập, không phải số đo độ trễ mạng, mức CPU Cloudflare hay cam kết sức chứa. Kích thước thực tế phụ thuộc macro, số cột, nội dung, lịch sử và câu đã ngừng hoạt động. Kho 10.000–50.000 câu 1–2 KB là mục tiêu khởi đầu hợp lý; theo dõi dung lượng trước khi gần 500 MB. Không dùng tỷ lệ để cam kết 100.000 câu luôn vừa Free.
+
+Nhập được chia theo lô tối đa 100 câu và khoảng 1,5 MB JSON; mỗi câu tối đa 1,5 MB dữ liệu TeX/ảnh. SQL chia nhóm 12 câu để dưới giới hạn 100 tham số D1. D1 batch đảm bảo atomic trong từng lần lưu; ID ổn định giúp thử lại không nhân bản. Các phần đã lưu của file dài được xác nhận riêng, phần còn lại có thể thử lại.
+
+Phép đo bổ sung với 100 câu mới ghi 800 hàng D1 (gồm chỉ mục/trigger). Vì vậy, 10.000 câu tương tự dự trù khoảng 80.000 hàng ghi khi nhập mới, chưa tính các hoạt động khác; nhập lại, chuyển dạng và xóa có chi phí khác. Theo dõi quota và chia kho lớn qua nhiều ngày nếu cần; chia lô không làm quota ngày tăng lên.
+
+Cron hằng ngày dọn tối đa 10.000 hàng mỗi loại: phiên hết hạn, cửa sổ rate limit hết hạn và lịch sử đăng nhập cũ hơn 30 ngày. Lịch sử cũ được dọn dần; mã truy cập và câu hỏi không bị cron xóa. Câu giáo viên xóa được giữ ở trạng thái ngừng hoạt động, vẫn chiếm dung lượng.
+
+## Công thức, TikZ và AI
+
+Bản gốc [skill chuẩn hóa LaTeX 15.0.1](docs/latex-rules/SKILL.md) được giữ nguyên. Bộ nhập/hiển thị áp dụng các quy tắc cú pháp xác định, bảo toàn dữ kiện và lời giải; không tự chứng minh hoặc sửa nội dung toán học.
+
+- Hỗ trợ `bt/ex/vd/bai/cau/problem/question`, nhãn Câu/Bài, `loigiai` và `loigiaiTF` dạng lệnh hoặc môi trường. Word đọc trong Web Worker, hỗ trợ văn bản, bảng, ảnh và OMML cơ bản. File tối đa 20 MB; cấu trúc không hỗ trợ hoặc ảnh Word quá 400 KB bị báo lỗi thay vì mất nội dung âm thầm.
+- Giữ macro/style ngoài hình bằng `latexPreamble`: `def`, `newcommand`/`renewcommand`/`providecommand`, `DeclareMathOperator`, `tikzset`, `usetikzlibrary`, `usepgflibrary`, `pgfkeys`, các lệnh đặt macro PGF, `definecolor`/`colorlet`. Macro cấp câu được truyền cho hình trong lời giải. Macro cục bộ của một hình không truyền sang hình khác.
+- Nhận `\begin {tikzpicture}` và `\tikz[...]{...}`; giữ tọa độ dấu chấm, `%` kỹ thuật và `\\` trong nhãn. Khai báo cần preamble được đặt trước `\begin{document}`. Wrapper mặc định dùng TikZ thuần; chỉ nạp gói tkz-euclide/pgfplots khi nguồn cũ dùng chúng. Báo lỗi ngoặc/môi trường và compiler; chữ vẫn đọc được khi hình lỗi.
+- Khi hiển thị, nhận bí danh `frac` → `dfrac`, `ne/ge/le` → `neq/geq/leq`, `quad` → `;`, `choiceTFt` → `choiceTF`; phương án hiển thị không lộ dấu `True`. Không tự thêm phương án hoặc đổi số liệu. HTML được lọc bằng DOMPurify; KaTeX không bật trust.
+- TikZ biên dịch ngoài Workers, tối đa hai tác vụ đồng thời. Cache trình duyệt tối đa 40 ảnh nhỏ, mỗi ảnh tối đa 600.000 ký tự base64; khóa gồm toàn bộ tài liệu và endpoint. Cache có thể bị xóa và không dùng chung giữa các thiết bị. Không lưu PNG trong D1.
+
+Macro/class/font riêng hoặc file `\input` đi kèm cần kiểm tra với nguồn thật. Các mẫu thử không chứng minh tương thích mọi tài liệu. Chưa tự động hóa các quy tắc cần hiểu nghĩa như phân loại hệ/hàm từng đoạn, suy luận hình học hoặc kiểm chứng lời giải.
+
+`VITE_TIKZ_API_URL` trong `.env` dùng lúc build, mặc định `https://tikz-fly.fly.dev`. Dịch vụ compiler và Gemini có hạn mức/chi phí riêng; gói miễn phí lưu web/DB không bảo đảm hai dịch vụ này miễn phí hay luôn hoạt động.
+
+Gemini là tùy chọn. Chạy cục bộ: sao chép `.dev.vars.example` thành `.dev.vars`. Trên Cloudflare: `node scripts/wrangler.mjs secret put GEMINI_API_KEY`; đổi model qua `vars.GEMINI_MODEL` trong Wrangler. Người dùng cũng có thể nhập key cá nhân trong Cài đặt; chỉ giữ trong sessionStorage của tab và gửi đến API khi dùng AI. Server không ghi key vào log hoặc gửi lại browser. `APP_ORIGIN` tùy chọn cho origin chính thức; production cùng tên miền không cần thêm CORS. Các bài AI tạo vẫn cần đối chiếu tính đúng đắn.
+
+## Kiểm thử
+
+```sh
+npm run lint
+npm test
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm run build
+```
+
+Nếu chưa có Chromium: `npx playwright install chromium` rồi chạy `npm run test:e2e`.
+
+Các test chạy bundle Worker thực bằng workerd và D1 cục bộ, không dùng SQLite giả hoặc DB thật. Kiểm tra xác thực/phân quyền, cookie, thu hồi phiên, rate limit qua nhiều request, transaction/rollback, nhập theo lô, chỉ mục chọn câu, restart dữ liệu và dọn lịch sử. Bộ trình duyệt kiểm tra đăng nhập, nhập Word/TeX, đề thi/đồng hồ, mobile AI và cache TikZ. AI thường được giả lập ở ranh giới dịch vụ ngoài.
+
+Kiểm tra compiler thật, ảnh PNG hiển thị và cache qua tải lại trang:
+
+```sh
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:tikz
+```
+
+Kiểm tra này cần mạng, dùng tam giác, hình đường cao và biểu đồ tròn; tôn trọng HTTPS_PROXY và xác minh TLS. Test thông thường bỏ qua ca mạng này. Kết quả Playwright nằm trong `test-results`.
