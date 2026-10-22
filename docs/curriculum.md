@@ -12,6 +12,8 @@ Mở **`/admin`** và đăng nhập bằng tài khoản quản lý hiện có. T
 
 Dùng mũi tên để đổi thứ tự chuyên đề. Xóa chuyên đề chỉ bỏ chuyên đề và các liên kết phân loại, không xóa câu hỏi trong kho. Chuyên đề cũ viết trong mã nguồn đã được thay bằng nội dung do người quản trị tự biên soạn; hệ thống không tự xuất bản bài mẫu.
 
+Danh mục [18 chuyên đề toán thực tế](practical-topics.md) được chuẩn bị theo bốn nhóm kiến thức, không chia lớp. Chuyên đề mới lưu nháp; người quản trị tự bổ sung nội dung và xuất bản.
+
 ## Nhập và phân loại câu hỏi
 
 1. Chọn **Ngân hàng câu hỏi**, tải `.tex` hoặc `.docx` lên. Một file có thể chứa nhiều câu; giới hạn file là 20 MB.
