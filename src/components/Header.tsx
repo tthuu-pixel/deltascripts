@@ -24,14 +24,14 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onOpenSettings }) => {
             <div className="user-badge">
               <span className="user-avatar">
                 {user.role === 'teacher'
-                  ? 'GV'
+                  ? 'AD'
                   : user.studentName?.trim().split(/\s+/).at(-1)?.slice(0, 1).toUpperCase() || 'HS'}
               </span>
               <span>
-                <strong>{user.role === 'teacher' ? 'Giáo viên' : user.studentName}</strong>
+                <strong>{user.role === 'teacher' ? 'Quản trị' : user.studentName}</strong>
                 <small>
                   {user.role === 'teacher'
-                    ? 'Không gian quản lý'
+                    ? 'Quản lý nội dung'
                     : `Học sinh · Lớp ${user.studentClass}`}
                 </small>
               </span>

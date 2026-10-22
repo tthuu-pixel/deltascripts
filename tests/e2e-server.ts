@@ -26,6 +26,65 @@ for (const file of ['skill-geometry.tex', 'skill-chart.tex']) {
   await db.query('DELETE FROM questions WHERE number=?', [questions[0].number]);
   await upsertQuestions(db, questions);
 }
+const fixtureTopics = [
+  {
+    id: randomUUID(),
+    title: 'Căn thức của lớp',
+    category: 'Đại số',
+    description: 'Bài học do quản trị viên biên soạn.',
+    theory: String.raw`Căn bậc hai $\sqrt{49}=7$.`,
+    icon: 'radical',
+    color: 'blue',
+    published: 1,
+    number: 1,
+  },
+  {
+    id: randomUUID(),
+    title: 'Đường tròn của lớp',
+    category: 'Hình học',
+    description: 'Bài học hình học của lớp.',
+    theory: '',
+    icon: 'circle',
+    color: 'red',
+    published: 1,
+    number: 6,
+  },
+  {
+    id: randomUUID(),
+    title: 'Chuyên đề nháp chưa công bố',
+    category: 'Đại số',
+    description: '',
+    theory: 'Nội dung riêng',
+    icon: 'topics',
+    color: 'yellow',
+    published: 0,
+    number: 2,
+  },
+];
+for (const [index, topic] of fixtureTopics.entries()) {
+  await db
+    .prepare(
+      'INSERT INTO topics(id,title,category,description,theory,icon,color,published,position) VALUES(?,?,?,?,?,?,?,?,?)',
+    )
+    .bind(
+      topic.id,
+      topic.title,
+      topic.category,
+      topic.description,
+      topic.theory,
+      topic.icon,
+      topic.color,
+      topic.published,
+      index,
+    )
+    .run();
+  await db
+    .prepare(
+      'INSERT INTO question_topics(question_id,topic_id) SELECT id,? FROM questions WHERE active=1 AND number=?',
+    )
+    .bind(topic.id, topic.number)
+    .run();
+}
 process.on('SIGTERM', async () => {
   await runtime.close();
   process.exit(0);

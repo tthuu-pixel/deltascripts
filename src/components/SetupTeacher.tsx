@@ -69,7 +69,7 @@ export default function SetupTeacher({
     <main className="account-page">
       <div className="account-card">
         <Brand />
-        <h1 className="account-title">Tạo tài khoản giáo viên</h1>
+        <h1 className="account-title">Tạo tài khoản quản trị</h1>
         {status === 'checking' && (
           <p role="status" className="mt-5 text-slate-600">
             Đang kiểm tra liên kết…

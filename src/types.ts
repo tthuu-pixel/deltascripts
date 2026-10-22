@@ -11,6 +11,8 @@ export interface Question {
   rawImageRefs?: string[];
   createdAt?: string;
   active?: boolean;
+  published?: boolean;
+  topicIds?: string[];
 }
 
 export interface AccessCode {

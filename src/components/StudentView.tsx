@@ -11,43 +11,19 @@ import {
 import { readStorage, writeStorage } from '../utils/storage';
 import Icon, { type IconName } from './Icons';
 import MathScene from './MathScene';
+import {
+  defaultStudentSettings,
+  type StudentSettings,
+  type TopicSummary,
+  type StudentTabKey,
+} from '../../shared/content';
 const Topics = lazy(() => import('./Topics'));
-const studyTabs: {
-  key: 'topics' | 'practice' | 'exam' | 'guide';
-  label: string;
-  description: string;
-  icon: IconName;
-  color: string;
-}[] = [
-  {
-    key: 'topics',
-    label: 'Chuyên đề lớp 9',
-    description: 'Hiểu chắc từ gốc',
-    icon: 'topics',
-    color: 'blue',
-  },
-  {
-    key: 'practice',
-    label: 'Luyện câu hỏi',
-    description: 'Rèn từng dạng bài',
-    icon: 'practice',
-    color: 'red',
-  },
-  {
-    key: 'exam',
-    label: 'Tạo đề thi',
-    description: 'Thử sức, bứt phá',
-    icon: 'exam',
-    color: 'yellow',
-  },
-  {
-    key: 'guide',
-    label: 'Góc học tập',
-    description: 'Học sao cho hiệu quả?',
-    icon: 'guide',
-    color: 'blue',
-  },
-];
+const tabDecorations: Record<StudentTabKey, { icon: IconName; color: string }> = {
+  topics: { icon: 'topics', color: 'blue' },
+  practice: { icon: 'practice', color: 'red' },
+  exam: { icon: 'exam', color: 'yellow' },
+  guide: { icon: 'guide', color: 'blue' },
+};
 const LatexContent = lazy(() => import('./LatexContent'));
 const AIAssistantPanel = lazy(() => import('./AIAssistantPanel'));
 const button = 'btn btn-secondary';
@@ -76,7 +52,7 @@ export default function StudentView({ user }: { user: User }) {
   const tabStorageKey = `deltascript_tab:${user.studentName}:${user.studentClass}`;
   const [tab, setTab] = useState<'topics' | 'practice' | 'exam' | 'guide'>(() => {
     const saved = readStorage<unknown>(tabStorageKey, 'topics', sessionStorage);
-    return studyTabs.find((item) => item.key === saved)?.key || 'topics';
+    return defaultStudentSettings.tabs.find((item) => item.key === saved)?.key || 'topics';
   });
   useEffect(() => {
     writeStorage(tabStorageKey, tab, sessionStorage);
@@ -186,6 +162,39 @@ export default function StudentView({ user }: { user: User }) {
       if (id === requestId.current) setBusy(false);
     }
   }
+  const [contentSettings, setContentSettings] = useState<StudentSettings>(defaultStudentSettings);
+  const [topics, setTopics] = useState<TopicSummary[]>([]);
+  const [contentLoading, setContentLoading] = useState(true),
+    [contentError, setContentError] = useState('');
+  const contentRequest = useRef(0);
+  const studyTabs = contentSettings.tabs
+    .filter((item) => item.visible)
+    .map((item) => ({ ...item, ...tabDecorations[item.key] }));
+  async function refreshContent() {
+    const id = ++contentRequest.current;
+    setContentLoading(true);
+    setContentError('');
+    try {
+      const content = await apiService.getStudentContent();
+      if (id !== contentRequest.current) return;
+      setContentSettings(content.settings);
+      setTopics(content.topics);
+    } catch (e) {
+      if (id === contentRequest.current) setContentError((e as Error).message);
+    } finally {
+      if (id === contentRequest.current) setContentLoading(false);
+    }
+  }
+  useEffect(() => {
+    void refreshContent();
+    return () => {
+      contentRequest.current++;
+    };
+  }, []);
+  useEffect(() => {
+    if (!contentSettings.tabs.some((item) => item.key === tab && item.visible))
+      changeTab(contentSettings.tabs.find((item) => item.visible)!.key);
+  }, [contentSettings, tab]);
   function changeTab(value: typeof tab) {
     requestId.current++;
     setBusy(false);
@@ -202,12 +211,10 @@ export default function StudentView({ user }: { user: User }) {
             XIN CHÀO, {user.studentName?.toUpperCase()} <span className="hello-dot" />
           </span>
           <h1>
-            Không gian học tập<span>Của bạn. Theo cách của bạn.</span>
+            {contentSettings.heroTitle}
+            <span>{contentSettings.heroSubtitle}</span>
           </h1>
-          <p>
-            Vững kiến thức hôm nay.
-            <br className="mobile-break" /> Tự tin cho những bước tiếp theo.
-          </p>
+          <p>{contentSettings.heroIntro}</p>
           <div className="hero-tags">
             <span>
               <i className="dot dot-blue" /> Toán lớp 9
@@ -225,6 +232,21 @@ export default function StudentView({ user }: { user: User }) {
         </div>
         <span className="hero-corner-note">Cứ hỏi. Cứ thử. Cứ tiến lên.</span>
       </section>
+      <div className="student-content-toolbar">
+        <button
+          className="text-button"
+          disabled={contentLoading}
+          onClick={() => void refreshContent()}
+        >
+          <Icon name="refresh" size={18} />
+          {contentLoading ? 'Đang tải nội dung…' : 'Cập nhật nội dung'}
+        </button>
+      </div>
+      {contentError && (
+        <p className="notice notice-error" role="alert">
+          {contentError}
+        </p>
+      )}
       <nav className="study-tabs" aria-label="Học tập" role="tablist">
         {studyTabs.map((item, index) => (
           <button
@@ -288,10 +310,8 @@ export default function StudentView({ user }: { user: User }) {
             </div>
           }
         >
-          {tab === 'topics' && (
-            <Topics
-              storageKey={`deltascript_topics:kntt9:${user.studentName}:${user.studentClass}`}
-            />
+          {tab === 'topics' && !contentLoading && !contentError && (
+            <Topics topics={topics} intro={contentSettings.topicsIntro} onAsk={openAssistant} />
           )}
           {tab === 'practice' && (
             <>
@@ -552,81 +572,14 @@ export default function StudentView({ user }: { user: User }) {
             </>
           )}
           {tab === 'guide' && (
-            <div>
-              <div className="section-heading">
-                <div>
-                  <span className="section-kicker">HỌC NHẸ NHÀNG, NHỚ LÂU HƠN</span>
-                  <h2>Một góc nhỏ cho cách học hay</h2>
-                  <p className="muted">Bạn không cần giỏi ngay. Chỉ cần bắt đầu và tiếp tục.</p>
-                </div>
-              </div>
-              <div className="guide-grid">
-                {[
-                  {
-                    icon: 'topics' as const,
-                    color: 'blue',
-                    title: 'Hiểu trước khi nhớ',
-                    text: 'Đọc kiến thức cốt lõi, tự làm lại ví dụ rồi thử câu tự kiểm tra. Sai cũng là một phần của việc học.',
-                    action: 'Mở chuyên đề',
-                    tab: 'topics' as const,
-                  },
-                  {
-                    icon: 'practice' as const,
-                    color: 'red',
-                    title: 'Tự giải, rồi đối chiếu',
-                    text: 'Chọn dạng câu, ghi hướng giải ra giấy. Mở lời giải khi đã thử và tìm xem mình vướng ở bước nào.',
-                    action: 'Luyện ngay',
-                    tab: 'practice' as const,
-                  },
-                  {
-                    icon: 'exam' as const,
-                    color: 'yellow',
-                    title: 'Tập trung như đang thi',
-                    text: 'Chuẩn bị giấy nháp, đặt điện thoại sang một bên và thử một đề 120 phút. Sau đó dành thời gian chữa bài.',
-                    action: 'Tới trang tạo đề',
-                    tab: 'exam' as const,
-                  },
-                ].map((item) => (
-                  <section key={item.title} className="surface guide-card">
-                    <span className={`icon-tile tone-${item.color}`}>
-                      <Icon name={item.icon} size={36} />
-                    </span>
-                    <h3>{item.title}</h3>
-                    <p>{item.text}</p>
-                    <button className="text-button" onClick={() => changeTab(item.tab)}>
-                      {item.action}
-                      <Icon name="arrow" size={19} />
-                    </button>
-                  </section>
-                ))}
-              </div>
-              <section className="surface faq-section">
-                <h3>Bạn có thể đang thắc mắc…</h3>
-                <details>
-                  <summary>Mã ôn tập lấy ở đâu?</summary>
-                  <p>
-                    Mã gồm 8 chữ hoặc số, do giáo viên cung cấp. Nếu mã không còn hoạt động, bạn hãy
-                    liên hệ giáo viên để được cấp mã mới.
-                  </p>
-                </details>
-                <details>
-                  <summary>Hỏi trợ lý AI như thế nào cho hiệu quả?</summary>
-                  <p>
-                    Mở một câu hỏi, chọn “Hỏi AI về câu này”, rồi hỏi cụ thể điều bạn chưa hiểu. Bạn
-                    có thể hỏi tiếp trong cùng cuộc trò chuyện. Hãy đối chiếu câu trả lời với kiến
-                    thức và lời giải của giáo viên.
-                  </p>
-                </details>
-                <details>
-                  <summary>Tiến độ và bài đang làm có được lưu lại không?</summary>
-                  <p>
-                    Tiến độ chuyên đề được lưu trên trình duyệt đang dùng. Đề thi và đồng hồ được
-                    giữ trong tab hiện tại khi tải lại. Xóa dữ liệu trình duyệt có thể làm mất những
-                    phần lưu này.
-                  </p>
-                </details>
-              </section>
-            </div>
+            <section className="surface managed-guide lesson-content">
+              <h2>{contentSettings.guideTitle}</h2>
+              {contentSettings.guideContent ? (
+                <LatexContent html={contentSettings.guideContent} />
+              ) : (
+                <p className="muted">Nội dung góc học tập đang được quản trị viên chuẩn bị.</p>
+              )}
+            </section>
           )}
         </Suspense>
       </div>

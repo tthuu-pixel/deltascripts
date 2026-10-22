@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { topics, type Topic } from '../data/topics';
-import { readStorage, writeStorage } from '../utils/storage';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { ManagedTopic, TopicSummary } from '../../shared/content';
+import type { Question } from '../types';
+import { apiService } from '../services/apiService';
 import Icon from './Icons';
 const LatexContent = lazy(() => import('./LatexContent'));
 const normalize = (value: string) =>
@@ -9,12 +10,62 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase();
-
-export default function Topics({ storageKey }: { storageKey: string }) {
-  const [category, setCategory] = useState('Tất cả');
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Topic | null>(null);
+export default function Topics({
+  topics,
+  intro,
+  onAsk,
+}: {
+  topics: TopicSummary[];
+  intro: string;
+  onAsk: (q: Question) => void;
+}) {
+  const [category, setCategory] = useState('Tất cả'),
+    [search, setSearch] = useState(''),
+    [selected, setSelected] = useState<string | null>(null),
+    [detail, setDetail] = useState<ManagedTopic | null>(null);
+  const [items, setItems] = useState<Question[]>([]),
+    [total, setTotal] = useState(0),
+    [page, setPage] = useState(1),
+    [number, setNumber] = useState(0),
+    [answers, setAnswers] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [attempt, setAttempt] = useState(0);
   const lastTopic = useRef('');
+  useEffect(() => {
+    if (selected && !topics.some((t) => t.id === selected)) {
+      setSelected(null);
+      setDetail(null);
+    }
+  }, [topics, selected]);
+  useEffect(() => {
+    if (!selected) return;
+    let live = true;
+    setBusy(true);
+    setError('');
+    setItems([]);
+    setAnswers({});
+    Promise.all([
+      apiService.getTopic(selected),
+      apiService.getTopicQuestions(selected, page, number),
+    ])
+      .then(([topic, list]) => {
+        if (live) {
+          setDetail(topic);
+          setItems(list.items);
+          setTotal(list.total);
+        }
+      })
+      .catch((e) => {
+        if (live) setError(e.message);
+      })
+      .finally(() => {
+        if (live) setBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [selected, page, number, attempt, topics]);
   useEffect(() => {
     if (!selected && !lastTopic.current) return;
     const target = document.getElementById(
@@ -28,163 +79,151 @@ export default function Topics({ storageKey }: { storageKey: string }) {
         : 'smooth',
     });
   }, [selected]);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [checked, setChecked] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [completed, setCompleted] = useState<Record<string, boolean>>(() => {
-    const saved = readStorage<unknown>(storageKey, {});
-    return Object.fromEntries(
-      topics.map((topic) => [
-        topic.id,
-        !!saved &&
-          typeof saved === 'object' &&
-          (saved as Record<string, unknown>)[topic.id] === true,
-      ]),
-    );
-  });
-  const completedCount = Object.values(completed).filter(Boolean).length;
+  const categories = ['Tất cả', ...new Set(topics.map((t) => t.category || 'Chưa phân nhóm'))];
   const filtered = topics.filter(
-    (topic) =>
-      (category === 'Tất cả' || topic.category === category) &&
-      normalize(topic.title + ' ' + topic.description).includes(normalize(search)),
+    (t) =>
+      (category === 'Tất cả' || (t.category || 'Chưa phân nhóm') === category) &&
+      normalize(t.title + ' ' + t.description + ' ' + t.category).includes(normalize(search)),
   );
-  function open(topic: Topic | null) {
-    if (topic) lastTopic.current = topic.id;
-    setSelected(topic);
-    setAnswers({});
-    setChecked(false);
-    setNotice('');
-  }
-  function checkAnswers() {
-    if (!selected || selected.quizzes.some((_, index) => answers[index] === undefined)) return;
-    setChecked(true);
-    if (selected.quizzes.every((quiz, index) => answers[index] === quiz.answer)) {
-      const next = { ...completed, [selected.id]: true };
-      setCompleted(next);
-      if (!writeStorage(storageKey, next))
-        setNotice('Trình duyệt chưa lưu được tiến độ. Bạn vẫn có thể tiếp tục học.');
-    }
-  }
-  if (selected)
+  const current = topics.find((t) => t.id === selected);
+  if (selected && current)
     return (
       <div className="topic-detail">
-        <button className="text-button" onClick={() => open(null)}>
-          <Icon name="back" size={19} /> Tất cả chuyên đề
+        <button
+          className="text-button"
+          onClick={() => {
+            setSelected(null);
+            setDetail(null);
+          }}
+        >
+          <Icon name="back" size={19} />
+          Tất cả chuyên đề
         </button>
         <div className="topic-detail-heading">
-          <span className={`icon-tile tone-${selected.color}`}>
-            <Icon name={selected.icon} size={40} />
+          <span className={`icon-tile tone-${current.color}`}>
+            <Icon name={current.icon} size={40} />
           </span>
           <div>
-            <span className="eyebrow">CHƯƠNG {selected.chapter} · TOÁN 9 KẾT NỐI TRI THỨC</span>
+            <span className="eyebrow">{current.category || 'CHUYÊN ĐỀ'}</span>
             <h2 id="topic-detail-title" tabIndex={-1}>
-              {selected.title}
+              {current.title}
             </h2>
-            <p className="muted">{selected.description}</p>
+            <p className="muted">{current.description}</p>
           </div>
         </div>
-        <Suspense fallback={<p role="status">Đang mở bài học…</p>}>
-          <div className="lesson-layout">
-            <section className="surface lesson-content">
-              <span className="section-kicker">01 / NẮM KIẾN THỨC</span>
-              <h3>Những điều cần nhớ</h3>
-              <div className="lesson-points">
-                {selected.goals.map((goal, index) => (
-                  <div key={goal}>
-                    <span>{index + 1}</span>
-                    <LatexContent html={goal} />
-                  </div>
-                ))}
-              </div>
-              <div className="worked-example">
-                <span className="eyebrow">
-                  <Icon name="spark" size={18} /> MỘT VÍ DỤ NHỎ
-                </span>
-                <LatexContent html={selected.example} />
-              </div>
-            </section>
-            <aside className="lesson-tip">
-              <span className="icon-tile tone-yellow">
-                <Icon name="guide" size={30} />
-              </span>
-              <h3>
-                Chậm một chút,
-                <br />
-                hiểu sâu một chút.
-              </h3>
-              <p>Đọc ví dụ, che lời giải và tự làm lại. Khi đã hiểu, thử hai câu bên dưới nhé.</p>
-              <p className="local-progress-note">
-                <Icon name="info" size={16} /> Tiến độ chuyên đề được lưu trên trình duyệt này.
-              </p>
-            </aside>
+        {error && (
+          <div className="notice notice-error" role="alert">
+            {error}
+            <button className="text-button" onClick={() => setAttempt((a) => a + 1)}>
+              Thử lại
+            </button>
           </div>
-          <section className="surface quiz-section">
+        )}
+        {busy && (
+          <p className="loading-state" role="status">
+            Đang tải bài học và câu hỏi…
+          </p>
+        )}
+        <Suspense fallback={<p role="status">Đang mở nội dung…</p>}>
+          {detail?.id === selected && detail.theory && (
+            <section className="surface lesson-content managed-lesson">
+              <span className="section-kicker">BÀI HỌC CỦA CHUYÊN ĐỀ</span>
+              <h3>Kiến thức và hướng dẫn</h3>
+              <LatexContent html={detail.theory} preamble={detail.preamble} />
+            </section>
+          )}
+          <section className="topic-practice">
             <div className="section-heading">
               <div>
-                <span className="section-kicker">02 / THỬ MỘT CHÚT</span>
-                <h3>Tự kiểm tra kiến thức</h3>
+                <span className="section-kicker">CÙNG LUYỆN TẬP</span>
+                <h3>Câu hỏi theo chuyên đề</h3>
+                <p className="muted">{busy ? 'Đang cập nhật…' : `${total} câu hỏi đã xuất bản`}</p>
               </div>
-              <span className="soft-badge">{selected.quizzes.length} câu hỏi</span>
             </div>
-            {selected.quizzes.map((quiz, index) => (
-              <fieldset className="quiz-question" key={quiz.question}>
-                <legend>
-                  <span className="quiz-number">{index + 1}</span>
-                  <LatexContent html={quiz.question} />
-                </legend>
-                <div className="quiz-options">
-                  {quiz.options.map((option, optionIndex) => (
-                    <label
-                      key={optionIndex}
-                      className={`quiz-option ${answers[index] === optionIndex ? 'is-chosen' : ''} ${checked && optionIndex === quiz.answer ? 'is-correct' : checked && answers[index] === optionIndex ? 'is-wrong' : ''}`}
-                    >
-                      <input
-                        type="radio"
-                        name={`quiz-${selected.id}-${index}`}
-                        value={optionIndex}
-                        checked={answers[index] === optionIndex}
-                        disabled={checked}
-                        onChange={() =>
-                          setAnswers((values) => ({ ...values, [index]: optionIndex }))
-                        }
-                      />
-                      <span className="option-letter">{String.fromCharCode(65 + optionIndex)}</span>
-                      <LatexContent html={option} />
-                      {checked && optionIndex === quiz.answer && <Icon name="check" size={20} />}
-                    </label>
-                  ))}
-                </div>
-                {checked && (
-                  <div className="quiz-explanation">
-                    <Icon name="info" size={19} />
-                    <LatexContent html={quiz.explanation} />
+            <div
+              className="filter-chips topic-type-filters"
+              aria-label="Lọc dạng câu trong chuyên đề"
+            >
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
+                <button
+                  key={n}
+                  className={number === n ? 'active' : ''}
+                  aria-pressed={number === n}
+                  disabled={busy}
+                  onClick={() => {
+                    setNumber(n);
+                    setPage(1);
+                  }}
+                >
+                  {n ? `Câu ${n}` : 'Tất cả dạng'}
+                </button>
+              ))}
+            </div>
+            {!busy && !error && !items.length && (
+              <div className="surface empty-state">
+                <Icon name="practice" size={40} />
+                <h3>Chưa có câu hỏi ở mục này</h3>
+                <p>Câu hỏi sẽ xuất hiện khi quản trị viên gắn vào chuyên đề và xuất bản.</p>
+              </div>
+            )}
+            <div className="topic-question-list">
+              {items.map((q, index) => (
+                <article className="surface exercise-card" key={q.id}>
+                  <div className="exercise-heading">
+                    <h3>
+                      Bài {(page - 1) * 10 + index + 1} · {q.label}
+                    </h3>
+                    <span className="soft-badge">Dạng Câu {q.number}</span>
                   </div>
-                )}
-              </fieldset>
-            ))}
-            <div className="quiz-actions">
-              <button
-                className="btn btn-primary"
-                disabled={!checked && Object.keys(answers).length < selected.quizzes.length}
-                onClick={() => (checked ? (setChecked(false), setAnswers({})) : checkAnswers())}
-              >
-                <Icon name={checked ? 'refresh' : 'check'} size={20} />
-                {checked ? 'Làm lại' : 'Kiểm tra đáp án'}
-              </button>
-              {checked ? (
-                <p role="status">
-                  {selected.quizzes.every((quiz, index) => answers[index] === quiz.answer)
-                    ? 'Bạn đã hoàn thành chuyên đề này. Làm tốt lắm!'
-                    : 'Cùng xem giải thích rồi thử lại nhé.'}
-                </p>
-              ) : (
-                <p className="muted">Chọn đáp án cho cả hai câu để kiểm tra.</p>
-              )}
+                  <div className="exercise-body">
+                    <LatexContent html={q.statementRaw} preamble={q.latexPreamble} />
+                  </div>
+                  <div className="exercise-actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setAnswers((old) => ({ ...old, [q.id]: !old[q.id] }))}
+                    >
+                      <Icon name="guide" size={18} />
+                      {answers[q.id] ? 'Ẩn lời giải' : 'Xem lời giải'}
+                    </button>
+                    <button className="text-button" onClick={() => onAsk(q)}>
+                      <Icon name="spark" size={18} />
+                      Hỏi AI về câu này
+                    </button>
+                  </div>
+                  {answers[q.id] && (
+                    <section className="solution-panel">
+                      <h4>Lời giải chi tiết</h4>
+                      <LatexContent
+                        html={q.solutionRaw || 'Chưa có lời giải.'}
+                        preamble={q.latexPreamble}
+                        context={q.statementRaw}
+                      />
+                    </section>
+                  )}
+                </article>
+              ))}
             </div>
-            {notice && (
-              <p role="status" className="notice notice-info">
-                {notice}
-              </p>
+            {total > 10 && (
+              <div className="bank-pagination">
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy || page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Trang trước
+                </button>
+                <span>
+                  Trang {page} / {Math.max(1, Math.ceil(total / 10))}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy || page * 10 >= total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Trang sau
+                </button>
+              </div>
             )}
           </section>
         </Suspense>
@@ -194,80 +233,63 @@ export default function Topics({ storageKey }: { storageKey: string }) {
     <div>
       <div className="section-heading topics-heading">
         <div>
-          <span className="section-kicker">MỖI CHUYÊN ĐỀ, MỘT BƯỚC VỮNG HƠN</span>
+          <span className="section-kicker">HỌC THEO NỘI DUNG CỦA LỚP</span>
           <h2>Học chắc từng chuyên đề</h2>
-          <p className="muted">
-            10 chương theo Toán 9 Kết nối tri thức. Chọn một chương để bắt đầu.
-          </p>
+          <p className="muted">{intro}</p>
         </div>
-        <div className="progress-pill">
-          <span
-            className="progress-ring"
-            style={{ '--progress': `${(completedCount / topics.length) * 100}%` } as CSSProperties}
-          >
-            <Icon name="check" size={19} />
-          </span>
-          <span>
-            <strong>
-              {completedCount}/{topics.length} chuyên đề
-            </strong>
-            <small>đã hoàn thành trên thiết bị này</small>
-          </span>
-        </div>
+        <span className="soft-badge">{topics.length} chuyên đề</span>
       </div>
-      <div className="topics-toolbar">
-        <div className="filter-chips" aria-label="Nhóm chuyên đề">
-          {['Tất cả', 'Đại số', 'Hình học', 'Thống kê'].map((item) => (
-            <button
-              key={item}
-              className={category === item ? 'active' : ''}
-              aria-pressed={category === item}
-              onClick={() => setCategory(item)}
-            >
-              {item}
-            </button>
-          ))}
+      {topics.length > 0 && (
+        <div className="topics-toolbar">
+          <div className="filter-chips" aria-label="Nhóm chuyên đề">
+            {categories.map((c) => (
+              <button
+                key={c}
+                className={category === c ? 'active' : ''}
+                aria-pressed={category === c}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <label className="search-field">
+            <Icon name="search" size={20} />
+            <input
+              aria-label="Tìm chuyên đề"
+              placeholder="Bạn muốn học gì?"
+              value={search}
+              maxLength={100}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
         </div>
-        <label className="search-field">
-          <Icon name="search" size={20} />
-          <input
-            aria-label="Tìm chuyên đề"
-            placeholder="Bạn muốn học gì?"
-            value={search}
-            maxLength={100}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-      </div>
+      )}
       <div className="topic-grid">
-        {filtered.map((topic) => (
+        {filtered.map((topic, index) => (
           <button
             key={topic.id}
             id={`topic-card-${topic.id}`}
             className={`topic-card topic-${topic.color}`}
-            onClick={() => open(topic)}
+            onClick={() => {
+              lastTopic.current = topic.id;
+              setDetail(null);
+              setPage(1);
+              setNumber(0);
+              setSelected(topic.id);
+            }}
           >
             <div className="topic-card-top">
               <span className={`icon-tile tone-${topic.color}`}>
                 <Icon name={topic.icon} size={35} />
               </span>
-              <span className="topic-index">{topic.chapter}</span>
+              <span className="topic-index">{String(index + 1).padStart(2, '0')}</span>
             </div>
-            <span className="topic-category">
-              Chương {topic.chapter} · {topic.category}
-            </span>
+            <span className="topic-category">{topic.category || 'Chuyên đề'}</span>
             <h3>{topic.title}</h3>
             <p>{topic.description}</p>
             <div className="topic-card-footer">
-              <span>
-                {completed[topic.id] ? (
-                  <>
-                    <Icon name="check" size={16} /> Đã hoàn thành
-                  </>
-                ) : (
-                  'Bài học ngắn · 2 câu tự kiểm tra'
-                )}
-              </span>
+              <span>{topic.questionCount} câu hỏi</span>
               <span className="topic-arrow">
                 <Icon name="arrow" size={20} />
               </span>
@@ -275,26 +297,30 @@ export default function Topics({ storageKey }: { storageKey: string }) {
           </button>
         ))}
       </div>
-      {!filtered.length && (
+      {!topics.length ? (
         <div className="empty-state surface">
-          <Icon name="search" size={40} />
-          <h3>Chưa tìm thấy chuyên đề</h3>
-          <p>Thử từ khóa ngắn hơn hoặc xem tất cả các nhóm.</p>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setSearch('');
-              setCategory('Tất cả');
-            }}
-          >
-            Xem tất cả chuyên đề
-          </button>
+          <Icon name="topics" size={48} />
+          <h3>Chuyên đề đang được chuẩn bị</h3>
+          <p>Bài học do quản trị viên đưa lên sẽ xuất hiện tại đây sau khi xuất bản.</p>
         </div>
+      ) : (
+        !filtered.length && (
+          <div className="empty-state surface">
+            <Icon name="search" size={40} />
+            <h3>Chưa tìm thấy chuyên đề</h3>
+            <p>Thử từ khóa khác hoặc xem tất cả các nhóm.</p>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setSearch('');
+                setCategory('Tất cả');
+              }}
+            >
+              Xem tất cả chuyên đề
+            </button>
+          </div>
+        )
       )}
-      <p className="topics-footnote">
-        <Icon name="info" size={17} /> Đây là các bài học nền tảng. Kho câu hỏi do giáo viên đưa lên
-        nằm ở tab Luyện câu hỏi.
-      </p>
     </div>
   );
 }

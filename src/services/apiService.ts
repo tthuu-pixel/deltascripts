@@ -1,4 +1,5 @@
 import type { AccessCode, ChatMessage, Question, User } from '../types';
+import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/content';
 
 export class ApiError extends Error {
   constructor(
@@ -86,8 +87,59 @@ export const apiService = {
   async getQuestions(
     page = 1,
     number = 0,
+    filters: { topicId?: string; status?: string; search?: string } = {},
   ): Promise<{ items: Question[]; total: number; page: number; pageSize: number }> {
-    return apiRequest(`/questions?page=${page}&pageSize=20&number=${number}`, undefined, 30_000);
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: '20',
+      number: String(number),
+      ...filters,
+    });
+    return apiRequest(`/questions?${params}`, undefined, 30_000);
+  },
+  async getStudentContent(): Promise<{ settings: StudentSettings; topics: TopicSummary[] }> {
+    return apiRequest('/student-content');
+  },
+  async getStudentSettings(): Promise<StudentSettings> {
+    return (await apiRequest('/student-settings')).settings;
+  },
+  async saveStudentSettings(settings: StudentSettings): Promise<StudentSettings> {
+    return (await apiRequest('/student-settings', { settings })).settings;
+  },
+  async getTopics(): Promise<TopicSummary[]> {
+    return (await apiRequest('/topics')).items;
+  },
+  async getTopic(id: string): Promise<ManagedTopic> {
+    return (await apiRequest(`/topic?id=${encodeURIComponent(id)}`)).topic;
+  },
+  async saveTopic(topic: Partial<ManagedTopic>): Promise<ManagedTopic> {
+    return (await apiRequest('/topics/save', { topic })).topic;
+  },
+  async deleteTopic(id: string, version: number) {
+    return apiRequest('/topics/delete', { id, version });
+  },
+  async reorderTopics(ids: string[]) {
+    return apiRequest('/topics/reorder', { ids });
+  },
+  async getTopicQuestions(
+    topicId: string,
+    page = 1,
+    number = 0,
+  ): Promise<{ items: Question[]; total: number; page: number; pageSize: number }> {
+    return apiRequest(
+      `/topic-questions?${new URLSearchParams({ topicId, page: String(page), number: String(number) })}`,
+    );
+  },
+  async classifyQuestions(
+    ids: string[],
+    changes: {
+      number?: number;
+      published?: boolean;
+      topicIds?: string[];
+      mode?: 'add' | 'replace' | 'remove';
+    },
+  ) {
+    return apiRequest('/questions/classify', { ids, ...changes });
   },
   async getRandomQuestion(number: number): Promise<Question> {
     return (await apiRequest(`/questions/random?number=${number}`)).question;

@@ -10,7 +10,9 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  const [role, setRole] = useState<'student' | 'teacher'>(() =>
+    window.location.pathname === '/admin' ? 'teacher' : 'student',
+  );
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -91,8 +93,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             Một bước <span>tiến xa.</span>
           </h1>
           <p className="welcome-intro">
-            Học Toán 9 theo Kết nối tri thức, thử sức với câu hỏi và tự tin vào phòng thi. Hành
-            trình của bạn bắt đầu từ đây.
+            Học theo chuyên đề của lớp, thử sức với câu hỏi và tự tin vào phòng thi. Hành trình của
+            bạn bắt đầu từ đây.
           </p>
           <div className="welcome-visual">
             <MathScene />
@@ -117,7 +119,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <span className="small-label">RẤT VUI ĐƯỢC GẶP BẠN!</span>
           </div>
           <h2 id="login-title">
-            {role === 'student' ? 'Sẵn sàng học thôi!' : 'Không gian giáo viên'}
+            {role === 'student' ? 'Sẵn sàng học thôi!' : 'Không gian quản trị'}
           </h2>
           <p className="muted">
             {role === 'student'
@@ -147,7 +149,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 setError('');
               }}
             >
-              <Icon name="guide" size={22} /> Giáo viên
+              <Icon name="guide" size={22} /> Quản trị
             </button>
           </div>
           {error && (
@@ -212,7 +214,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           ) : (
             <form onSubmit={handleTeacherLogin} className="login-form">
               <label className="field" htmlFor="teacher-email">
-                <span>Email giáo viên</span>
+                <span>Email quản trị</span>
                 <span className="input-wrap">
                   <Icon name="user" size={20} />
                   <input
@@ -220,7 +222,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email giáo viên"
+                    placeholder="Email quản trị"
                     autoComplete="username"
                     disabled={loading}
                   />
@@ -251,7 +253,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Icon name="shield" size={17} />
             {role === 'student'
               ? 'Sử dụng mã ôn tập do giáo viên cung cấp.'
-              : 'Dành cho giáo viên đã có tài khoản.'}
+              : 'Dành cho quản trị viên đã có tài khoản.'}
           </p>
           <div className="login-divider" />
           <p className="login-quote">

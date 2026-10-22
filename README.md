@@ -8,9 +8,11 @@ Nhận diện dùng xanh dương, đỏ san hô và vàng; logo/favicon và bộ
 
 Ảnh nền hình học được tạo riêng cho dự án và phục vụ tại `public/images`: WebP khoảng 27 KB cho máy tính, 9 KB cho điện thoại. Minh họa SVG dùng tam giác vuông, đường tròn và căn thức; không dùng phương trình đường tròn trong hệ tọa độ. Xem [nội dung chuyên đề và cách thêm nguồn](docs/curriculum.md).
 
-Học sinh có bốn tab lớn: **Chuyên đề lớp 9**, **Luyện câu hỏi**, **Tạo đề thi** và **Góc học tập**. Tab đang học được nhớ trong phiên trình duyệt. Có sẵn 10 chuyên đề sắp theo các chương Toán 9 Kết nối tri thức, mỗi chuyên đề gồm tóm tắt tự biên soạn, ví dụ và 2 câu tự kiểm tra; hỗ trợ lọc nhóm và tìm không dấu. Đây là bài học ôn tập ngắn, không thay thế toàn bộ sách. Chỉ ghi hoàn thành khi trả lời đúng cả hai câu. Tiến độ chuyên đề lưu trên thiết bị, không phải điểm số hay tiến độ đồng bộ qua tài khoản.
+Học sinh có bốn chức năng: **Chuyên đề**, **Luyện câu hỏi**, **Tạo đề thi** và **Góc học tập**. Người quản trị đổi tên, mô tả, thứ tự và trạng thái ẩn/hiện của các tab ngay trên web. Nội dung chuyên đề và góc học tập do chủ web tự đưa lên; không còn bài mẫu viết cứng trong giao diện.
 
-Nội dung nền tảng nằm tại [`src/data/topics.ts`](src/data/topics.ts); thêm một phần tử theo kiểu `Topic` để mở rộng danh sách. Chuyên đề này tách biệt với nguồn câu hỏi giáo viên nhập. Giao diện giáo viên hiện quản lý kho Word/TeX và mã truy cập; chưa có trình biên soạn chuyên đề trên web. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
+Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo viên/quản lý hiện có. Bạn tạo chuyên đề, nhập lý thuyết từ TeX (tùy chọn), nhập Word/TeX vào kho câu hỏi, sửa nguồn/lời giải, phân loại theo chuyên đề và dạng Câu 1–Câu 7, rồi chọn xuất bản. Một câu dùng chung cho nhiều chuyên đề, luyện tập và tạo đề; không cần nhập lặp lại. Bài mới mặc định là bản nháp. Câu hỏi và chuyên đề có trạng thái xuất bản riêng; học sinh chỉ nhận nội dung đã xuất bản.
+
+Xem [hướng dẫn quản trị nội dung](docs/curriculum.md). Chuyên đề, bài học, cấu hình tab và câu hỏi nằm trong D1. GitHub lưu mã nguồn, ảnh, phông chữ và tài liệu. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
 
 ## Bản đang chạy
 
@@ -50,7 +52,7 @@ CLI hỏi mật khẩu trong terminal, không hiển thị và không nhận m�
 
 Wrangler giữ log và cấu hình CLI trong `.data`, trừ khi môi trường đã cung cấp đường dẫn XDG/log riêng. Dùng các lệnh npm hoặc `node scripts/wrangler.mjs ...` để dùng thống nhất vị trí đăng nhập. `.data`, `.dev.vars`, `.env`, `.wrangler` và kết quả kiểm thử đều bị loại khỏi Git. Dữ liệu PGlite cũ trong `.data/postgres` được giữ nguyên nhưng ứng dụng mới không dùng nữa.
 
-Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file chưa tự ghi dữ liệu. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới bắt đầu từ DB trống, không cần nhập lại Google Sheets. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
+Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file chưa tự ghi dữ liệu. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới không cần Google Sheets; nâng cấp giữ nguyên câu hỏi đã có trong D1. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
 
 ## Triển khai Cloudflare
 

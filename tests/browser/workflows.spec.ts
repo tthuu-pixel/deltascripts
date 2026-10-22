@@ -18,11 +18,11 @@ async function student(page: Page) {
 }
 async function teacher(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Giáo viên', exact: true }).click();
-  await page.getByPlaceholder('Email giáo viên').fill('browser@example.test');
+  await page.getByRole('button', { name: 'Quản trị', exact: true }).click();
+  await page.getByPlaceholder('Email quản trị').fill('browser@example.test');
   await page.locator('input[type=password]').fill('browser-test-password');
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Khu vực Giáo viên' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trang quản trị' })).toBeVisible();
 }
 test('login validation, role forgery rejected, student rendering sanitized and lazy solution', async ({
   page,

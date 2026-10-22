@@ -2,20 +2,19 @@ import type { Database, Statement } from './database.ts';
 import { publicQuestion, query, questionSelect, randomQuestionSql } from './database.ts';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './auth.ts';
 import { parseTexText } from '../shared/texParser.ts';
+import { HttpError, requireValue } from './errors.ts';
+import {
+  contentRoute,
+  contentRoutes,
+  membershipStatements,
+  validateTopicIds,
+  validateTopicsExist,
+  attachQuestionTopics,
+} from './content.ts';
 
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { HttpError } from './errors.ts';
 const text = (value: unknown, max = 200) =>
   typeof value === 'string' ? value.trim().slice(0, max) : '';
-const requireValue = (value: unknown, message: string, status = 400) => {
-  if (!value) throw new HttpError(status, message);
-};
 const placeholders = (length: number) => Array.from({ length }, () => '?').join(',');
 
 export function validateQuestion(q: any): unknown[] {
@@ -29,6 +28,11 @@ export function validateQuestion(q: any): unknown[] {
     'Dạng câu phải từ 1 đến 7.',
   );
   requireValue(['word', 'tex'].includes(q.sourceType), 'Nguồn câu hỏi phải là Word hoặc TeX.');
+  requireValue(
+    q.published === undefined || typeof q.published === 'boolean',
+    'Trạng thái xuất bản không hợp lệ.',
+  );
+  if (q.topicIds !== undefined) validateTopicIds(q.topicIds);
   requireValue(typeof q.statementRaw === 'string' && q.statementRaw.trim(), 'Đề bài trống.');
   for (const key of ['statementRaw', 'solutionRaw', 'raw', 'latexPreamble'])
     requireValue(
@@ -49,27 +53,38 @@ export function validateQuestion(q: any): unknown[] {
     q.solutionRaw || '',
     q.raw || '',
     q.latexPreamble || '',
+    q.published === false ? 0 : 1,
   ];
 }
 export function questionStatements(db: Database, questions: any[]): Statement[] {
   const rows = [...new Map(questions.map(validateQuestion).map((row) => [row[0], row])).values()];
   const statements: Statement[] = [];
-  // D1 allows 100 bound parameters per statement; each group uses at most 96.
-  for (let i = 0; i < rows.length; i += 12) {
-    const group = rows.slice(i, i + 12);
+  // D1 allows 100 bound parameters per statement; each group uses at most 99.
+  for (let i = 0; i < rows.length; i += 11) {
+    const group = rows.slice(i, i + 11);
     statements.push(
       db
         .prepare(
-          `INSERT INTO questions(id,label,number,source_type,statement_raw,solution_raw,raw,latex_preamble)
-      VALUES ${group.map(() => `(${placeholders(8)})`).join(',')}
+          `INSERT INTO questions(id,label,number,source_type,statement_raw,solution_raw,raw,latex_preamble,published)
+      VALUES ${group.map(() => `(${placeholders(9)})`).join(',')}
       ON CONFLICT(id) DO UPDATE SET label=excluded.label,
       slot=CASE WHEN questions.number!=excluded.number THEN NULL ELSE questions.slot END,
       number=excluded.number,source_type=excluded.source_type,statement_raw=excluded.statement_raw,
-      solution_raw=excluded.solution_raw,raw=excluded.raw,latex_preamble=excluded.latex_preamble,active=1`,
+      solution_raw=excluded.solution_raw,raw=excluded.raw,latex_preamble=excluded.latex_preamble,published=excluded.published,active=1`,
         )
         .bind(...group.flat()),
     );
   }
+  const assigned = [...new Map(questions.map((q) => [q.id, q])).values()].filter(
+    (q) => q.topicIds !== undefined,
+  );
+  statements.push(
+    ...membershipStatements(
+      db,
+      assigned.map((q) => ({ id: q.id, topicIds: q.topicIds })),
+      'replace',
+    ),
+  );
   return statements;
 }
 export async function upsertQuestions(db: Database, questions: any[]) {
@@ -114,7 +129,7 @@ export function createApp(db: Database, options: Options = {}) {
       'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
       401,
     );
-    requireValue(!teacher || s.role === 'teacher', 'Chức năng này dành cho giáo viên.', 403);
+    requireValue(!teacher || s.role === 'teacher', 'Chức năng này dành cho quản trị viên.', 403);
     return s;
   }
   async function limit(key: string, max: number, duration = 60_000) {
@@ -361,6 +376,10 @@ export function createApp(db: Database, options: Options = {}) {
             .run();
           return json({ success: true }, 200, { 'Set-Cookie': cookie(req, '', 0) });
         }
+        if (contentRoutes.has(route)) {
+          const user = await session(req);
+          return json({ success: true, ...(await contentRoute(db, url, method, body, user)) });
+        }
         if (route === '/api/questions' && method === 'GET') {
           await session(req, true);
           const page = Math.max(
@@ -376,22 +395,51 @@ export function createApp(db: Database, options: Options = {}) {
             Number.isInteger(number) && number >= 0 && number <= 7,
             'Dạng câu phải từ 1 đến 7.',
           );
+          const topicId = url.searchParams.get('topicId') || '';
+          const status = url.searchParams.get('status') || 'all';
+          const search = text(url.searchParams.get('search'), 160);
+          requireValue(
+            ['all', 'draft', 'published'].includes(status),
+            'Bộ lọc trạng thái không hợp lệ.',
+          );
+          const conditions = ['q.active=1'];
+          const params: unknown[] = [];
+          if (number) {
+            conditions.push('q.number=?');
+            params.push(number);
+          }
+          if (status !== 'all') {
+            conditions.push('q.published=?');
+            params.push(status === 'published' ? 1 : 0);
+          }
+          if (topicId === 'unassigned')
+            conditions.push(
+              'NOT EXISTS(SELECT 1 FROM question_topics qt WHERE qt.question_id=q.id)',
+            );
+          else if (topicId) {
+            conditions.push(
+              'EXISTS(SELECT 1 FROM question_topics qt WHERE qt.question_id=q.id AND qt.topic_id=?)',
+            );
+            params.push(topicId);
+          }
+          if (search) {
+            conditions.push("(q.label LIKE ? ESCAPE '\\' OR q.statement_raw LIKE ? ESCAPE '\\')");
+            const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
+            params.push(pattern, pattern);
+          }
+          const where = conditions.join(' AND ');
           const results = await db.batch<Record<string, unknown>>([
             db
               .prepare(
-                `SELECT ${questionSelect} FROM questions q WHERE q.active=1 ${number ? 'AND q.number=?' : ''}
+                `SELECT ${questionSelect} FROM questions q WHERE ${where}
               ORDER BY q.created_at DESC,q.id LIMIT ? OFFSET ?`,
               )
-              .bind(...(number ? [number] : []), size, (page - 1) * size),
-            db
-              .prepare(
-                `SELECT COALESCE(SUM(total),0) AS total FROM question_counts ${number ? 'WHERE number=?' : ''}`,
-              )
-              .bind(...(number ? [number] : [])),
+              .bind(...params, size, (page - 1) * size),
+            db.prepare(`SELECT count(*) AS total FROM questions q WHERE ${where}`).bind(...params),
           ]);
           return json({
             success: true,
-            items: results[0].results.map(publicQuestion),
+            items: await attachQuestionTopics(db, results[0].results),
             total: results[1].results[0].total,
             page,
             pageSize: size,
@@ -426,6 +474,12 @@ export function createApp(db: Database, options: Options = {}) {
               body.questions.length > 0 &&
               body.questions.length <= 100,
             'Mỗi lần lưu từ 1 đến 100 câu hỏi.',
+          );
+          // Validate references before starting the atomic save. Missing topics never partially import a batch.
+          for (const question of body.questions) validateQuestion(question);
+          await validateTopicsExist(
+            db,
+            body.questions.flatMap((q: any) => q.topicIds || []),
           );
           await upsertQuestions(db, body.questions);
           return json({ success: true, count: body.questions.length });

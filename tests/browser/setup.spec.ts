@@ -38,15 +38,15 @@ test('owner sets their own password in the browser and the setup link is consume
     ).toBeTruthy();
     await page.getByLabel('Nhập lại mật khẩu', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Tạo tài khoản và đăng nhập' }).click();
-    await expect(page.getByRole('heading', { name: 'Khu vực Giáo viên' })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/');
+    await expect(page.getByRole('heading', { name: 'Trang quản trị' })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/admin');
     const stored = await page.evaluate(() =>
       JSON.stringify({ ...localStorage, ...sessionStorage }),
     );
     expect(stored).not.toContain(password);
     expect(stored).not.toContain(token);
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Khu vực Giáo viên' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Trang quản trị' })).toBeVisible();
     await page.goto(`/setup#token=${token}`);
     await expect(page.getByRole('alert')).toContainText('đã sử dụng');
     await expect(page.getByLabel('Email', { exact: true })).toHaveCount(0);

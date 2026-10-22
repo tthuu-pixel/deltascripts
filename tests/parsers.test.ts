@@ -111,3 +111,19 @@ test('exam validates seven unique types and uses a wall-clock deadline', () => {
   assert.equal(remainingSeconds(1500, 1000), 1);
   assert.equal(remainingSeconds(1000, 1500), 0);
 });
+
+test('lesson TeX document import preserves math, technical comments and drawing declarations', async () => {
+  const { readLessonSource } = await import('../shared/lesson.ts');
+  const body = String.raw`Tỉ lệ $25\%$, căn thức $\sqrt{(-3)^2}=3$.
+\begin{tikzpicture}\draw (0,0)--(2.5,1); % drawing comment
+\end{tikzpicture}`;
+  const result = readLessonSource(String.raw`\documentclass{article}
+\def\R{2.5}
+\begin{document}
+${body}
+\end{document}`);
+  assert.equal(result.theory, body);
+  assert.match(result.preamble, /\\def\\R\{2\.5\}/);
+  assert.equal(readLessonSource(body).theory, body);
+  assert.throws(() => readLessonSource(String.raw`\begin{document}Missing end`), /thiếu/);
+});

@@ -4,11 +4,29 @@ import type { AccessCode, Question } from '../types';
 import Icon from './Icons';
 import Brand from './Brand';
 import MathScene from './MathScene';
+import type { TopicSummary } from '../../shared/content';
+import TopicPicker from './admin/TopicPicker';
+import BulkQuestionActions from './admin/BulkQuestionActions';
+const TopicManager = lazy(() => import('./admin/TopicManager'));
+const StudentSettingsManager = lazy(() => import('./admin/StudentSettingsManager'));
+const QuestionEditor = lazy(() => import('./admin/QuestionEditor'));
 const LatexContent = lazy(() => import('./LatexContent'));
 const button = 'btn btn-secondary';
 
-export default function QuestionBank() {
-  const [tab, setTab] = useState<'questions' | 'codes' | 'info'>('questions');
+export default function AdminView() {
+  const [tab, setTab] = useState<'topics' | 'questions' | 'student' | 'codes' | 'info'>(
+    'questions',
+  );
+  const [topics, setTopics] = useState<TopicSummary[]>([]);
+  const [topicFilter, setTopicFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState(''),
+    [searchDraft, setSearchDraft] = useState('');
+  const [importTopicIds, setImportTopicIds] = useState<string[]>([]);
+  const [importNumber, setImportNumber] = useState(0),
+    [importPublished, setImportPublished] = useState(false);
+  const [contentDirty, setContentDirty] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [codes, setCodes] = useState<AccessCode[]>([]);
   const [pending, setPending] = useState<Question[]>([]);
@@ -38,15 +56,20 @@ export default function QuestionBank() {
     setSelection([]);
     setSelectedCodes([]);
     setError('');
-    if (tab === 'info') return;
+    if (tab !== 'questions' && tab !== 'codes') {
+      setBusy(false);
+      return;
+    }
     setBusy(true);
     (tab === 'questions'
-      ? apiService.getQuestions(page, number).then((data) => {
-          if (active) {
-            setQuestions(data.items);
-            setTotal(data.total);
-          }
-        })
+      ? apiService
+          .getQuestions(page, number, { topicId: topicFilter, status: statusFilter, search })
+          .then((data) => {
+            if (active) {
+              setQuestions(data.items);
+              setTotal(data.total);
+            }
+          })
       : apiService.getAccessCodes().then((items) => {
           if (active) setCodes(items);
         })
@@ -60,7 +83,22 @@ export default function QuestionBank() {
     return () => {
       active = false;
     };
-  }, [tab, page, number, refresh]);
+  }, [tab, page, number, topicFilter, statusFilter, search, refresh]);
+  useEffect(() => {
+    if (tab !== 'questions') return;
+    let active = true;
+    apiService
+      .getTopics()
+      .then((items) => {
+        if (active) setTopics(items);
+      })
+      .catch((error) => {
+        if (active) setError(error.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tab, refresh]);
   function reload() {
     clearApiCache();
     setRefresh((v) => v + 1);
@@ -111,26 +149,38 @@ export default function QuestionBank() {
     task.postMessage(files);
   }
   async function save() {
-    await mutate(async () => {
-      // Confirm each batch before removing it from the pending list. Retries reuse IDs.
-      let remaining = [...pending];
-      while (remaining.length) {
-        const batch: Question[] = [];
-        let bytes = 0;
-        for (const question of remaining.slice(0, 100)) {
-          const size = new TextEncoder().encode(JSON.stringify(question)).length;
-          if (size > 1_500_000)
-            throw new Error('Một câu hỏi vượt 1,5 MB, hãy giảm kích thước ảnh hoặc nguồn.');
-          if (bytes + size > 1_500_000) break;
-          bytes += size;
-          batch.push(question);
+    await mutate(
+      async () => {
+        // Confirm each batch before removing it from the pending list. Retries reuse IDs.
+        let remaining = pending.map((question) => ({
+          ...question,
+          number: importNumber || question.number,
+          topicIds: importTopicIds,
+          published: importPublished,
+        }));
+        if (remaining.some((q) => q.number < 1 || q.number > 7))
+          throw new Error('File có số câu ngoài 1–7. Hãy chọn dạng câu cho bản nhập.');
+        while (remaining.length) {
+          const batch: Question[] = [];
+          let bytes = 0;
+          for (const question of remaining.slice(0, 100)) {
+            const size = new TextEncoder().encode(JSON.stringify(question)).length;
+            if (size > 1_500_000)
+              throw new Error('Một câu hỏi vượt 1,5 MB, hãy giảm kích thước ảnh hoặc nguồn.');
+            if (bytes + size > 1_500_000) break;
+            bytes += size;
+            batch.push(question);
+          }
+          await apiService.saveQuestions(batch);
+          remaining = remaining.slice(batch.length);
+          setPending(remaining);
         }
-        await apiService.saveQuestions(batch);
-        remaining = remaining.slice(batch.length);
-        setPending(remaining);
-      }
-      setPage(1);
-    }, 'Đã lưu các câu hỏi lên hệ thống.');
+        setPage(1);
+      },
+      importPublished
+        ? 'Đã lưu và xuất bản các câu hỏi.'
+        : 'Đã lưu nháp câu hỏi. Bạn có thể xuất bản trong kho.',
+    );
   }
   async function createCode() {
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -151,13 +201,13 @@ export default function QuestionBank() {
       <section className="teacher-hero">
         <div>
           <span className="eyebrow">
-            <span className="tiny-spark">✦</span> GÓC NHỎ CỦA NGƯỜI TRUYỀN CẢM HỨNG
+            <span className="tiny-spark">✦</span> BẠN LÀ NGƯỜI BIÊN SOẠN
           </span>
-          <h1>Khu vực Giáo viên</h1>
+          <h1>Trang quản trị</h1>
           <p>
-            Chuẩn bị những câu hỏi hay.
+            Quản lý nội dung theo cách của bạn.
             <br />
-            Đồng hành cùng từng bước tiến của học sinh.
+            Tự đưa bài học lên. Chủ động xuất bản cho học sinh.
           </p>
           <div className="hero-tags">
             <span>
@@ -180,7 +230,9 @@ export default function QuestionBank() {
       <nav className="teacher-tabs" aria-label="Quản lý">
         {(
           [
+            ['topics', 'Chuyên đề', 'topics'],
             ['questions', 'Ngân hàng câu hỏi', 'practice'],
+            ['student', 'Trang học sinh', 'school'],
             ['codes', 'Quản lý mã ôn tập', 'key'],
             ['info', 'Thông tin hệ thống', 'info'],
           ] as const
@@ -191,6 +243,7 @@ export default function QuestionBank() {
             aria-pressed={tab === key}
             disabled={busy}
             onClick={() => {
+              if (contentDirty && !confirm('Bỏ các thay đổi chưa lưu?')) return;
               setTab(key);
               setError('');
               setNotice('');
@@ -214,6 +267,38 @@ export default function QuestionBank() {
           {notice}
         </p>
       )}
+      <Suspense
+        fallback={
+          <p role="status" className="loading-state">
+            Đang mở quản trị…
+          </p>
+        }
+      >
+        {tab === 'topics' && (
+          <TopicManager
+            onDirtyChange={setContentDirty}
+            onQuestions={(id) => {
+              setTopicFilter(id);
+              setImportTopicIds([id]);
+              setPage(1);
+              setTab('questions');
+            }}
+          />
+        )}
+        {tab === 'student' && <StudentSettingsManager onDirtyChange={setContentDirty} />}
+        {editingQuestion && (
+          <QuestionEditor
+            question={editingQuestion}
+            topics={topics}
+            onDirtyChange={setContentDirty}
+            onClose={() => setEditingQuestion(null)}
+            onSaved={() => {
+              reload();
+              setNotice('Đã lưu thay đổi câu hỏi.');
+            }}
+          />
+        )}
+      </Suspense>
       {tab === 'questions' && (
         <div className="bank-layout">
           <aside className="bank-sidebar">
@@ -269,7 +354,7 @@ export default function QuestionBank() {
                 <p>Nhập file và kiểm tra bản xem trước.</p>
                 <span>02</span>
                 <p>
-                  Chọn <strong>Lưu lên hệ thống</strong> để học sinh có thể luyện tập.
+                  Chọn chuyên đề, kiểm tra trạng thái rồi <strong>Lưu lên hệ thống</strong>.
                 </p>
               </div>
               {pending.length > 0 && (
@@ -278,6 +363,41 @@ export default function QuestionBank() {
                     <Icon name="check" size={18} />
                     {pending.length} câu chờ lưu
                   </h3>
+                  <label className="field">
+                    <span>Dạng câu cho bản nhập</span>
+                    <select
+                      aria-label="Dạng câu cho bản nhập"
+                      value={importNumber}
+                      disabled={busy}
+                      onChange={(e) => setImportNumber(Number(e.target.value))}
+                    >
+                      <option value={0}>Giữ số Câu 1–7 trong file</option>
+                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                        <option key={n} value={n}>
+                          Tất cả là Câu {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <TopicPicker
+                    topics={topics}
+                    value={importTopicIds}
+                    onChange={setImportTopicIds}
+                    disabled={busy}
+                    label="Chuyên đề cho bản nhập"
+                  />
+                  <label className="publish-controls">
+                    <input
+                      type="checkbox"
+                      disabled={busy}
+                      checked={importPublished}
+                      onChange={(e) => setImportPublished(e.target.checked)}
+                    />
+                    Xuất bản ngay sau khi lưu
+                  </label>
+                  <p className="field-help">
+                    Bỏ chọn để lưu nháp. Một câu có thể nằm trong nhiều chuyên đề.
+                  </p>
                   <div className="pending-chips">
                     {pending.slice(0, 20).map((q) => (
                       <button
@@ -315,7 +435,7 @@ export default function QuestionBank() {
                 <p className="muted">
                   {busy
                     ? 'Đang cập nhật nguồn câu hỏi…'
-                    : `${total} câu hỏi · Sẵn sàng cho học sinh luyện tập`}
+                    : `${total} câu hỏi trong kho · Gồm bản nháp và bài đã xuất bản`}
                 </p>
               </div>
               <button
@@ -349,6 +469,42 @@ export default function QuestionBank() {
                   ))}
                 </select>
               </label>
+              <label>
+                Chuyên đề
+                <select
+                  aria-label="Lọc chuyên đề"
+                  disabled={busy}
+                  value={topicFilter}
+                  onChange={(e) => {
+                    setTopicFilter(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Tất cả chuyên đề</option>
+                  <option value="unassigned">Chưa gắn chuyên đề</option>
+                  {topics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Trạng thái
+                <select
+                  aria-label="Lọc trạng thái"
+                  disabled={busy}
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="draft">Bản nháp</option>
+                  <option value="published">Đã xuất bản</option>
+                </select>
+              </label>
               <button
                 className="text-button"
                 disabled={busy || !questions.length}
@@ -361,6 +517,41 @@ export default function QuestionBank() {
                 Chọn/bỏ chọn trang này
               </button>
             </div>
+            <form
+              className="bank-search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setSearch(searchDraft.trim());
+                setPage(1);
+              }}
+            >
+              <label className="search-field">
+                <Icon name="search" size={19} />
+                <input
+                  aria-label="Tìm câu hỏi"
+                  placeholder="Tìm trong đề bài hoặc nhãn câu…"
+                  maxLength={160}
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
+                />
+              </label>
+              <button className="btn btn-secondary" disabled={busy}>
+                Tìm
+              </button>
+            </form>
+            {selection.length > 0 && (
+              <BulkQuestionActions
+                count={selection.length}
+                topics={topics}
+                busy={busy}
+                onApply={(changes) =>
+                  void mutate(
+                    () => apiService.classifyQuestions(selection, changes),
+                    'Đã cập nhật phân loại và trạng thái câu hỏi.',
+                  )
+                }
+              />
+            )}
             {selection.length > 0 && (
               <div className="selection-bar">
                 <span>
@@ -431,12 +622,30 @@ export default function QuestionBank() {
                       >
                         {q.sourceType === 'word' ? 'Word' : 'TeX'}
                       </span>
-                      <span className="question-type-tag">Dạng {q.number}</span>
+                      <span className="question-type-tag">Câu {q.number}</span>
+                      <span className={`publication-badge ${q.published ? 'is-published' : ''}`}>
+                        {q.published ? 'Đã xuất bản' : 'Bản nháp'}
+                      </span>
+                    </div>
+                    <div className="content-badges question-topic-labels">
+                      {q.topicIds?.length ? (
+                        q.topicIds.map((id) => (
+                          <span key={id}>
+                            {topics.find((t) => t.id === id)?.title || 'Chuyên đề'}
+                          </span>
+                        ))
+                      ) : (
+                        <span>Chưa gắn chuyên đề</span>
+                      )}
                     </div>
                     <p className="bank-question-excerpt">
                       {q.statementRaw.replace(/<[^>]*>/g, '').slice(0, 160)}
                     </p>
                     <div className="bank-question-actions">
+                      <button className="text-button" onClick={() => setEditingQuestion(q)}>
+                        <Icon name="practice" size={18} />
+                        Chỉnh sửa
+                      </button>
                       <button
                         className="text-button"
                         onClick={() => setPreview({ question: q, solution: false })}

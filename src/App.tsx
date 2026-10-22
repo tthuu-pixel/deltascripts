@@ -4,9 +4,10 @@ import Login from './components/Login';
 import Icon from './components/Icons';
 import { apiService, ApiError, clearApiCache } from './services/apiService';
 import type { User } from './types';
+import { confirmContentLeave } from './utils/unsavedChanges';
 
 const StudentView = lazy(() => import('./components/StudentView'));
-const QuestionBank = lazy(() => import('./components/QuestionBank'));
+const AdminView = lazy(() => import('./components/AdminView'));
 const SettingsModal = lazy(() => import('./components/SettingsModal'));
 const SetupTeacher = lazy(() => import('./components/SetupTeacher'));
 const Loading = () => (
@@ -44,7 +45,10 @@ export default function App() {
     apiService
       .me()
       .then((value) => {
-        if (active) setUser(value);
+        if (active) {
+          setUser(value);
+          window.history.replaceState(null, '', value.role === 'teacher' ? '/admin' : '/');
+        }
       })
       .catch((error) => {
         if (active && !(error instanceof ApiError && error.status === 401)) setError(error.message);
@@ -68,8 +72,10 @@ export default function App() {
     };
   }, [setupToken]);
   async function logout() {
+    if (!confirmContentLeave()) return;
     try {
       await apiService.logout();
+      window.history.replaceState(null, '', '/');
       setUser(null);
       setSettings(false);
       setError('');
@@ -84,7 +90,7 @@ export default function App() {
           token={setupToken}
           onComplete={(value) => {
             clearApiCache();
-            window.history.replaceState(null, '', '/');
+            window.history.replaceState(null, '', '/admin');
             setUser(value);
             setSetupToken(null);
             setError('');
@@ -112,13 +118,14 @@ export default function App() {
               onLogin={(value) => {
                 clearApiCache();
                 setUser(value);
+                window.history.replaceState(null, '', value.role === 'teacher' ? '/admin' : '/');
                 setError('');
               }}
             />
           ) : user.role === 'student' ? (
             <StudentView user={user} />
           ) : (
-            <QuestionBank />
+            <AdminView />
           )}
         </Suspense>
       </main>

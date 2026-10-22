@@ -12,46 +12,35 @@ async function enter(page: Page) {
   );
 }
 
-test('topics filter, search, lessons and quiz progress work on a phone and survive reload', async ({
+test('students see only published administrator topics and can filter their shared question bank', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await enter(page);
-  await expect(page.locator('.topic-card')).toHaveCount(10);
+  await expect(page.locator('.topic-card')).toHaveCount(2);
+  await expect(page.getByText('Chuyên đề nháp chưa công bố')).toHaveCount(0);
   await page.getByRole('button', { name: 'Hình học', exact: true }).click();
-  await expect(page.locator('.topic-card')).toHaveCount(4);
+  await expect(page.locator('.topic-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'Tất cả', exact: true }).click();
   await page.getByRole('textbox', { name: 'Tìm chuyên đề' }).fill('DUONG TRON');
-  await expect(page.locator('.topic-card')).toHaveCount(2);
-  await expect(page.locator('.topic-card h3')).toHaveText([
-    'Đường tròn',
-    'Đường tròn ngoại tiếp & nội tiếp',
-  ]);
-  await page.getByRole('textbox', { name: 'Tìm chuyên đề' }).fill('can bac hai');
-  await expect(page.locator('.topic-card')).toHaveCount(1);
+  await expect(page.locator('.topic-card h3')).toHaveText(['Đường tròn của lớp']);
+  await page.getByRole('textbox', { name: 'Tìm chuyên đề' }).fill('can thuc');
   await page.locator('.topic-card').click();
-  await expect(
-    page.getByRole('heading', { name: 'Căn bậc hai & căn bậc ba', exact: true }),
-  ).toBeVisible();
-  await expect(page.locator('.lesson-content .katex').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Kiểm tra đáp án' })).toBeDisabled();
-  // First try is wrong; reading the explanations must not award completion.
-  await page.getByRole('radio').nth(0).check();
-  await page.getByRole('radio').nth(5).check();
-  await page.getByRole('button', { name: 'Kiểm tra đáp án' }).click();
-  await expect(page.getByRole('status')).toContainText('thử lại');
-  await expect(page.locator('.quiz-explanation')).toHaveCount(2);
-  await page.getByRole('button', { name: 'Làm lại', exact: true }).click();
-  await page.getByRole('radio').nth(1).check();
-  await page.getByRole('radio').nth(4).check();
-  await page.getByRole('button', { name: 'Kiểm tra đáp án' }).click();
-  await expect(page.getByRole('status')).toContainText('hoàn thành chuyên đề');
+  await expect(page.getByRole('heading', { name: 'Căn thức của lớp', exact: true })).toBeVisible();
+  await expect(page.locator('.managed-lesson .katex').first()).toBeVisible();
+  await expect(page.locator('.topic-question-list article')).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Xem lời giải', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toBeVisible();
+  await page.getByRole('button', { name: 'Câu 2', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Chưa có câu hỏi ở mục này' })).toBeVisible();
+  await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
+  await expect(page.locator('.topic-question-list article')).toHaveCount(1);
   await page.getByRole('button', { name: 'Tất cả chuyên đề', exact: true }).click();
-  await expect(page.getByText('1/10 chuyên đề', { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText('1/10 chuyên đề', { exact: true })).toBeVisible();
+  await expect(page.locator('.topic-card')).toHaveCount(2);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   ).toBeTruthy();
