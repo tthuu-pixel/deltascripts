@@ -30,14 +30,49 @@ test('students see only published administrator topics and can filter their shar
   await page.locator('.topic-card').click();
   await expect(page.getByRole('heading', { name: 'Căn thức của lớp', exact: true })).toBeVisible();
   await expect(page.locator('.managed-lesson .katex').first()).toBeVisible();
-  await expect(page.locator('.topic-question-list article')).toHaveCount(1);
+  await expect(page.getByRole('tab', { name: 'Lý thuyết', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await page.getByRole('tab', { name: 'Ví dụ', exact: true }).click();
+  await expect(page.locator('.managed-examples')).toContainText('Ví dụ riêng của lớp');
+  await expect(page.locator('.managed-examples .katex').first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
+  await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
+  await expect(page.locator('.topic-exercise')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Xem lời giải', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toBeVisible();
+  await page.route('**/api/ai/similar', (route) => {
+    const payload = route.request().postDataJSON();
+    expect(payload.number).toBe(1);
+    expect(payload.context).toContain('Tính $1+1$');
+    return route.fulfill({
+      json: {
+        success: true,
+        question: {
+          id: crypto.randomUUID(),
+          number: 1,
+          label: 'Câu 1 tương tự',
+          sourceType: 'tex',
+          statementRaw: 'Vận dụng tương tự $x+1=3$.',
+          solutionRaw: 'Đáp án $x=2$.',
+        },
+      },
+    });
+  });
+  await page.getByRole('button', { name: 'Bài tập tương tự', exact: true }).click();
+  await expect(page.locator('.topic-exercise')).toContainText('Vận dụng tương tự');
+  await page.getByRole('button', { name: 'Lấy câu hỏi khác', exact: true }).click();
+  await expect(page.locator('.topic-exercise')).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Câu 2', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Chưa có câu hỏi ở mục này' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Chưa có bài tập Câu 2 trong chuyên đề này');
   await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
-  await expect(page.locator('.topic-question-list article')).toHaveCount(1);
+  await expect(page.locator('.topic-exercise')).toHaveCount(1);
+  await page.getByRole('tab', { name: 'Lý thuyết', exact: true }).click();
+  await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
+  await expect(page.locator('.topic-exercise')).toHaveCount(1);
   await page.getByRole('button', { name: 'Tất cả chuyên đề', exact: true }).click();
   await page.reload();
   await expect(page.locator('.topic-card')).toHaveCount(2);

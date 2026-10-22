@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { topicIcons, type ManagedTopic, type TopicSummary } from '../../../shared/content';
+import { type ManagedTopic, type TopicSummary } from '../../../shared/content';
 import { apiService } from '../../services/apiService';
 import Icon from '../Icons';
 import LessonEditor from './LessonEditor';
+import IconPicker from './IconPicker';
 import { useUnsavedChanges } from './useUnsavedChanges';
 const empty = (): Partial<ManagedTopic> => ({
   title: '',
@@ -10,20 +11,12 @@ const empty = (): Partial<ManagedTopic> => ({
   category: '',
   theory: '',
   preamble: '',
+  examples: '',
+  examplesPreamble: '',
   icon: 'topics',
   color: 'blue',
   published: false,
 });
-const iconLabels = [
-  'Chuyên đề',
-  'Căn thức',
-  'Phương trình',
-  'Hàm số',
-  'Tam giác',
-  'Đường tròn',
-  'Thống kê',
-  'Hình khối',
-];
 export default function TopicManager({
   onQuestions,
   onDirtyChange,
@@ -240,21 +233,12 @@ export default function TopicManager({
                 <option value="yellow">Vàng</option>
               </select>
             </label>
-            <label className="field">
-              <span>Biểu tượng</span>
-              <select
-                aria-label="Biểu tượng"
-                value={draft.icon}
-                disabled={busy}
-                onChange={(e) => update({ icon: e.target.value as ManagedTopic['icon'] })}
-              >
-                {topicIcons.map((icon, i) => (
-                  <option value={icon} key={icon}>
-                    {iconLabels[i]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <IconPicker
+              value={draft.icon || 'topics'}
+              color={draft.color || 'blue'}
+              disabled={busy}
+              onChange={(icon) => update({ icon })}
+            />
           </div>
           <LessonEditor
             label="Bài học / lý thuyết"
@@ -262,6 +246,13 @@ export default function TopicManager({
             preamble={draft.preamble}
             disabled={busy}
             onChange={(theory, preamble) => update({ theory, preamble })}
+          />
+          <LessonEditor
+            label="Ví dụ"
+            value={draft.examples || ''}
+            preamble={draft.examplesPreamble}
+            disabled={busy}
+            onChange={(examples, examplesPreamble) => update({ examples, examplesPreamble })}
           />
           <div className="publish-controls">
             <label>
@@ -291,7 +282,7 @@ export default function TopicManager({
                   if (canLeave()) onQuestions(draft.id!);
                 }}
               >
-                Quản lý câu hỏi của chuyên đề
+                Quản lý bài tập vận dụng
               </button>
             )}
           </div>

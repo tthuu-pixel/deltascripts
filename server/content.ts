@@ -1,5 +1,5 @@
 import type { Database, Statement } from './database.ts';
-import { publicQuestion, query, questionSelect } from './database.ts';
+import { publicQuestion, query, questionSelect, topicRandomQuestionSql } from './database.ts';
 import { HttpError, requireValue } from './errors.ts';
 import { defaultStudentSettings, topicIcons, type StudentSettings } from '../shared/content.ts';
 
@@ -127,11 +127,11 @@ function validateSettings(value: any): StudentSettings {
     })),
   };
 }
-async function visibleTopic(db: Database, id: string, admin: boolean) {
+async function visibleTopic(db: Database, id: string, admin: boolean, full = true) {
   requireValue(uuid(id), 'Mã chuyên đề không hợp lệ.');
   const topic = await db
     .prepare(
-      `SELECT ${topicColumns},theory,preamble FROM topics WHERE id=? ${admin ? '' : 'AND published=1'}`,
+      `SELECT ${topicColumns}${full ? ',theory,preamble,examples,examples_preamble AS examplesPreamble' : ''} FROM topics WHERE id=? ${admin ? '' : 'AND published=1'}`,
     )
     .bind(id)
     .first();
@@ -148,6 +148,7 @@ export const contentRoutes = new Set([
   '/api/topics/delete',
   '/api/topics/reorder',
   '/api/topic-questions',
+  '/api/topic-question/random',
   '/api/questions/classify',
 ]);
 export async function contentRoute(
@@ -197,12 +198,28 @@ export async function contentRoute(
     requireValue(topic && typeof topic === 'object', 'Chuyên đề không hợp lệ.');
     const id = topic.id || crypto.randomUUID();
     requireValue(uuid(id), 'Mã chuyên đề không hợp lệ.');
+    const existing = await db
+      .prepare('SELECT version,examples,examples_preamble FROM topics WHERE id=?')
+      .bind(id)
+      .first();
     const values: unknown[] = [
       field(topic.title, 'Tên chuyên đề', 160, true),
       field(topic.category, 'Nhóm chuyên đề', 80),
       field(topic.description, 'Mô tả', 500),
       field(topic.theory, 'Bài học', 500_000),
       field(topic.preamble, 'Khai báo LaTeX', 50_000),
+      field(
+        topic.examples === undefined ? existing?.examples || '' : topic.examples,
+        'Ví dụ',
+        500_000,
+      ),
+      field(
+        topic.examplesPreamble === undefined
+          ? existing?.examples_preamble || ''
+          : topic.examplesPreamble,
+        'Khai báo LaTeX ví dụ',
+        50_000,
+      ),
     ];
     requireValue(
       topicIcons.includes(topic.icon) &&
@@ -211,12 +228,11 @@ export async function contentRoute(
       'Biểu tượng, màu hoặc trạng thái không hợp lệ.',
     );
     values.push(topic.icon, topic.color, topic.published ? 1 : 0);
-    const existing = await db.prepare('SELECT version FROM topics WHERE id=?').bind(id).first();
     if (existing) {
       requireValue(Number.isInteger(topic.version), 'Cần tải bản hiện tại trước khi sửa.');
       const changed = await db
         .prepare(
-          'UPDATE topics SET title=?,category=?,description=?,theory=?,preamble=?,icon=?,color=?,published=?,version=version+1 WHERE id=? AND version=?',
+          'UPDATE topics SET title=?,category=?,description=?,theory=?,preamble=?,examples=?,examples_preamble=?,icon=?,color=?,published=?,version=version+1 WHERE id=? AND version=?',
         )
         .bind(...values, id, topic.version)
         .run();
@@ -231,7 +247,7 @@ export async function contentRoute(
       requireValue((count?.n || 0) < 500, 'Kho hiện hỗ trợ tối đa 500 chuyên đề.');
       await db
         .prepare(
-          `INSERT INTO topics(id,title,category,description,theory,preamble,icon,color,published,position) SELECT ?,?,?,?,?,?,?,?,?,COALESCE(MAX(position),-1)+1 FROM topics`,
+          `INSERT INTO topics(id,title,category,description,theory,preamble,examples,examples_preamble,icon,color,published,position) SELECT ?,?,?,?,?,?,?,?,?,?,?,COALESCE(MAX(position),-1)+1 FROM topics`,
         )
         .bind(id, ...values)
         .run();
@@ -279,7 +295,7 @@ export async function contentRoute(
   }
   if (route === '/api/topic-questions' && method === 'GET') {
     const topicId = url.searchParams.get('topicId') || '';
-    const topic = await visibleTopic(db, topicId, admin);
+    const topic = await visibleTopic(db, topicId, admin, false);
     const number = Number(url.searchParams.get('number') || 0);
     requireValue(
       Number.isInteger(number) && number >= 0 && number <= 7,
@@ -305,6 +321,18 @@ export async function contentRoute(
           .first<{ n: number }>())!.n
       : topic.questionCount;
     return { items: result.rows.map(publicQuestion), total, page, pageSize: 10 };
+  }
+  if (route === '/api/topic-question/random' && method === 'GET') {
+    const topicId = url.searchParams.get('topicId') || '';
+    await visibleTopic(db, topicId, admin, false);
+    const number = Number(url.searchParams.get('number'));
+    requireValue(
+      Number.isInteger(number) && number >= 1 && number <= 7,
+      'Dạng câu phải từ 1 đến 7.',
+    );
+    const result = await query(db, topicRandomQuestionSql, [topicId, number]);
+    requireValue(result.rows.length, `Chưa có bài tập Câu ${number} trong chuyên đề này.`, 404);
+    return { question: publicQuestion(result.rows[0]) };
   }
   if (route === '/api/questions/classify' && method === 'POST') {
     requireValue(

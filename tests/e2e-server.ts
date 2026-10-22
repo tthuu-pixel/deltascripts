@@ -85,6 +85,10 @@ for (const [index, topic] of fixtureTopics.entries()) {
     .bind(topic.id, topic.number)
     .run();
 }
+await db
+  .prepare('UPDATE topics SET examples=? WHERE id=?')
+  .bind('Ví dụ riêng của lớp: giải $x+1=3$ được $x=2$.', fixtureTopics[0].id)
+  .run();
 process.on('SIGTERM', async () => {
   await runtime.close();
   process.exit(0);

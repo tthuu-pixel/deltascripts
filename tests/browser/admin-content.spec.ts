@@ -40,6 +40,23 @@ test('administrator uploads their own topic and questions, publishes them and co
     await page.getByLabel('Tên chuyên đề', { exact: true }).fill('Chuyên đề của thầy');
     await page.getByLabel('Nhóm chuyên đề', { exact: true }).fill('Hình học');
     await page.getByLabel('Mô tả ngắn', { exact: true }).fill('Nội dung do chính thầy biên soạn.');
+    await page.getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true }).click();
+    const palette = page.getByRole('dialog', { name: 'Chọn biểu tượng', exact: true });
+    await expect(palette.locator('.math-icon-option')).toHaveCount(50);
+    await expect(palette.locator('.math-icon-option').first()).toHaveText('');
+    await palette.getByRole('button', { name: 'Biểu tượng 50', exact: true }).click();
+    await expect(
+      page
+        .getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true })
+        .locator('svg')
+        .first(),
+    ).toHaveAttribute('data-icon', 'venn');
+    await page.getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(
+      page.getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true }),
+    ).toBeFocused();
+    await page.getByLabel('Ví dụ', { exact: true }).fill('Ví dụ của thầy: $2+3=5$.');
     const body = String.raw`Bài học riêng $\sqrt{49}=7$.
 \begin{tikzpicture}\draw (0,0) circle (\R);\end{tikzpicture}`;
     const lesson = String.raw`\documentclass{article}
@@ -51,7 +68,7 @@ ${body}
       .getByLabel('Nhập file bài học / lý thuyết', { exact: true })
       .setInputFiles({ name: 'bai-hoc.tex', mimeType: 'text/plain', buffer: Buffer.from(lesson) });
     await expect(page.getByLabel('Bài học / lý thuyết', { exact: true })).toHaveValue(body);
-    await page.getByRole('button', { name: 'Xem trước', exact: true }).click();
+    await page.getByRole('button', { name: 'Xem trước bài học / lý thuyết', exact: true }).click();
     await expect(page.locator('.editor-preview .katex')).toBeVisible();
     await expect(page.getByAltText('Hình minh họa TikZ')).toBeVisible();
     await page.getByRole('button', { name: 'Lưu chuyên đề', exact: true }).click();
@@ -69,7 +86,7 @@ ${body}
       student.getByRole('heading', { name: 'Chuyên đề đang được chuẩn bị' }),
     ).toBeVisible();
     // Import and keep the question as a draft, already attached to the topic.
-    await page.getByRole('button', { name: 'Quản lý câu hỏi của chuyên đề', exact: true }).click();
+    await page.getByRole('button', { name: 'Quản lý bài tập vận dụng', exact: true }).click();
     await page.getByLabel('Chọn file câu hỏi').setInputFiles({
       name: 'cau-hoi.tex',
       mimeType: 'text/plain',
@@ -108,9 +125,12 @@ ${body}
     await expect(student.locator('.topic-card')).toHaveCount(1);
     await student.locator('.topic-card').click();
     await expect(student.locator('.managed-lesson .katex')).toBeVisible();
-    await expect(student.locator('.topic-question-list article')).toHaveCount(1);
+    await student.getByRole('tab', { name: 'Ví dụ', exact: true }).click();
+    await expect(student.locator('.managed-examples')).toContainText('Ví dụ của thầy');
+    await expect(student.locator('.managed-examples .katex')).toBeVisible();
+    await student.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
     await student.getByRole('button', { name: 'Câu 4', exact: true }).click();
-    await expect(student.locator('.topic-question-list article')).toHaveCount(0);
+    await expect(student.getByRole('alert')).toContainText('Chưa có bài tập Câu 4');
     await student.getByRole('button', { name: 'Câu 3', exact: true }).click();
     await student.getByRole('button', { name: 'Xem lời giải', exact: true }).click();
     await expect(student.locator('.solution-panel')).toContainText('Lời giải do thầy sửa');

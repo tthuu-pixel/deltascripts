@@ -71,6 +71,7 @@ export default function LessonEditor({
             type="button"
             disabled={disabled || reading}
             aria-pressed={preview}
+            aria-label={`${preview ? 'Soạn' : 'Xem trước'} ${label.toLowerCase()}`}
             onClick={() => setPreview(!preview)}
           >
             <Icon name={preview ? 'practice' : 'eye'} size={17} />

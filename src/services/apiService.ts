@@ -141,8 +141,11 @@ export const apiService = {
   ) {
     return apiRequest('/questions/classify', { ids, ...changes });
   },
-  async getRandomQuestion(number: number): Promise<Question> {
-    return (await apiRequest(`/questions/random?number=${number}`)).question;
+  async getRandomQuestion(number: number, topicId?: string): Promise<Question> {
+    const route = topicId
+      ? `/topic-question/random?${new URLSearchParams({ number: String(number), topicId })}`
+      : `/questions/random?number=${number}`;
+    return (await apiRequest(route)).question;
   },
   async generateExam(): Promise<Question[]> {
     return (await apiRequest('/exam')).items;

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
+import { mathTopicPaths } from './MathTopicIcons';
 
 const paths = {
+  ...mathTopicPaths,
   topics: (
     <>
       <path fill="currentColor" opacity=".13" d="M5 5h9v9H5zm13 13h9v9h-9z" />
@@ -199,6 +201,7 @@ export default function Icon({
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      data-icon={name}
       aria-hidden="true"
     >
       {paths[name]}

@@ -3,6 +3,13 @@ import type { ManagedTopic, TopicSummary } from '../../shared/content';
 import type { Question } from '../types';
 import { apiService } from '../services/apiService';
 import Icon from './Icons';
+const TopicPractice = lazy(() => import('./TopicPractice'));
+const topicSections = [
+  { key: 'theory', label: 'Lý thuyết', icon: 'guide' },
+  { key: 'examples', label: 'Ví dụ', icon: 'geometry' },
+  { key: 'practice', label: 'Bài tập vận dụng', icon: 'practice' },
+] as const;
+type TopicSection = (typeof topicSections)[number]['key'];
 const LatexContent = lazy(() => import('./LatexContent'));
 const normalize = (value: string) =>
   value
@@ -23,11 +30,8 @@ export default function Topics({
     [search, setSearch] = useState(''),
     [selected, setSelected] = useState<string | null>(null),
     [detail, setDetail] = useState<ManagedTopic | null>(null);
-  const [items, setItems] = useState<Question[]>([]),
-    [total, setTotal] = useState(0),
-    [page, setPage] = useState(1),
-    [number, setNumber] = useState(0),
-    [answers, setAnswers] = useState<Record<string, boolean>>({});
+  const [section, setSection] = useState<TopicSection>('theory');
+  const [practiceOpened, setPracticeOpened] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
@@ -43,18 +47,10 @@ export default function Topics({
     let live = true;
     setBusy(true);
     setError('');
-    setItems([]);
-    setAnswers({});
-    Promise.all([
-      apiService.getTopic(selected),
-      apiService.getTopicQuestions(selected, page, number),
-    ])
-      .then(([topic, list]) => {
-        if (live) {
-          setDetail(topic);
-          setItems(list.items);
-          setTotal(list.total);
-        }
+    apiService
+      .getTopic(selected)
+      .then((topic) => {
+        if (live) setDetail(topic);
       })
       .catch((e) => {
         if (live) setError(e.message);
@@ -65,7 +61,7 @@ export default function Topics({
     return () => {
       live = false;
     };
-  }, [selected, page, number, attempt, topics]);
+  }, [selected, attempt, topics]);
   useEffect(() => {
     if (!selected && !lastTopic.current) return;
     const target = document.getElementById(
@@ -121,111 +117,99 @@ export default function Topics({
         )}
         {busy && (
           <p className="loading-state" role="status">
-            Đang tải bài học và câu hỏi…
+            Đang tải nội dung chuyên đề…
           </p>
         )}
-        <Suspense fallback={<p role="status">Đang mở nội dung…</p>}>
-          {detail?.id === selected && detail.theory && (
-            <section className="surface lesson-content managed-lesson">
-              <span className="section-kicker">BÀI HỌC CỦA CHUYÊN ĐỀ</span>
-              <h3>Kiến thức và hướng dẫn</h3>
-              <LatexContent html={detail.theory} preamble={detail.preamble} />
-            </section>
-          )}
-          <section className="topic-practice">
-            <div className="section-heading">
-              <div>
-                <span className="section-kicker">CÙNG LUYỆN TẬP</span>
-                <h3>Câu hỏi theo chuyên đề</h3>
-                <p className="muted">{busy ? 'Đang cập nhật…' : `${total} câu hỏi đã xuất bản`}</p>
-              </div>
-            </div>
-            <div
-              className="filter-chips topic-type-filters"
-              aria-label="Lọc dạng câu trong chuyên đề"
+        <nav className="topic-section-tabs" role="tablist" aria-label="Các mục của chuyên đề">
+          {topicSections.map((item, index) => (
+            <button
+              type="button"
+              role="tab"
+              key={item.key}
+              id={`topic-section-${item.key}`}
+              aria-controls={`topic-panel-${item.key}`}
+              aria-selected={section === item.key}
+              tabIndex={section === item.key ? 0 : -1}
+              className={`topic-section-tab ${section === item.key ? 'is-active' : ''}`}
+              onClick={() => {
+                setSection(item.key);
+                if (item.key === 'practice') setPracticeOpened(true);
+              }}
+              onKeyDown={(event) => {
+                let next = index;
+                if (event.key === 'ArrowRight') next = (index + 1) % 3;
+                else if (event.key === 'ArrowLeft') next = (index + 2) % 3;
+                else if (event.key === 'Home') next = 0;
+                else if (event.key === 'End') next = 2;
+                else return;
+                event.preventDefault();
+                const key = topicSections[next].key;
+                setSection(key);
+                if (key === 'practice') setPracticeOpened(true);
+                document.getElementById(`topic-section-${key}`)?.focus();
+              }}
             >
-              {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <button
-                  key={n}
-                  className={number === n ? 'active' : ''}
-                  aria-pressed={number === n}
-                  disabled={busy}
-                  onClick={() => {
-                    setNumber(n);
-                    setPage(1);
-                  }}
-                >
-                  {n ? `Câu ${n}` : 'Tất cả dạng'}
-                </button>
-              ))}
-            </div>
-            {!busy && !error && !items.length && (
-              <div className="surface empty-state">
-                <Icon name="practice" size={40} />
-                <h3>Chưa có câu hỏi ở mục này</h3>
-                <p>Câu hỏi sẽ xuất hiện khi quản trị viên gắn vào chuyên đề và xuất bản.</p>
-              </div>
+              <Icon name={item.icon} size={24} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <Suspense fallback={<p role="status">Đang mở nội dung…</p>}>
+          <div
+            role="tabpanel"
+            id="topic-panel-theory"
+            aria-labelledby="topic-section-theory"
+            hidden={section !== 'theory'}
+          >
+            {section === 'theory' && detail?.id === selected && (
+              <section className="surface lesson-content managed-lesson">
+                <h3>Lý thuyết</h3>
+                {detail.theory ? (
+                  <LatexContent html={detail.theory} preamble={detail.preamble} />
+                ) : (
+                  <div className="empty-state">
+                    <Icon name="guide" size={42} />
+                    <p>Lý thuyết của chuyên đề đang được quản trị viên chuẩn bị.</p>
+                  </div>
+                )}
+              </section>
             )}
-            <div className="topic-question-list">
-              {items.map((q, index) => (
-                <article className="surface exercise-card" key={q.id}>
-                  <div className="exercise-heading">
-                    <h3>
-                      Bài {(page - 1) * 10 + index + 1} · {q.label}
-                    </h3>
-                    <span className="soft-badge">Dạng Câu {q.number}</span>
+          </div>
+          <div
+            role="tabpanel"
+            id="topic-panel-examples"
+            aria-labelledby="topic-section-examples"
+            hidden={section !== 'examples'}
+          >
+            {section === 'examples' && detail?.id === selected && (
+              <section className="surface lesson-content managed-examples">
+                <h3>Ví dụ</h3>
+                {detail.examples ? (
+                  <LatexContent html={detail.examples} preamble={detail.examplesPreamble} />
+                ) : (
+                  <div className="empty-state">
+                    <Icon name="geometry" size={42} />
+                    <p>Ví dụ của chuyên đề đang được quản trị viên chuẩn bị.</p>
                   </div>
-                  <div className="exercise-body">
-                    <LatexContent html={q.statementRaw} preamble={q.latexPreamble} />
-                  </div>
-                  <div className="exercise-actions">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setAnswers((old) => ({ ...old, [q.id]: !old[q.id] }))}
-                    >
-                      <Icon name="guide" size={18} />
-                      {answers[q.id] ? 'Ẩn lời giải' : 'Xem lời giải'}
-                    </button>
-                    <button className="text-button" onClick={() => onAsk(q)}>
-                      <Icon name="spark" size={18} />
-                      Hỏi AI về câu này
-                    </button>
-                  </div>
-                  {answers[q.id] && (
-                    <section className="solution-panel">
-                      <h4>Lời giải chi tiết</h4>
-                      <LatexContent
-                        html={q.solutionRaw || 'Chưa có lời giải.'}
-                        preamble={q.latexPreamble}
-                        context={q.statementRaw}
-                      />
-                    </section>
-                  )}
-                </article>
-              ))}
-            </div>
-            {total > 10 && (
-              <div className="bank-pagination">
-                <button
-                  className="btn btn-secondary"
-                  disabled={busy || page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Trang trước
-                </button>
-                <span>
-                  Trang {page} / {Math.max(1, Math.ceil(total / 10))}
-                </span>
-                <button
-                  className="btn btn-secondary"
-                  disabled={busy || page * 10 >= total}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Trang sau
-                </button>
-              </div>
+                )}
+              </section>
             )}
-          </section>
+          </div>
+          <div
+            role="tabpanel"
+            id="topic-panel-practice"
+            aria-labelledby="topic-section-practice"
+            hidden={section !== 'practice'}
+          >
+            {practiceOpened && (
+              <TopicPractice
+                key={selected}
+                topicId={selected}
+                count={current.questionCount}
+                onAsk={onAsk}
+              />
+            )}
+          </div>
         </Suspense>
       </div>
     );
@@ -274,8 +258,8 @@ export default function Topics({
             onClick={() => {
               lastTopic.current = topic.id;
               setDetail(null);
-              setPage(1);
-              setNumber(0);
+              setSection('theory');
+              setPracticeOpened(false);
               setSelected(topic.id);
             }}
           >

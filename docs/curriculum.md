@@ -5,8 +5,8 @@ Mở **`/admin`** và đăng nhập bằng tài khoản quản lý hiện có. T
 ## Tạo chuyên đề và bài học
 
 1. Chọn **Chuyên đề → Tạo chuyên đề**.
-2. Nhập tên, nhóm, mô tả, chọn màu và biểu tượng. Nhóm chuyên đề do bạn tự đặt, ví dụ Đại số hoặc Hình học.
-3. Có thể viết bài học hoặc chọn **Nhập file TeX**. Phần lý thuyết là tùy chọn; chuyên đề có thể chỉ gồm câu hỏi luyện tập.
+2. Nhập tên, nhóm, mô tả, chọn màu. Bấm nút biểu tượng để mở bảng 50 icon toán cấp 2, chỉ có hình, rồi bấm icon muốn dùng. Nhóm chuyên đề do bạn tự đặt, ví dụ Đại số hoặc Hình học.
+3. Nhập **Lý thuyết** và **Ví dụ** ở hai vùng riêng; mỗi vùng có nút nhập file TeX và xem trước. Cả hai đều là tùy chọn. Khi mở chuyên đề, học sinh có ba tab **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Bài vận dụng có Câu 1–Câu 7, lấy câu khác, xem lời giải, tạo bài tương tự và hỏi AI; câu được lấy trong đúng chuyên đề.
 4. Dùng **Xem trước** để kiểm tra công thức và hình TikZ. File TeX có `document` được tách phần thân và các khai báo hình vẽ; nguồn toán học không bị tự viết lại.
 5. Bấm **Lưu chuyên đề**. Mặc định lưu nháp; bật **Xuất bản chuyên đề cho học sinh** khi muốn cho hiện.
 
@@ -34,6 +34,7 @@ Bấm **Lưu trang học sinh** để áp dụng. Học sinh tải lại trang h
 ## Dữ liệu và nâng cấp
 
 - GitHub lưu mã nguồn, ảnh nền, phông chữ và tài liệu. Chuyên đề, lý thuyết, cấu hình tab, câu hỏi, tài khoản và mã truy cập được lưu trong Cloudflare D1.
+- Migration `0004_topic_examples.sql` thêm ví dụ và khai báo hình vẽ riêng, giữ nguyên lý thuyết, icon, trạng thái và các câu hỏi đã có.
 - Migration `0003_managed_content.sql` thêm quản trị nội dung, giữ nguyên câu hỏi cũ và trạng thái đã xuất bản của chúng; không nhập nội dung mẫu. Chỉ câu đã xuất bản được tính vào kho ngẫu nhiên và đề thi.
 - Quan hệ câu hỏi–chuyên đề và bộ đếm được cập nhật trong cùng transaction. Phân loại không sao chép nguồn TeX. Bộ đếm trang chuyên đề tránh phải quét toàn bộ nguồn câu hỏi mỗi lần mở danh sách.
 - Chuyên đề và cấu hình trang có số phiên bản; nếu cửa sổ khác đã lưu, hệ thống yêu cầu tải lại để tránh ghi đè bản mới.
