@@ -156,6 +156,7 @@ export default function AiSettingsManager({
                 }
                 onChange={(e) => {
                   setApiKey(e.target.value);
+                  setModels([]);
                   setDirty(true);
                 }}
               />

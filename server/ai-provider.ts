@@ -96,6 +96,9 @@ export async function generateReply(
 ): Promise<string> {
   let data: any;
   let output: string;
+  const model = config.model.replace(/^models\//, '');
+  const modernGemini = /^gemini-[34][.-]/.test(model);
+  const modernGpt = /^gpt-6(?:[.-]|$)/.test(model);
   if (config.provider === 'gemini') {
     data = await providerRequest(
       config,
@@ -109,7 +112,12 @@ export async function generateReply(
         })),
         generationConfig: {
           ...(json ? { responseMimeType: 'application/json' } : {}),
-          maxOutputTokens: maxTokens,
+          maxOutputTokens: /^gemini-4[.-]/.test(model)
+            ? Math.max(maxTokens, 32768)
+            : modernGemini
+              ? Math.max(maxTokens, 8192)
+              : maxTokens,
+          ...(modernGemini ? { thinkingConfig: { thinkingLevel: 'LOW' } } : {}),
         },
       },
     );
@@ -132,13 +140,23 @@ export async function generateReply(
     data = await providerRequest(config, 'chat/completions', options, {
       model: config.model,
       ...(config.provider === 'openai'
-        ? { max_completion_tokens: maxTokens }
+        ? {
+            max_completion_tokens: modernGpt ? Math.max(maxTokens, 16384) : maxTokens,
+            ...(modernGpt ? { reasoning_effort: 'low' } : {}),
+          }
         : { max_tokens: maxTokens }),
       messages: [{ role: 'system', content: system }, ...messages],
       ...(json ? { response_format: { type: 'json_object' } } : {}),
     });
     output = data.choices?.[0]?.message?.content || '';
   }
+  requireValue(
+    data.candidates?.[0]?.finishReason !== 'MAX_TOKENS' &&
+      data.choices?.[0]?.finish_reason !== 'length' &&
+      data.stop_reason !== 'max_tokens',
+    'AI chưa tạo đủ câu trả lời trong giới hạn xử lý. Hãy thử lại hoặc chọn mô hình khác.',
+    502,
+  );
   requireValue(
     typeof output === 'string' && output.trim(),
     'AI chưa trả lời được yêu cầu này.',

@@ -1,6 +1,6 @@
 # Sao chép thành .dev.vars để dùng cục bộ. Không commit file chứa giá trị thật.
 # GEMINI_API_KEY=your-key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.8-flash
 # APP_ORIGIN=https://your-domain.example
 
 # Khóa mã hóa cấu hình AI của admin, ít nhất 32 ký tự ngẫu nhiên. Không dùng giá trị thật trong Git.

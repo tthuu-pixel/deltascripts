@@ -58,7 +58,10 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     await page.locator('input[type=password]').fill('review-browser-test-password');
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
     await page.getByRole('button', { name: 'Cấu hình AI', exact: true }).click();
+    await expect(page.getByLabel('Mô hình', { exact: true })).toHaveValue('gemini-3.8-flash');
+    await page.getByLabel('Mô hình', { exact: true }).selectOption('gemini-4-argon');
     await page.getByLabel('Nhà cung cấp AI', { exact: true }).selectOption('deepseek');
+    await page.getByLabel('Mô hình', { exact: true }).selectOption('deepseek-v4-pro');
     await expect(page.getByLabel('Base URL', { exact: true })).toHaveValue(
       'https://api.deepseek.com',
     );

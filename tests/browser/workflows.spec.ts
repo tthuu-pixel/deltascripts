@@ -201,6 +201,17 @@ test('student selects four AI providers with model dropdowns, session profiles a
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await student(page);
+  await page.evaluate(() =>
+    sessionStorage.setItem(
+      'deltascript_student_ai',
+      JSON.stringify({
+        provider: 'gemini',
+        profiles: {
+          gemini: { provider: 'gemini', model: 'gemini-2.5-flash', apiKey: 'fixture-legacy-key' },
+        },
+      }),
+    ),
+  );
   const payloads: any[] = [];
   await page.route('**/api/ai/models', (route) => {
     payloads.push(route.request().postDataJSON());
@@ -209,8 +220,17 @@ test('student selects four AI providers with model dropdowns, session profiles a
   await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'Cài đặt AI', exact: true });
   await expect(settings.getByLabel('Nhà cung cấp AI')).toBeVisible();
+  await expect(settings.getByLabel('Mô hình', { exact: true })).toHaveValue('gemini-2.5-flash');
+  await expect(settings.getByLabel('API key', { exact: true })).toHaveValue('fixture-legacy-key');
+  const latest: Record<string, string> = {
+    gemini: 'gemini-4-argon',
+    openai: 'gpt-6.1-sol',
+    anthropic: 'claude-sonnet-5-5',
+    deepseek: 'deepseek-v4-pro',
+  };
   for (const provider of ['gemini', 'openai', 'anthropic', 'deepseek']) {
     await settings.getByLabel('Nhà cung cấp AI').selectOption(provider);
+    await settings.getByLabel('Mô hình', { exact: true }).selectOption(latest[provider]);
     await settings.getByLabel('API key', { exact: true }).fill(`fixture-${provider}-key`);
     await settings.getByRole('button', { name: 'Kiểm tra & lấy mô hình', exact: true }).click();
     await expect(settings.getByRole('status')).toContainText('Đã kết nối');
@@ -220,6 +240,7 @@ test('student selects four AI providers with model dropdowns, session profiles a
     await settings.getByRole('button', { name: 'Lưu cấu hình AI', exact: true }).click();
     await expect(settings.getByRole('status')).toContainText('Đã lưu');
   }
+  expect(payloads.map((value) => value.model)).toEqual(Object.values(latest));
   expect(payloads.map((value) => value.provider)).toEqual([
     'gemini',
     'openai',

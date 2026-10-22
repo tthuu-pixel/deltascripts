@@ -61,3 +61,5 @@ Bấm **Lưu trang học sinh** để áp dụng. Học sinh tải lại trang h
 Bấm biểu tượng **Cài đặt** ở đầu trang, chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek, nhập **API key** và chọn **Mô hình** trong danh sách xổ xuống. **Kiểm tra & lấy mô hình** cập nhật danh sách từ tài khoản API; **Model khác** cho phép nhập tên mới. Bấm **Lưu cấu hình AI** để dùng cho hỏi bài và tạo bài tương tự.
 
 Mỗi nhà cung cấp giữ key/model riêng trong `sessionStorage` của tab; chuyển nhà cung cấp để mở lại cấu hình đã lưu. Đóng tab hoặc đăng xuất sẽ xóa key. Key cá nhân được ưu tiên; chỉ Gemini có thể dùng key máy chủ khi không nhập key cá nhân. API học sinh chỉ gọi tên miền chính thức của nhà cung cấp, không đọc key phân loại của admin. Key không nằm trong mã nguồn hay cơ sở dữ liệu. Sử dụng API theo hạn mức/tính phí của tài khoản bạn.
+
+Danh sách gợi ý hiện hành và model mặc định của từng nhà cung cấp nằm trong [danh sách model AI](ai-models.md). Cấu hình bạn đã lưu được giữ nguyên khi danh sách được cập nhật.
