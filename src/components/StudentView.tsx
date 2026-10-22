@@ -122,12 +122,8 @@ export default function StudentView({ user }: { user: User }) {
     setBusy(true);
     setError('');
     setSolution(false);
-    let key = '';
     try {
-      key = sessionStorage.getItem('gemini_api_key') || '';
-    } catch {}
-    try {
-      const value = await apiService.similarQuestion(question, key);
+      const value = await apiService.similarQuestion(question);
       if (id === requestId.current) {
         setQuestion(value);
         setAiQuestion(value);

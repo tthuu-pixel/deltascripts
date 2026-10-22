@@ -195,3 +195,80 @@ test('teacher imports Word/TeX in worker, confirms persistence, deletes question
   await page.getByRole('button', { name: 'Ngừng mã đã chọn' }).click();
   await expect(row).toContainText('Ngừng hoạt động');
 });
+
+test('student selects four AI providers with model dropdowns, session profiles and logout cleanup', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await student(page);
+  const payloads: any[] = [];
+  await page.route('**/api/ai/models', (route) => {
+    payloads.push(route.request().postDataJSON());
+    return route.fulfill({ json: { success: true, models: ['future-student-model'] } });
+  });
+  await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
+  const settings = page.getByRole('dialog', { name: 'Cài đặt AI', exact: true });
+  await expect(settings.getByLabel('Nhà cung cấp AI')).toBeVisible();
+  for (const provider of ['gemini', 'openai', 'anthropic', 'deepseek']) {
+    await settings.getByLabel('Nhà cung cấp AI').selectOption(provider);
+    await settings.getByLabel('API key', { exact: true }).fill(`fixture-${provider}-key`);
+    await settings.getByRole('button', { name: 'Kiểm tra & lấy mô hình', exact: true }).click();
+    await expect(settings.getByRole('status')).toContainText('Đã kết nối');
+    await settings
+      .getByRole('combobox', { name: 'Mô hình', exact: true })
+      .selectOption('future-student-model');
+    await settings.getByRole('button', { name: 'Lưu cấu hình AI', exact: true }).click();
+    await expect(settings.getByRole('status')).toContainText('Đã lưu');
+  }
+  expect(payloads.map((value) => value.provider)).toEqual([
+    'gemini',
+    'openai',
+    'anthropic',
+    'deepseek',
+  ]);
+  await settings.getByLabel('Nhà cung cấp AI').selectOption('openai');
+  await expect(settings.getByLabel('API key', { exact: true })).toHaveValue('fixture-openai-key');
+  await expect(settings.getByRole('combobox', { name: 'Mô hình', exact: true })).toHaveValue(
+    'future-student-model',
+  );
+  await settings.getByRole('combobox', { name: 'Mô hình', exact: true }).selectOption('__custom__');
+  await settings.getByLabel('Tên mô hình khác').fill('my-new-model');
+  await page.screenshot({ path: testInfo.outputPath('student-ai-models-mobile.png') });
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBeTruthy();
+    expect(await settings.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBeTruthy();
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settings.getByRole('button', { name: 'Lưu cấu hình AI', exact: true }).click();
+  await settings.getByRole('button', { name: 'Đóng', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
+  await expect(settings.getByLabel('Nhà cung cấp AI')).toHaveValue('openai');
+  await expect(settings.getByRole('combobox', { name: 'Mô hình', exact: true })).toHaveValue(
+    'my-new-model',
+  );
+  await settings.getByRole('button', { name: 'Đóng', exact: true }).click();
+  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
+  await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
+  let sent: any;
+  await page.route('**/api/ai', (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ json: { success: true, reply: 'Gợi ý của AI đã chọn.' } });
+  });
+  await page.getByRole('button', { name: 'Hỏi AI về câu này', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Tin nhắn cho trợ lý AI' }).fill('Gợi ý');
+  await page.getByRole('button', { name: 'Gửi', exact: true }).click();
+  await expect.poll(() => sent?.provider).toBe('openai');
+  expect(sent.apiKey).toBe('fixture-openai-key');
+  expect(sent.model).toBe('my-new-model');
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
+    'fixture-openai-key',
+  );
+  await page.getByRole('button', { name: 'Đóng trợ lý AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Vào học tập', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem('deltascript_student_ai'))).toBeNull();
+});

@@ -34,11 +34,7 @@ export default function AIAssistantPanel({ currentQuestionRaw }: { currentQuesti
     const history = messages.filter((m) => !m.content.startsWith('Lỗi:')).slice(-12);
     setMessages((items) => [...items, { role: 'user', content: message }]);
     try {
-      let key = '';
-      try {
-        key = sessionStorage.getItem('gemini_api_key') || '';
-      } catch {}
-      const reply = await apiService.askAI(message, currentQuestionRaw || '', history, key);
+      const reply = await apiService.askAI(message, currentQuestionRaw || '', history);
       if (active.current) setMessages((items) => [...items, { role: 'assistant', content: reply }]);
     } catch (error) {
       if (active.current)

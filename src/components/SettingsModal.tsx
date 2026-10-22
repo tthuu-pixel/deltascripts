@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icons';
+import ModelPicker from './ModelPicker';
+import { aiProviders, type AiProvider } from '../../shared/ai';
+import { getStudentAiSettings, saveStudentAiSettings } from '../services/studentAiSettings';
+import { apiService } from '../services/apiService';
 export default function SettingsModal({
   isOpen,
   onClose,
@@ -7,18 +11,25 @@ export default function SettingsModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [key, setKey] = useState(''),
-    [status, setStatus] = useState('');
+  const [settings, setSettings] = useState(getStudentAiSettings);
+  const [models, setModels] = useState<string[]>([]);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const request = useRef(0);
   useEffect(() => {
     if (!isOpen) return;
-    try {
-      setKey(sessionStorage.getItem('gemini_api_key') || '');
-      localStorage.removeItem('gemini_api_key');
-      localStorage.removeItem('deltascript_gemini_api_key');
-    } catch {}
+    setSettings(getStudentAiSettings());
+    setModels([]);
+    setStatus('');
+    setError('');
     dialog.current?.showModal();
-    return () => dialog.current?.close();
+    return () => {
+      request.current++;
+      dialog.current?.close();
+      setBusy(false);
+    };
   }, [isOpen]);
   if (!isOpen) return null;
   return (
@@ -32,52 +43,129 @@ export default function SettingsModal({
         <span className="icon-tile tone-blue">
           <Icon name="settings" size={27} />
         </span>
-        <h2 id="settings-title">Cài đặt</h2>
+        <h2 id="settings-title">Cài đặt AI</h2>
         <button className="icon-button" aria-label="Đóng" onClick={onClose}>
           <Icon name="close" size={21} />
         </button>
       </div>
       <p className="settings-description">
-        Nếu quản trị viên đã cấu hình Gemini trên máy chủ, bạn không cần nhập key. Key cá nhân chỉ
-        được giữ trong phiên tab hiện tại và gửi tới máy chủ khi hỏi AI.
+        Chọn AI để hỏi bài và tạo bài tương tự. Key cá nhân chỉ lưu trong phiên tab này. Gemini có
+        thể dùng key máy chủ nếu đã được cấu hình. Việc sử dụng API theo hạn mức tài khoản của bạn.
       </p>
-      <label>
-        Gemini API Key (tùy chọn)
-        <input
-          type="password"
-          autoComplete="off"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          className="account-input"
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          try {
+            saveStudentAiSettings({ ...settings, apiKey: settings.apiKey.trim() });
+            setStatus('Đã lưu cấu hình AI cho phiên tab này.');
+            setError('');
+          } catch {
+            setError('Không lưu được cấu hình trong trình duyệt.');
+          }
+        }}
+      >
+        <label className="field">
+          <span>Nhà cung cấp AI</span>
+          <select
+            aria-label="Nhà cung cấp AI"
+            disabled={busy}
+            value={settings.provider}
+            onChange={(e) => {
+              setSettings(getStudentAiSettings(e.target.value as AiProvider));
+              setModels([]);
+              setStatus('');
+              setError('');
+            }}
+          >
+            {Object.entries(aiProviders).map(([id, item]) => (
+              <option key={id} value={id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>API key</span>
+          <input
+            aria-label="API key"
+            type="password"
+            autoComplete="new-password"
+            maxLength={4096}
+            disabled={busy}
+            value={settings.apiKey}
+            placeholder="Nhập API key cá nhân"
+            onChange={(e) => {
+              setSettings({ ...settings, apiKey: e.target.value });
+              setModels([]);
+            }}
+          />
+        </label>
+        <ModelPicker
+          key={settings.provider}
+          provider={settings.provider}
+          value={settings.model}
+          models={models}
+          disabled={busy}
+          onChange={(model) => setSettings({ ...settings, model })}
         />
-      </label>
-      <div className="settings-actions">
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            try {
-              sessionStorage.setItem('gemini_api_key', key.trim());
-              setStatus('Đã lưu cho phiên tab này.');
-            } catch {
-              setStatus('Không lưu được key trong trình duyệt.');
-            }
-          }}
-        >
-          Lưu API Key
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={() => {
-            try {
-              sessionStorage.removeItem('gemini_api_key');
-            } catch {}
-            setKey('');
-            setStatus('Đã xóa key.');
-          }}
-        >
-          Xóa key
-        </button>
-      </div>
+        <p className="field-help">
+          Dùng nút lấy mô hình để cập nhật danh sách từ tài khoản API. Chọn “Model khác” nếu muốn
+          nhập tên phiên bản mới.
+        </p>
+        <div className="settings-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={async () => {
+              const id = ++request.current;
+              setBusy(true);
+              setStatus('');
+              setError('');
+              try {
+                const list = await apiService.getStudentAiModels(settings);
+                if (id === request.current) {
+                  setModels(list);
+                  setStatus(`Đã kết nối và lấy ${list.length} mô hình.`);
+                }
+              } catch (e) {
+                if (id === request.current) setError((e as Error).message);
+              } finally {
+                if (id === request.current) setBusy(false);
+              }
+            }}
+          >
+            {busy ? 'Đang lấy…' : 'Kiểm tra & lấy mô hình'}
+          </button>
+          <button className="btn btn-primary" disabled={busy}>
+            Lưu cấu hình AI
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => {
+              const cleared = { ...settings, apiKey: '' };
+              try {
+                saveStudentAiSettings(cleared);
+                setSettings(cleared);
+                setModels([]);
+                setError('');
+                setStatus('Đã xóa key của nhà cung cấp này.');
+              } catch {
+                setError('Không xóa được key trong trình duyệt.');
+              }
+            }}
+          >
+            Xóa key
+          </button>
+        </div>
+      </form>
+      {error && (
+        <p className="notice notice-error" role="alert">
+          {error}
+        </p>
+      )}
       <p role="status" className="settings-status">
         {status}
       </p>

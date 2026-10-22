@@ -131,7 +131,7 @@ Macro/class/font riêng hoặc file `\input` đi kèm cần kiểm tra với ngu
 
 `VITE_TIKZ_API_URL` trong `.env` dùng lúc build, mặc định `https://tikz-fly.fly.dev`. Dịch vụ compiler và Gemini có hạn mức/chi phí riêng; gói miễn phí lưu web/DB không bảo đảm hai dịch vụ này miễn phí hay luôn hoạt động.
 
-Gemini là tùy chọn. Chạy cục bộ: sao chép `.dev.vars.example` thành `.dev.vars`. Trên Cloudflare: `node scripts/wrangler.mjs secret put GEMINI_API_KEY`; đổi model qua `vars.GEMINI_MODEL` trong Wrangler. Người dùng cũng có thể nhập key cá nhân trong Cài đặt; chỉ giữ trong sessionStorage của tab và gửi đến API khi dùng AI. Server không ghi key vào log hoặc gửi lại browser. `APP_ORIGIN` tùy chọn cho origin chính thức; production cùng tên miền không cần thêm CORS. Các bài AI tạo vẫn cần đối chiếu tính đúng đắn.
+Gemini là tùy chọn. Chạy cục bộ: sao chép `.dev.vars.example` thành `.dev.vars`. Trên Cloudflare: `node scripts/wrangler.mjs secret put GEMINI_API_KEY`; đổi model qua `vars.GEMINI_MODEL` trong Wrangler. Trong **Cài đặt**, học sinh có thể chọn Gemini, GPT, Claude hoặc DeepSeek, nhập API key và chọn **Mô hình** bằng danh sách xổ xuống; nút kiểm tra tải model từ tài khoản, mục **Model khác** hỗ trợ tên mới. Mỗi nhà cung cấp giữ cấu hình riêng; key cá nhân được ưu tiên, Gemini có thể dùng key máy chủ khi không nhập key. Key cá nhân chỉ giữ trong sessionStorage của tab và gửi đến API khi dùng AI; đăng xuất sẽ xóa key. Server không ghi key vào log hoặc gửi lại browser. `APP_ORIGIN` tùy chọn cho origin chính thức; production cùng tên miền không cần thêm CORS. Các bài AI tạo vẫn cần đối chiếu tính đúng đắn.
 
 ## Kiểm thử
 

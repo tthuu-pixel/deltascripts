@@ -1,3 +1,4 @@
+import { generateReply, providerModels } from './ai-provider';
 import type { Database } from './database';
 import { HttpError, requireValue } from './errors';
 import { aiProviders, type AiProvider, type AiSettings, type AiSuggestion } from '../shared/ai';
@@ -127,64 +128,6 @@ async function credentials(body: any, row: StoredSettings | null, secret?: strin
   }
   return config;
 }
-type Credentials = Awaited<ReturnType<typeof credentials>>;
-async function providerRequest(
-  config: Credentials,
-  path: string,
-  options: AdminAiOptions,
-  body?: unknown,
-) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (config.provider === 'gemini') headers['x-goog-api-key'] = config.apiKey;
-  else if (config.provider === 'anthropic') {
-    headers['x-api-key'] = config.apiKey;
-    headers['anthropic-version'] = '2023-06-01';
-  } else headers.Authorization = `Bearer ${config.apiKey}`;
-  let response: Response;
-  try {
-    response = await (options.fetchGemini || fetch)(`${config.baseUrl}/${path}`, {
-      method: body ? 'POST' : 'GET',
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      redirect: 'manual',
-      signal: AbortSignal.timeout(45_000),
-    });
-  } catch {
-    throw new HttpError(502, 'Không kết nối được dịch vụ AI. Kiểm tra Base URL hoặc thử lại.');
-  }
-  requireValue(
-    response.ok,
-    response.status === 429
-      ? 'Dịch vụ AI đang hết hạn mức. Hãy thử lại sau.'
-      : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
-    response.status === 429 ? 429 : [401, 403].includes(response.status) ? 503 : 502,
-  );
-  const reader = response.body?.getReader();
-  requireValue(reader, 'Dịch vụ AI trả dữ liệu trống.', 502);
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > 1_000_000) {
-      await reader.cancel();
-      throw new HttpError(502, 'Kết quả AI vượt giới hạn, hãy chọn ít câu hơn.');
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(size);
-  let cursor = 0;
-  for (const part of chunks) {
-    bytes.set(part, cursor);
-    cursor += part.length;
-  }
-  try {
-    return JSON.parse(new TextDecoder().decode(bytes));
-  } catch {
-    throw new HttpError(502, 'Dịch vụ AI trả dữ liệu không hợp lệ.');
-  }
-}
 export function validateSuggestions(value: any, ids: string[], topicIds: string[]): AiSuggestion[] {
   const allowedIds = new Set(ids),
     allowedTopics = new Set(topicIds);
@@ -260,22 +203,7 @@ export async function adminAiRoute(
   }
   if (route === '/api/admin/ai/test' && method === 'POST') {
     const config = await credentials(body, row, options.aiSettingsKey);
-    const data = await providerRequest(config, 'models', options);
-    const models =
-      config.provider === 'gemini'
-        ? (data.models || [])
-            .filter(
-              (m: any) =>
-                !m.supportedGenerationMethods ||
-                m.supportedGenerationMethods.includes('generateContent'),
-            )
-            .map((m: any) => String(m.name || '').replace(/^models\//, ''))
-        : (data.data || []).map((m: any) => m.id);
-    return {
-      models: models
-        .filter((m: unknown) => typeof m === 'string' && /^[\w./:-]{1,200}$/.test(m))
-        .slice(0, 300),
-    };
+    return providerModels(config, options);
   }
   if (route === '/api/admin/ai/classify' && method === 'POST') {
     requireValue(row, 'Hãy lưu nhà cung cấp, model và API key trong Cấu hình AI trước.', 503);
@@ -332,46 +260,14 @@ export async function adminAiRoute(
         .all()
     ).results;
     const prompt = JSON.stringify({ topics, typeExamples, questions });
-    let data: any;
-    let output: string;
-    if (config.provider === 'gemini') {
-      data = await providerRequest(
-        config,
-        `models/${encodeURIComponent(config.model.replace(/^models\//, ''))}:generateContent`,
-        options,
-        {
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 8000 },
-        },
-      );
-      output = (data.candidates?.[0]?.content?.parts || [])
-        .filter((p: any) => !p.thought)
-        .map((p: any) => p.text || '')
-        .join('');
-    } else if (config.provider === 'anthropic') {
-      data = await providerRequest(config, 'messages', options, {
-        model: config.model,
-        max_tokens: 8000,
-        system,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      output = (data.content || [])
-        .filter((p: any) => p.type === 'text')
-        .map((p: any) => p.text)
-        .join('');
-    } else {
-      data = await providerRequest(config, 'chat/completions', options, {
-        model: config.model,
-        ...(config.provider === 'openai' ? { max_completion_tokens: 8000 } : { max_tokens: 8000 }),
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-      });
-      output = data.choices?.[0]?.message?.content || '';
-    }
+    const output = await generateReply(
+      config,
+      options,
+      system,
+      [{ role: 'user', content: prompt }],
+      8000,
+      true,
+    );
     let parsed: unknown;
     try {
       parsed = JSON.parse(

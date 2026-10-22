@@ -1,3 +1,11 @@
+import {
+  questionFilters,
+  readQuestionSelection,
+  readSelectedQuestions,
+} from './question-selection';
+import { generateReply, providerModels } from './ai-provider';
+import { aiProviders, type AiProvider } from '../shared/ai';
+import { validateAiConfig } from './admin-ai';
 import type { Database, Statement } from './database.ts';
 import { publicQuestion, query, questionSelect, randomQuestionSql } from './database.ts';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './auth.ts';
@@ -390,6 +398,14 @@ export function createApp(db: Database, options: Options = {}) {
           const user = await session(req);
           return json({ success: true, ...(await contentRoute(db, url, method, body, user)) });
         }
+        if (route === '/api/questions/selection' && method === 'GET') {
+          await session(req, true);
+          return json({ success: true, ...(await readQuestionSelection(db, url)) });
+        }
+        if (route === '/api/questions/selected' && method === 'POST') {
+          await session(req, true);
+          return json({ success: true, items: await readSelectedQuestions(db, body.ids) });
+        }
         if (route === '/api/questions' && method === 'GET') {
           await session(req, true);
           const page = Math.max(
@@ -400,43 +416,7 @@ export function createApp(db: Database, options: Options = {}) {
             1,
             Math.min(50, Math.floor(Number(url.searchParams.get('pageSize')) || 20)),
           );
-          const number = Number(url.searchParams.get('number') || 0);
-          requireValue(
-            Number.isInteger(number) && number >= 0 && number <= 7,
-            'Dạng câu phải từ 1 đến 7.',
-          );
-          const topicId = url.searchParams.get('topicId') || '';
-          const status = url.searchParams.get('status') || 'all';
-          const search = text(url.searchParams.get('search'), 160);
-          requireValue(
-            ['all', 'draft', 'published'].includes(status),
-            'Bộ lọc trạng thái không hợp lệ.',
-          );
-          const conditions = ['q.active=1'];
-          const params: unknown[] = [];
-          if (number) {
-            conditions.push('q.number=?');
-            params.push(number);
-          }
-          if (status !== 'all') {
-            conditions.push('q.published=?');
-            params.push(status === 'published' ? 1 : 0);
-          }
-          if (topicId === 'unassigned')
-            conditions.push(
-              'NOT EXISTS(SELECT 1 FROM question_topics qt WHERE qt.question_id=q.id)',
-            );
-          else if (topicId) {
-            conditions.push(
-              'EXISTS(SELECT 1 FROM question_topics qt WHERE qt.question_id=q.id AND qt.topic_id=?)',
-            );
-            params.push(topicId);
-          }
-          if (search) {
-            conditions.push("(q.label LIKE ? ESCAPE '\\' OR q.statement_raw LIKE ? ESCAPE '\\')");
-            const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
-            params.push(pattern, pattern);
-          }
+          const { conditions, params } = questionFilters(url);
           const where = conditions.join(' AND ');
           const results = await db.batch<Record<string, unknown>>([
             db
@@ -554,13 +534,33 @@ export function createApp(db: Database, options: Options = {}) {
           ]);
           return json({ success: true });
         }
-        if ((route === '/api/ai' || route === '/api/ai/similar') && method === 'POST') {
+        if (['/api/ai', '/api/ai/similar', '/api/ai/models'].includes(route) && method === 'POST') {
           await session(req);
           await limit(`ai:${await tokenHash(cookieToken(req))}`, 10);
+          const provider = body.provider === undefined ? 'gemini' : body.provider;
+          requireValue(Object.hasOwn(aiProviders, provider), 'Nhà cung cấp AI không hợp lệ.');
+          const defaults = aiProviders[provider as AiProvider];
+          const config = validateAiConfig({
+            provider,
+            baseUrl: defaults.baseUrl,
+            model:
+              body.model === undefined
+                ? provider === 'gemini'
+                  ? options.geminiModel || defaults.model
+                  : defaults.model
+                : body.model,
+            apiKey: body.apiKey,
+          });
+          if (!config.apiKey && provider === 'gemini') config.apiKey = options.geminiKey || '';
+          requireValue(
+            config.apiKey,
+            'Hãy nhập API key của nhà cung cấp đã chọn trong Cài đặt.',
+            503,
+          );
+          if (route === '/api/ai/models')
+            return json({ success: true, ...(await providerModels(config, options)) });
           const similar = route.endsWith('/similar'),
-            key = options.geminiKey || text(body.apiKey, 256),
             context = text(body.context, 20_000);
-          requireValue(key, 'Chưa cấu hình Gemini API Key trong Cài đặt.', 503);
           const message = similar
             ? 'Tạo một bài Toán 9 tương tự với số liệu khác, độ khó tương đương. Trả duy nhất LaTeX trong môi trường bt, phải có lời giải đầy đủ trong \\loigiai{...}. Kiểm chứng số liệu và đáp án. Không dùng Markdown.'
             : text(body.message, 5000);
@@ -579,46 +579,21 @@ export function createApp(db: Database, options: Options = {}) {
                       ['user', 'assistant'].includes(m?.role) && typeof m.content === 'string',
                   )
               : [];
-          const contents = history.map((m: any) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content.slice(0, 5000) }],
-          }));
-          while (contents[0]?.role === 'model') contents.shift();
-          contents.push({
+          const messages: { role: 'user' | 'assistant'; content: string }[] = history.map(
+            (m: any) => ({ role: m.role, content: m.content.slice(0, 5000) }),
+          );
+          while (messages[0]?.role === 'assistant') messages.shift();
+          messages.push({
             role: 'user',
-            parts: [{ text: `Đề bài hiện tại:\n${context}\n\nYêu cầu: ${message}` }],
+            content: `Đề bài hiện tại:\n${context}\n\nYêu cầu: ${message}`,
           });
-          const response = await (options.fetchGemini || fetch)(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(options.geminiModel || 'gemini-2.5-flash')}:generateContent`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-              signal: AbortSignal.timeout(45_000),
-              body: JSON.stringify({
-                systemInstruction: {
-                  parts: [
-                    {
-                      text: 'Bạn là trợ giảng Toán 9 bằng tiếng Việt. Gợi ý từng bước; chỉ giải đầy đủ khi học sinh yêu cầu. Giữ nguyên dữ kiện gốc. Khi viết LaTeX, dùng $...$, \\dfrac, \\heva cho hệ phương trình; giữ nguyên cases cho hàm từng đoạn. TikZ mới phải thuần TikZ, không dùng tkz-euclide/pgfplots. Đặt tikzset ngoài hình, giữ dấu chấm thập phân trong tọa độ. Khi soạn bài mới, kiểm chứng mọi dữ kiện và đáp án.',
-                    },
-                  ],
-                },
-                contents,
-                generationConfig: { maxOutputTokens: similar ? 4000 : 2000 },
-              }),
-            },
+          const reply = await generateReply(
+            config,
+            options,
+            'Bạn là trợ giảng Toán 9 bằng tiếng Việt. Gợi ý từng bước; chỉ giải đầy đủ khi học sinh yêu cầu. Giữ nguyên dữ kiện gốc. Khi viết LaTeX, dùng $...$, \\dfrac, \\heva cho hệ phương trình; giữ nguyên cases cho hàm từng đoạn. TikZ mới phải thuần TikZ, không dùng tkz-euclide/pgfplots. Đặt tikzset ngoài hình, giữ dấu chấm thập phân trong tọa độ. Khi soạn bài mới, kiểm chứng mọi dữ kiện và đáp án.',
+            messages,
+            similar ? 4000 : 2000,
           );
-          requireValue(
-            response.ok,
-            response.status === 429
-              ? 'Gemini đang hết hạn mức, vui lòng thử lại sau.'
-              : 'Không thể kết nối Gemini. Kiểm tra API key và model.',
-            response.status === 429 ? 429 : 502,
-          );
-          const payload = (await response.json()) as any;
-          const reply = payload.candidates?.[0]?.content?.parts
-            ?.map((p: any) => p.text || '')
-            .join('');
-          requireValue(reply, 'Gemini chưa trả lời được yêu cầu này.', 502);
           if (!similar) return json({ success: true, reply });
           let parsed;
           try {

@@ -67,7 +67,6 @@ export default function AdminView() {
   useEffect(() => () => worker.current?.terminate(), []);
   useEffect(() => {
     let active = true;
-    setSelection([]);
     setSelectedCodes([]);
     setError('');
     if (tab !== 'questions' && tab !== 'codes') {
@@ -113,9 +112,57 @@ export default function AdminView() {
       active = false;
     };
   }, [tab, refresh]);
+  useEffect(() => {
+    setSelection([]);
+  }, [tab, number, topicFilter, statusFilter, search]);
   function reload() {
+    setSelection([]);
     clearApiCache();
     setRefresh((v) => v + 1);
+  }
+  async function selectAll() {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const ids = await apiService.getQuestionSelection(number, {
+        topicId: topicFilter,
+        status: statusFilter,
+        search,
+      });
+      setSelection(ids);
+      setNotice(`Đã chọn ${ids.length} câu theo bộ lọc trên tất cả các trang.`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function reviewSelected(mode: ReviewMode) {
+    setBusy(true);
+    setError('');
+    try {
+      const items = await apiService.getSelectedQuestions(selection);
+      setReview({ mode, autoClassify: mode === 'classify', questions: items });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updateSelection(work: (ids: string[]) => Promise<unknown>) {
+    for (let i = 0; i < selection.length; i += 100) {
+      const batch = selection.slice(i, i + 100);
+      try {
+        await work(batch);
+      } catch (e) {
+        clearApiCache();
+        setRefresh((v) => v + 1);
+        throw e;
+      }
+      setSelection((current) => current.filter((id) => !batch.includes(id)));
+    }
+    setPage(1);
   }
   async function mutate(work: () => Promise<unknown>, message: string) {
     if (busy) return;
@@ -589,14 +636,33 @@ export default function AdminView() {
                 className="text-button"
                 disabled={busy || !questions.length}
                 onClick={() =>
-                  setSelection(
-                    selection.length === questions.length ? [] : questions.map((q) => q.id),
+                  setSelection((current) =>
+                    questions.every((q) => current.includes(q.id))
+                      ? current.filter((id) => !questions.some((q) => q.id === id))
+                      : [...new Set([...current, ...questions.map((q) => q.id)])],
                   )
                 }
               >
                 Chọn/bỏ chọn trang này
               </button>
+              <button
+                className="btn btn-secondary"
+                disabled={busy || !total}
+                onClick={() => void selectAll()}
+              >
+                Chọn hết
+              </button>
+              <button
+                className="text-button"
+                disabled={busy || !selection.length}
+                onClick={() => setSelection([])}
+              >
+                Bỏ chọn
+              </button>
             </div>
+            <p className="field-help">
+              “Chọn hết” áp dụng cho các câu theo bộ lọc trên tất cả các trang.
+            </p>
             <form
               className="bank-search"
               onSubmit={(e) => {
@@ -624,25 +690,14 @@ export default function AdminView() {
                 <button
                   className="btn btn-secondary"
                   disabled={busy}
-                  onClick={() =>
-                    setReview({
-                      mode: 'normalize',
-                      questions: questions.filter((q) => selection.includes(q.id)),
-                    })
-                  }
+                  onClick={() => void reviewSelected('normalize')}
                 >
                   Chuẩn hóa &amp; kiểm tra câu đã chọn
                 </button>
                 <button
                   className="btn btn-secondary"
                   disabled={busy}
-                  onClick={() =>
-                    setReview({
-                      mode: 'classify',
-                      autoClassify: true,
-                      questions: questions.filter((q) => selection.includes(q.id)),
-                    })
-                  }
+                  onClick={() => void reviewSelected('classify')}
                 >
                   AI phân loại câu đã chọn
                 </button>
@@ -655,7 +710,7 @@ export default function AdminView() {
                 busy={busy}
                 onApply={(changes) =>
                   void mutate(
-                    () => apiService.classifyQuestions(selection, changes),
+                    () => updateSelection((ids) => apiService.classifyQuestions(ids, changes)),
                     'Đã cập nhật phân loại và trạng thái câu hỏi.',
                   )
                 }
@@ -672,9 +727,7 @@ export default function AdminView() {
                   onClick={() => {
                     if (confirm(`Xóa ${selection.length} câu đã chọn?`))
                       void mutate(async () => {
-                        await apiService.deleteQuestions(selection);
-                        if (page > 1 && selection.length === questions.length)
-                          setPage((p) => p - 1);
+                        await updateSelection((ids) => apiService.deleteQuestions(ids));
                       }, 'Đã xóa câu hỏi.');
                   }}
                 >

@@ -1,3 +1,8 @@
+import {
+  getStudentAiSettings,
+  clearStudentAiSettings,
+  type StudentAiSettings,
+} from './studentAiSettings';
 import type { AccessCode, ChatMessage, Question, User } from '../types';
 import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/content';
 import type { AiSettings, AiSuggestion } from '../../shared/ai';
@@ -57,8 +62,11 @@ export async function apiRequest<T = any>(
       throw new ApiError('Máy chủ trả dữ liệu không hợp lệ.', response.status);
     }
     if (!response.ok || data.success !== true) {
-      if (response.status === 401 && !route.startsWith('/auth/'))
+      if (response.status === 401 && route === '/auth/me') clearStudentAiSettings();
+      if (response.status === 401 && !route.startsWith('/auth/')) {
+        clearStudentAiSettings();
         window.dispatchEvent(new Event('auth-expired'));
+      }
       throw new ApiError(data.error || 'Yêu cầu không thành công.', response.status);
     }
     if (body !== undefined && !route.startsWith('/ai')) clearApiCache();
@@ -77,6 +85,9 @@ export async function apiRequest<T = any>(
   return request;
 }
 export const apiService = {
+  async getStudentAiModels(settings: StudentAiSettings): Promise<string[]> {
+    return (await apiRequest('/ai/models', settings)).models;
+  },
   async getAiSettings(): Promise<AiSettings> {
     return (await apiRequest('/admin/ai/settings')).settings;
   },
@@ -122,6 +133,32 @@ export const apiService = {
   async logout() {
     await apiRequest('/auth/logout', {});
     clearApiCache();
+    clearStudentAiSettings();
+  },
+  async getQuestionSelection(
+    number: number,
+    filters: { topicId: string; status: string; search: string },
+  ): Promise<string[]> {
+    let cutoff = '',
+      cursor = '';
+    const ids = new Set<string>();
+    do {
+      const data = await apiRequest<{ ids: string[]; cutoff: string; nextCursor: string | null }>(
+        `/questions/selection?${new URLSearchParams({ number: String(number), ...filters, cutoff, cursor })}`,
+      );
+      data.ids.forEach((id) => ids.add(id));
+      cutoff = data.cutoff;
+      cursor = data.nextCursor || '';
+    } while (cursor);
+    return [...ids];
+  },
+  async getSelectedQuestions(ids: string[]): Promise<Question[]> {
+    const result: Question[] = [];
+    for (let i = 0; i < ids.length; i += 20)
+      result.push(
+        ...(await apiRequest('/questions/selected', { ids: ids.slice(i, i + 20) })).items,
+      );
+    return result;
   },
   async getQuestions(
     page = 1,
@@ -209,16 +246,25 @@ export const apiService = {
     message: string,
     context: string,
     history: ChatMessage[],
-    apiKey: string,
+    apiKey?: string,
   ): Promise<string> {
-    return (await apiRequest('/ai', { message, context, history, apiKey })).reply;
+    return (
+      await apiRequest('/ai', {
+        ...getStudentAiSettings(),
+        message,
+        context,
+        history,
+        ...(apiKey ? { apiKey } : {}),
+      })
+    ).reply;
   },
-  async similarQuestion(question: Question, apiKey: string): Promise<Question> {
+  async similarQuestion(question: Question, apiKey?: string): Promise<Question> {
     return (
       await apiRequest('/ai/similar', {
+        ...getStudentAiSettings(),
         context: question.statementRaw,
         number: question.number,
-        apiKey,
+        ...(apiKey ? { apiKey } : {}),
       })
     ).question;
   },

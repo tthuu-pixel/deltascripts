@@ -209,3 +209,59 @@ test('whole-bank scan crosses all pages regardless of active filters and saves t
     await runtime.close();
   }
 });
+
+test('select all covers every page, loads every selected source and batches changes beyond 100 questions', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { runtime, questions } = await prepare(page, 123);
+  try {
+    await page.getByRole('button', { name: 'Chọn hết', exact: true }).click();
+    await expect(page.locator('.selection-bar')).toContainText('123');
+    await page.getByRole('button', { name: 'Trang sau', exact: true }).click();
+    await expect(page.locator('.bank-question-card input:checked')).toHaveCount(20);
+    await expect(page.locator('.selection-bar')).toContainText('123');
+    await page.getByRole('button', { name: 'Chọn/bỏ chọn trang này', exact: true }).click();
+    await expect(page.locator('.selection-bar')).toContainText('103');
+    await page.getByRole('button', { name: 'Chọn/bỏ chọn trang này', exact: true }).click();
+    await expect(page.locator('.selection-bar')).toContainText('123');
+    await page
+      .getByRole('button', { name: 'Chuẩn hóa & kiểm tra câu đã chọn', exact: true })
+      .click();
+    const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
+    await expect(review.locator('.review-navigation')).toContainText('Bài 1 / 123');
+    page.once('dialog', (dialog) => dialog.accept());
+    await review.getByRole('button', { name: 'Đóng bản duyệt', exact: true }).click();
+    await expect(review).toHaveCount(0);
+    await page.getByLabel('Trạng thái câu hỏi', { exact: true }).selectOption('published');
+    await page.getByRole('button', { name: 'Áp dụng cho 123 câu', exact: true }).click();
+    await expect(page.locator('.notice-success[role=status]')).toContainText('Đã cập nhật');
+    expect(
+      (await runtime.db.prepare('SELECT count(*) AS n FROM questions WHERE published=1').first())!
+        .n,
+    ).toBe(123);
+    await page.getByRole('button', { name: 'Chọn hết', exact: true }).click();
+    await page.getByRole('button', { name: 'Bỏ chọn', exact: true }).click();
+    await expect(page.locator('.selection-bar')).toHaveCount(0);
+    await page.getByLabel('Lọc trạng thái', { exact: true }).selectOption('published');
+    await page.getByRole('button', { name: 'Chọn hết', exact: true }).click();
+    await expect(page.locator('.selection-bar')).toContainText('123');
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Xóa đã chọn (123)', exact: true }).click();
+    await expect(page.locator('.notice-success[role=status]')).toContainText('Đã xóa');
+    expect(
+      (await runtime.db.prepare('SELECT count(*) AS n FROM questions WHERE active=1').first())!.n,
+    ).toBe(0);
+    const saved = (await runtime.db.query('SELECT id,raw,solution_raw FROM questions')).rows;
+    expect(saved).toHaveLength(123);
+    expect(
+      saved.every((row) =>
+        questions.some(
+          (q) => q.id === row.id && q.raw === row.raw && q.solutionRaw === row.solution_raw,
+        ),
+      ),
+    ).toBeTruthy();
+  } finally {
+    await runtime.close();
+  }
+});

@@ -65,7 +65,7 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     await page.getByLabel('API key', { exact: true }).fill('browser-provider-fixture-not-real-key');
     await page.getByRole('button', { name: 'Kiểm tra & lấy model', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Đã kết nối và lấy 1 model');
-    await page.getByLabel('Model', { exact: true }).fill('future-chat-model');
+    await page.getByLabel('Mô hình', { exact: true }).selectOption('future-chat-model');
     await page.getByRole('button', { name: 'Lưu cấu hình AI', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Đã lưu cấu hình AI');
     await expect(page.getByLabel('API key', { exact: true })).toHaveValue('');

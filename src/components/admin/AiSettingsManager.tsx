@@ -1,3 +1,4 @@
+import ModelPicker from '../ModelPicker';
 import { useEffect, useState } from 'react';
 import { aiProviders, type AiProvider, type AiSettings } from '../../../shared/ai';
 import { apiService } from '../../services/apiService';
@@ -159,30 +160,22 @@ export default function AiSettingsManager({
                 }}
               />
             </label>
-            <label className="field">
-              <span>Model</span>
-              <input
-                aria-label="Model"
-                list="admin-ai-models"
-                required
-                maxLength={200}
-                disabled={busy}
-                value={settings.model}
-                onChange={(e) => {
-                  setSettings({ ...settings, model: e.target.value });
-                  setDirty(true);
-                }}
-              />
-              <datalist id="admin-ai-models">
-                {models.map((model) => (
-                  <option key={model} value={model} />
-                ))}
-              </datalist>
-            </label>
+            <ModelPicker
+              key={settings.provider}
+              provider={settings.provider}
+              value={settings.model}
+              models={models}
+              disabled={busy}
+              onChange={(model) => {
+                setSettings({ ...settings, model });
+                setDirty(true);
+              }}
+            />
           </div>
           <p className="field-help">
-            Tên model có thể nhập tự do để dùng các phiên bản mới. Nút kiểm tra lấy danh sách model
-            từ tài khoản API của bạn. Khi đổi nhà cung cấp hoặc Base URL, hãy nhập lại key.
+            Chọn mô hình trong danh sách; mục “Model khác” cho phép nhập phiên bản mới. Nút kiểm tra
+            lấy danh sách model từ tài khoản API của bạn. Khi đổi nhà cung cấp hoặc Base URL, hãy
+            nhập lại key.
           </p>
           <p className="field-help">
             Khi đã lưu cấu hình, AI tự chạy với toàn bộ bản nhập; cũng chạy khi bạn quét kho hoặc

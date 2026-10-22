@@ -6403,3 +6403,35 @@ label.publish-controls {
     gap: 10px;
   }
 }
+
+/* Personal AI settings share the same accessible model selector as admin. */
+.settings-dialog {
+  width: min(620px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.settings-dialog form {
+  display: grid;
+  gap: 16px;
+}
+.settings-dialog .settings-actions {
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+.model-picker label {
+  display: grid;
+  gap: 8px;
+}
+.model-picker {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.model-picker select,
+.model-picker input {
+  width: 100%;
+  min-width: 0;
+}
+.settings-description {
+  color: #657592;
+}
