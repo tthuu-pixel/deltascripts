@@ -311,7 +311,7 @@ export default function StudentView({ user }: { user: User }) {
           }
         >
           {tab === 'topics' && !contentLoading && !contentError && (
-            <Topics topics={topics} intro={contentSettings.topicsIntro} onAsk={openAssistant} />
+            <Topics topics={topics} intro={contentSettings.topicsIntro} />
           )}
           {tab === 'practice' && (
             <>

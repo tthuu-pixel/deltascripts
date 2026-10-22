@@ -5894,21 +5894,19 @@ label.publish-controls {
   font-size: 1.375rem;
   font-weight: 800;
 }
-.topic-type-filters {
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-}
 .topic-question-list {
   display: grid;
   gap: 22px;
 }
-.topic-question-list .exercise-heading h3 {
+.topic-question-list .exercise-heading h4 {
   font-size: 1.125rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
-.topic-question-list .solution-panel h4 {
+.topic-question-list .solution-panel h5 {
+  font-size: 1rem;
   font-weight: 800;
+  color: #4b6eaa;
   margin-bottom: 14px;
 }
 .topics-toolbar {
@@ -6094,7 +6092,8 @@ label.publish-controls {
   line-height: 1.9;
 }
 .topic-exercise {
-  margin-top: 24px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 .topic-practice > .notice {
   margin-top: 20px;
@@ -6102,18 +6101,6 @@ label.publish-controls {
 .topic-practice > .empty-state,
 .topic-practice > .question-loading {
   margin-top: 24px;
-}
-.topic-exercise .exercise-label > div {
-  min-width: 0;
-}
-.topic-exercise .exercise-label h3 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-.topic-exercise .exercise-label small {
-  color: #8495b8;
-  font-size: 0.8125rem;
 }
 .topic-icon-field {
   align-items: flex-start !important;

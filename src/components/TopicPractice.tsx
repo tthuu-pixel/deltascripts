@@ -1,170 +1,149 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import type { Question } from '../types';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { apiService } from '../services/apiService';
 import Icon from './Icons';
+
 const LatexContent = lazy(() => import('./LatexContent'));
-export default function TopicPractice({
-  topicId,
-  count,
-  onAsk,
-}: {
-  topicId: string;
-  count: number;
-  onAsk: (q: Question) => void;
-}) {
-  const [question, setQuestion] = useState<Question | null>(null),
-    [number, setNumber] = useState<number | null>(null),
-    [solution, setSolution] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
-  const requestId = useRef(0);
-  useEffect(
-    () => () => {
-      requestId.current++;
-    },
-    [],
-  );
-  async function load(selected: number) {
-    const id = ++requestId.current;
-    setNumber(selected);
-    setQuestion(null);
-    setSolution(false);
-    setError('');
-    setBusy(true);
-    try {
-      const next = await apiService.getRandomQuestion(selected, topicId);
-      if (requestId.current === id) setQuestion(next);
-    } catch (e) {
-      if (requestId.current === id) setError((e as Error).message);
-    } finally {
-      if (requestId.current === id) setBusy(false);
-    }
-  }
-  async function similar() {
-    if (!question || busy) return;
-    const id = ++requestId.current;
+type QuestionPage = Awaited<ReturnType<typeof apiService.getTopicQuestions>>;
+
+export default function TopicPractice({ topicId }: { topicId: string }) {
+  const [result, setResult] = useState<QuestionPage | null>(null);
+  const [page, setPage] = useState(1);
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let live = true;
     setBusy(true);
     setError('');
-    setSolution(false);
-    let key = '';
-    try {
-      key = sessionStorage.getItem('gemini_api_key') || '';
-    } catch {}
-    try {
-      const next = await apiService.similarQuestion(question, key);
-      if (requestId.current === id) setQuestion(next);
-    } catch (e) {
-      if (requestId.current === id) setError((e as Error).message);
-    } finally {
-      if (requestId.current === id) setBusy(false);
-    }
-  }
+    apiService
+      .getTopicQuestions(topicId, page)
+      .then((data) => {
+        if (!live) return;
+        const last = Math.max(1, Math.ceil(data.total / data.pageSize));
+        if (data.page > last) {
+          setPage(last);
+          return;
+        }
+        setResult(data);
+        setOpened(new Set());
+      })
+      .catch((e) => {
+        if (live) setError((e as Error).message);
+      })
+      .finally(() => {
+        if (live) setBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [topicId, page, attempt]);
+
+  const pages = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
   return (
     <div className="topic-practice">
       <div className="section-heading">
         <div>
           <span className="section-kicker">CÙNG THỬ SỨC</span>
           <h3>Bài tập vận dụng</h3>
-          <p className="muted">{count} câu đã xuất bản · Chọn dạng câu để bắt đầu.</p>
+          <p className="muted">
+            {result && `${result.total} bài tập · `}Tự làm bài rồi mở đáp án để đối chiếu.
+          </p>
         </div>
       </div>
-      <section className="question-picker surface" aria-label="Chọn dạng bài tập vận dụng">
-        <div className="question-choices">
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <button
-              key={n}
-              className={`question-choice ${number === n ? 'active' : ''}`}
-              aria-label={`Câu ${n}`}
-              aria-pressed={number === n}
-              disabled={busy}
-              onClick={() => void load(n)}
-            >
-              <span>{String(n).padStart(2, '0')}</span>
-              <strong>Câu {n}</strong>
-              <Icon name="arrow" size={18} />
-            </button>
-          ))}
-        </div>
-      </section>
-      {error && (
+      {error ? (
         <div className="notice notice-error" role="alert">
           {error}
-          {number !== null && (
-            <button className="text-button" disabled={busy} onClick={() => void load(number)}>
-              Thử lại
-            </button>
-          )}
+          <button className="text-button" onClick={() => setAttempt((value) => value + 1)}>
+            Thử lại
+          </button>
         </div>
-      )}
-      {busy ? (
+      ) : busy ? (
         <div className="surface loading-state question-loading" role="status">
           <span className="loading-dot" />
-          Đang chuẩn bị bài tập…
+          Đang tải bài tập…
         </div>
-      ) : question ? (
+      ) : result?.items.length ? (
         <Suspense fallback={<p role="status">Đang mở bài tập…</p>}>
-          <article className="surface exercise-card topic-exercise">
-            <div className="exercise-heading">
-              <div className="exercise-label">
-                <span className="icon-tile tone-blue">
-                  <Icon name="practice" size={24} />
-                </span>
-                <div>
-                  <small>DẠNG CÂU {question.number}</small>
-                  <h3>{question.label}</h3>
-                </div>
-              </div>
-              <button className="btn btn-quiet" onClick={() => void load(question.number)}>
-                <Icon name="refresh" size={19} />
-                Lấy câu hỏi khác
-              </button>
-            </div>
-            <div className="exercise-body">
-              <LatexContent html={question.statementRaw} preamble={question.latexPreamble} />
-            </div>
-            <div className="exercise-actions">
-              <button
-                className="btn btn-primary"
-                aria-expanded={solution}
-                aria-controls={`topic-solution-${question.id}`}
-                onClick={() => setSolution((value) => !value)}
-              >
-                <Icon name="eye" size={20} />
-                {solution ? 'Ẩn lời giải' : 'Xem lời giải'}
-              </button>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => void similar()}>
-                <Icon name="spark" size={19} />
-                Bài tập tương tự
-              </button>
-              <button className="text-button" onClick={() => onAsk(question)}>
-                <Icon name="spark" size={19} />
-                Hỏi AI về câu này
-              </button>
-            </div>
-            {solution && (
-              <section className="solution-panel" id={`topic-solution-${question.id}`}>
-                <h4>Lời giải chi tiết</h4>
-                <LatexContent
-                  html={question.solutionRaw || 'Chưa có lời giải.'}
-                  preamble={question.latexPreamble}
-                  context={question.statementRaw}
-                />
-              </section>
-            )}
-          </article>
+          <div className="topic-question-list">
+            {result.items.map((question, index) => {
+              const showAnswer = opened.has(question.id);
+              const ordinal = (result.page - 1) * result.pageSize + index + 1;
+              return (
+                <article
+                  key={question.id}
+                  className="surface exercise-card topic-exercise"
+                  aria-labelledby={`topic-exercise-${question.id}`}
+                >
+                  <div className="exercise-heading">
+                    <h4 id={`topic-exercise-${question.id}`}>Bài {ordinal}</h4>
+                  </div>
+                  <div className="exercise-body">
+                    <LatexContent html={question.statementRaw} preamble={question.latexPreamble} />
+                  </div>
+                  <div className="exercise-actions">
+                    <button
+                      className="btn btn-primary"
+                      aria-expanded={showAnswer}
+                      aria-controls={`topic-solution-${question.id}`}
+                      onClick={() => {
+                        setOpened((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(question.id)) next.delete(question.id);
+                          else next.add(question.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      <Icon name="eye" size={20} />
+                      {showAnswer ? 'Ẩn đáp án' : 'Đáp án'}
+                    </button>
+                  </div>
+                  {showAnswer && (
+                    <section className="solution-panel" id={`topic-solution-${question.id}`}>
+                      <h5>Đáp án</h5>
+                      <LatexContent
+                        html={question.solutionRaw || 'Chưa có đáp án.'}
+                        preamble={question.latexPreamble}
+                        context={question.statementRaw}
+                      />
+                    </section>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         </Suspense>
       ) : (
-        !error && (
-          <div className="surface empty-state">
-            <Icon name="practice" size={48} />
-            <h3>{count ? 'Chọn một dạng để luyện tập' : 'Bài tập vận dụng đang được chuẩn bị'}</h3>
-            <p>
-              {count
-                ? 'Chọn Câu 1 đến Câu 7 phía trên. Mỗi lần lấy một bài thuộc chuyên đề này.'
-                : 'Bài tập sẽ xuất hiện khi quản trị viên gắn câu hỏi vào chuyên đề và xuất bản.'}
-            </p>
-          </div>
-        )
+        <div className="surface empty-state">
+          <Icon name="practice" size={48} />
+          <h4>Chưa có bài tập vận dụng</h4>
+          <p>Bài tập sẽ xuất hiện khi quản trị viên gắn câu hỏi vào chuyên đề và xuất bản.</p>
+        </div>
+      )}
+      {result && (pages > 1 || page > 1) && (
+        <nav className="bank-pagination" aria-label="Phân trang bài tập vận dụng">
+          <button
+            className="btn btn-quiet"
+            disabled={busy || page <= 1}
+            onClick={() => setPage((value) => value - 1)}
+          >
+            <Icon name="back" size={19} />
+            Trang trước
+          </button>
+          <span aria-live="polite">
+            Trang {page} / {pages}
+          </span>
+          <button
+            className="btn btn-quiet"
+            disabled={busy || page >= pages}
+            onClick={() => setPage((value) => value + 1)}
+          >
+            Trang sau
+            <Icon name="arrow" size={19} />
+          </button>
+        </nav>
       )}
     </div>
   );

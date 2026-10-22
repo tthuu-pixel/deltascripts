@@ -6,7 +6,7 @@ Mở **`/admin`** và đăng nhập bằng tài khoản quản lý hiện có. T
 
 1. Chọn **Chuyên đề → Tạo chuyên đề**.
 2. Nhập tên, nhóm, mô tả, chọn màu. Bấm nút biểu tượng để mở bảng 50 icon toán cấp 2, chỉ có hình, rồi bấm icon muốn dùng. Nhóm chuyên đề do bạn tự đặt, ví dụ Đại số hoặc Hình học.
-3. Nhập **Lý thuyết** và **Ví dụ** ở hai vùng riêng; mỗi vùng có nút nhập file TeX và xem trước. Cả hai đều là tùy chọn. Khi mở chuyên đề, học sinh có ba tab **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Bài vận dụng có Câu 1–Câu 7, lấy câu khác, xem lời giải, tạo bài tương tự và hỏi AI; câu được lấy trong đúng chuyên đề.
+3. Nhập **Lý thuyết** và **Ví dụ** ở hai vùng riêng; mỗi vùng có nút nhập file TeX và xem trước. Cả hai đều là tùy chọn. Khi mở chuyên đề, học sinh có ba tab **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Bài vận dụng tự hiện danh sách đề bài trong đúng chuyên đề (10 bài mỗi trang), mỗi bài có nút **Đáp án** để mở/ẩn lời giải riêng. Không cần chọn dạng Câu 1–Câu 7 trong tab này; phần **Luyện câu hỏi** vẫn luyện theo dạng câu như trước.
 4. Dùng **Xem trước** để kiểm tra công thức và hình TikZ. File TeX có `document` được tách phần thân và các khai báo hình vẽ; nguồn toán học không bị tự viết lại.
 5. Bấm **Lưu chuyên đề**. Mặc định lưu nháp; bật **Xuất bản chuyên đề cho học sinh** khi muốn cho hiện.
 

@@ -129,10 +129,10 @@ ${body}
     await expect(student.locator('.managed-examples')).toContainText('Ví dụ của thầy');
     await expect(student.locator('.managed-examples .katex')).toBeVisible();
     await student.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
-    await student.getByRole('button', { name: 'Câu 4', exact: true }).click();
-    await expect(student.getByRole('alert')).toContainText('Chưa có bài tập Câu 4');
-    await student.getByRole('button', { name: 'Câu 3', exact: true }).click();
-    await student.getByRole('button', { name: 'Xem lời giải', exact: true }).click();
+    await expect(student.locator('.topic-exercise')).toHaveCount(1);
+    await expect(student.locator('.topic-exercise')).toContainText('Tự biên soạn');
+    await expect(student.locator('.solution-panel')).toHaveCount(0);
+    await student.getByRole('button', { name: 'Đáp án', exact: true }).click();
     await expect(student.locator('.solution-panel')).toContainText('Lời giải do thầy sửa');
     // Bulk assignment uses the same question, without uploading a duplicate.
     await page.getByRole('button', { name: 'Quay lại danh sách', exact: true }).click();

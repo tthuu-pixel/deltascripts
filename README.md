@@ -12,7 +12,7 @@ Học sinh có bốn chức năng: **Chuyên đề**, **Luyện câu hỏi**, **
 
 Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo viên/quản lý hiện có. Bạn tạo chuyên đề, nhập lý thuyết từ TeX (tùy chọn), nhập Word/TeX vào kho câu hỏi, sửa nguồn/lời giải, phân loại theo chuyên đề và dạng Câu 1–Câu 7, rồi chọn xuất bản. Một câu dùng chung cho nhiều chuyên đề, luyện tập và tạo đề; không cần nhập lặp lại. Bài mới mặc định là bản nháp. Câu hỏi và chuyên đề có trạng thái xuất bản riêng; học sinh chỉ nhận nội dung đã xuất bản.
 
-Mỗi chuyên đề có ba mục **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Lý thuyết/ví dụ nhập TeX riêng; bài vận dụng dùng Câu 1–Câu 7 trong đúng chuyên đề. Bảng chọn có 50 icon toán cấp 2, chỉ hiện hình.
+Mỗi chuyên đề có ba mục **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Lý thuyết/ví dụ nhập TeX riêng; bài vận dụng hiển thị danh sách đề bài trong đúng chuyên đề, mỗi bài có nút **Đáp án** để mở/ẩn lời giải. Danh sách tải 10 bài mỗi trang. Bảng chọn có 50 icon toán cấp 2, chỉ hiện hình.
 
 Xem [hướng dẫn quản trị nội dung](docs/curriculum.md). Chuyên đề, bài học, cấu hình tab và câu hỏi nằm trong D1. GitHub lưu mã nguồn, ảnh, phông chữ và tài liệu. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
 

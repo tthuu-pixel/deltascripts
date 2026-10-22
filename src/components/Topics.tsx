@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { ManagedTopic, TopicSummary } from '../../shared/content';
-import type { Question } from '../types';
 import { apiService } from '../services/apiService';
 import Icon from './Icons';
 const TopicPractice = lazy(() => import('./TopicPractice'));
@@ -17,15 +16,7 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .toLowerCase();
-export default function Topics({
-  topics,
-  intro,
-  onAsk,
-}: {
-  topics: TopicSummary[];
-  intro: string;
-  onAsk: (q: Question) => void;
-}) {
+export default function Topics({ topics, intro }: { topics: TopicSummary[]; intro: string }) {
   const [category, setCategory] = useState('Tất cả'),
     [search, setSearch] = useState(''),
     [selected, setSelected] = useState<string | null>(null),
@@ -201,14 +192,7 @@ export default function Topics({
             aria-labelledby="topic-section-practice"
             hidden={section !== 'practice'}
           >
-            {practiceOpened && (
-              <TopicPractice
-                key={selected}
-                topicId={selected}
-                count={current.questionCount}
-                onAsk={onAsk}
-              />
-            )}
+            {practiceOpened && <TopicPractice key={selected} topicId={selected} />}
           </div>
         </Suspense>
       </div>
