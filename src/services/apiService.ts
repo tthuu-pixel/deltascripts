@@ -120,11 +120,13 @@ export const apiService = {
       'id' | 'statementRaw' | 'label' | 'sourceType' | 'raw' | 'exerciseEnvironment'
     >[],
     signal?: AbortSignal,
+    save = false,
   ): Promise<AiSuggestion[]> {
     return (
       await apiRequest(
         '/admin/ai/classify',
         {
+          save,
           questions: questions.map((q) => ({
             id: q.id,
             statementRaw: q.statementRaw,
@@ -136,14 +138,6 @@ export const apiService = {
         signal,
       )
     ).items;
-  },
-  async repairQuestionTopics(
-    questions: Question[],
-    signal?: AbortSignal,
-    save = false,
-  ): Promise<AiSuggestion[]> {
-    return (await apiRequest('/admin/ai/classify', { repair: true, save, questions }, 0, signal))
-      .items;
   },
   async getAiScanPage(
     cutoff = '',

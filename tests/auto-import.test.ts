@@ -67,16 +67,15 @@ test('one-click import saves all valid questions and separates syntax, unmatched
   assert.equal(saved.length, 15);
   assert.equal(result.results.filter((row) => row.state !== 'saved').length, 2);
   assert(sent.includes(input[7].id));
-  assert(sent.includes(input[8].id));
+  assert(!sent.includes(input[8].id));
   assert.equal(saved.find((q) => q.id === input[0].id)!.number, 1);
   assert(saved.every((q) => q.number === original.find((item) => item.id === q.id)!.number));
   assert(saved.every((q) => q.topicIds?.includes(topic.id) && q.published === false));
-  assert(
-    saved.filter((q) => q.id !== input[8].id).every((q) => q.statementRaw.includes('\\dfrac')),
-  );
+  assert(saved.filter((q) => q.id !== input[7].id).every((q) => q.statementRaw.includes('\\frac')));
   for (const q of saved) {
     const source = original.find((item) => item.id === q.id)!;
-    assert.equal(q.originalRaw, source.raw);
+    assert.equal(q.raw, source.raw);
+    assert.equal(q.statementRaw, source.statementRaw);
     assert(q.raw!.startsWith('\\begin{bt}'));
     assert.equal(q.solutionRaw, source.solutionRaw);
   }

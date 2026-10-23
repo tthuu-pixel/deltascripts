@@ -148,7 +148,7 @@ test('upload automatically classifies every question, keeps source labels and ac
   }
 });
 
-test('whole-bank scan repairs every page, saves canonical sources with history and keeps publication', async ({
+test('whole-bank scan only saves topic links and preserves every source and publication status', async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
@@ -161,18 +161,18 @@ test('whole-bank scan repairs every page, saves canonical sources with history a
     const scan = page.getByRole('dialog', { name: 'AI quét toàn bộ kho', exact: true });
     await expect(scan.getByRole('status')).toContainText('Đã quét hết kho', { timeout: 60_000 });
     await expect(scan.locator('.scan-counts')).toContainText('63 / 63');
-    await expect(scan.locator('.scan-counts')).toContainText('Đã phân loại 62');
-    await expect(scan.locator('.scan-counts')).toContainText('Chờ xử lý lại 1');
-    expect(calls).toHaveLength(9);
+    await expect(scan.locator('.scan-counts')).toContainText('Đã phân loại 61');
+    await expect(scan.locator('.scan-counts')).toContainText('Chờ xử lý lại 2');
+    expect(calls).toHaveLength(7);
     expect(calls.every((batch) => batch.length > 0 && batch.length <= 10)).toBeTruthy();
-    expect(new Set(calls.flat()).size).toBe(63);
+    expect(new Set(calls.flat()).size).toBe(62);
     expect(
       (
         await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
           topicId,
         ])
       ).rows,
-    ).toHaveLength(62);
+    ).toHaveLength(61);
     expect(
       (
         await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
@@ -190,14 +190,13 @@ test('whole-bank scan repairs every page, saves canonical sources with history a
       expect(row.number).toBe(original.number);
       expect(row.statement_raw).toBe(original.statementRaw);
       expect(row.solution_raw).toBe(original.solutionRaw);
-      if (!original.statementRaw.includes('Không khớp')) {
-        expect(String(row.raw)).toContain('\\begin{bt}');
-        const revision = await runtime.db
-          .prepare('SELECT snapshot FROM question_revisions WHERE question_id=?')
+      expect(row.raw).toBe(original.raw);
+      expect(
+        (await runtime.db
+          .prepare('SELECT count(*) n FROM question_revisions WHERE question_id=?')
           .bind(row.id)
-          .first();
-        expect(JSON.parse(String(revision!.snapshot)).raw).toBe(original.raw);
-      } else expect(row.raw).toBe(original.raw);
+          .first())!.n,
+      ).toBe(0);
       expect(row.published).toBe(original.published ? 1 : 0);
     }
     for (const width of [320, 390, 768, 1440]) {
@@ -312,8 +311,8 @@ test('one click saves the already scanned import, reuses AI results and publishe
     expect(
       payloads.every(
         (body) =>
-          body.repair === true &&
-          body.questions.every((q: any) => 'solutionRaw' in q && 'raw' in q),
+          body.repair !== true &&
+          body.questions.every((q: any) => !('solutionRaw' in q) && !('raw' in q)),
       ),
     ).toBeTruthy();
     const rows = (
@@ -328,7 +327,7 @@ test('one click saves the already scanned import, reuses AI results and publishe
           row.published === 1 &&
           String(row.statement_raw).includes('\\dfrac') &&
           row.solution_raw === 'Lời giải gốc.' &&
-          String(row.raw).includes('\\dfrac'),
+          String(row.raw).includes('\\frac'),
       ),
     ).toBeTruthy();
     expect(rows.filter((row) => row.number === 1)).toHaveLength(4);
@@ -347,7 +346,7 @@ test('one click saves the already scanned import, reuses AI results and publishe
   }
 });
 
-test('automatic import fixes syntax, converts essay ex, flattens immini and recovers a missing closing tag without manual error handling', async ({
+test('automatic import only assigns topics and preserves syntax, ex, immini, solutions and TikZ', async ({
   page,
 }) => {
   const { runtime, calls, topicId } = await prepare(page, 0);
@@ -376,30 +375,30 @@ test('automatic import fixes syntax, converts essay ex, flattens immini and reco
     ]);
     const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
     await expect(review.getByRole('region', { name: 'Kết quả AI tự động' })).toContainText(
-      '18 / 18',
+      '17 / 17',
     );
     await expect(review.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeEnabled();
     await expect(review.getByRole('region', { name: 'Kết quả kiểm tra' })).toHaveCount(0);
     const rows = (await runtime.db.query('SELECT * FROM questions')).rows;
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(17);
     expect(
-      rows.every(
+      rows.some(
         (q) =>
-          String(q.raw).startsWith('\\begin{bt}') && !String(q.statement_raw).includes('\\immini'),
+          String(q.raw).startsWith('\\begin{ex}') && String(q.statement_raw).includes('\\immini'),
       ),
     ).toBeTruthy();
     expect(rows.some((q) => String(q.statement_raw).includes(drawing))).toBeTruthy();
-    expect(rows.some((q) => q.statement_raw === 'Công thức đã sửa $x+1$.')).toBeTruthy();
+    expect(rows.some((q) => q.statement_raw === 'Công thức lỗi $x+1.')).toBeTruthy();
     expect((await runtime.db.prepare('SELECT count(*) n FROM question_revisions').first())!.n).toBe(
-      18,
+      0,
     );
-    expect(calls.flat()).toHaveLength(18);
+    expect(calls.flat()).toHaveLength(17);
     expect(
       (await runtime.db
         .prepare('SELECT count(*) n FROM question_topics WHERE topic_id=?')
         .bind(topicId)
         .first())!.n,
-    ).toBe(18);
+    ).toBe(17);
   } finally {
     await runtime.close();
   }

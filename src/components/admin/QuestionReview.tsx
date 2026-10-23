@@ -1,4 +1,5 @@
-import { canProcessEssay, normalizeEssayQuestion } from '../../../shared/essayNormalization';
+import { questionEnvironment } from '../../../shared/questionEnvironment';
+import { canProcessEssay } from '../../../shared/essayNormalization';
 import { aiExerciseOnlyMessage } from '../../../shared/questionEnvironment';
 import { runAutoImport, type AutoImportOutcome } from '../../services/autoImport';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
@@ -129,7 +130,21 @@ export default function QuestionReview({
   );
   function update(patch: Partial<Question>) {
     if (savedIds.current.has(current.id)) return;
-    setDrafts((items) => items.map((q) => (q.id === current.id ? { ...q, ...patch } : q)));
+    setDrafts((items) =>
+      items.map((q) => {
+        if (q.id !== current.id) return q;
+        const next = { ...q, ...patch };
+        if (
+          q.sourceType === 'tex' &&
+          (patch.statementRaw !== undefined || patch.solutionRaw !== undefined)
+        ) {
+          const env = questionEnvironment(q) || 'bt';
+          next.originalRaw ||= q.raw;
+          next.raw = `\\begin{${env}}\n${next.statementRaw}\n\\loigiai{${next.solutionRaw}}\n\\end{${env}}`;
+        }
+        return next;
+      }),
+    );
     if (patch.topicIds !== undefined) {
       const next = { ...current, ...patch };
       setOutcomes((old) =>
@@ -225,7 +240,7 @@ export default function QuestionReview({
     setBusy(true);
     setAutoShown(true);
     setError('');
-    setProgress('Đang chuẩn bị nhận dạng, chuẩn hóa và thêm câu hỏi…');
+    setProgress('Đang chuẩn bị nhận dạng chuyên đề và thêm câu hỏi…');
     try {
       const [settings, freshTopics] = await Promise.all([
         apiService.getAiSettings(),
@@ -316,7 +331,7 @@ export default function QuestionReview({
     }
     setBusy(true);
     try {
-      await onApply(remaining.map((q) => (canProcessEssay(q) ? normalizeEssayQuestion(q) : q)));
+      await onApply(remaining);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -459,9 +474,8 @@ export default function QuestionReview({
           <section className="auto-import-options surface" aria-label="Nhập bằng AI">
             <h3>Để AI xử lý toàn bộ</h3>
             <p>
-              AI xử lý bt và chuyển ex tự luận sang bt, bỏ immini, giữ nguyên TikZ, chuẩn hóa và
-              phân theo mô tả ngắn của chuyên đề đã có và thêm vào kho. AI tự sửa mã và lời giải,
-              chọn chuyên đề và lưu các câu hoàn tất.
+              AI chỉ nhận dạng và gắn chuyên đề theo mô tả ngắn, sau đó thêm vào kho. Giữ nguyên mã
+              TeX, lời giải, môi trường và hình vẽ trong nguồn.
             </p>
             <label className="publish-controls">
               <input
@@ -473,8 +487,7 @@ export default function QuestionReview({
               Xuất bản các câu xử lý được
             </label>
             <p className="field-help">
-              Bỏ chọn để lưu nháp. Bản trước khi sửa được lưu lại. AI kiểm tra và sửa lời giải có
-              sẵn, giữ trống nếu nguồn chưa có lời giải.
+              Bỏ chọn để lưu nháp. AI không sửa mã hay chuẩn hóa nội dung.
             </p>
           </section>
         )}

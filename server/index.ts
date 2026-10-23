@@ -15,7 +15,7 @@ export default {
       await processAutomaticImports(env.DB, {
         aiSettingsKey: env.AI_SETTINGS_KEY,
         budgetMs: 50000,
-        maxItems: 4, // Keep each scheduled invocation below the D1 Free query limit.
+        maxItems: 6, // Keep each scheduled invocation below the D1 Free query limit.
       });
       return;
     }
@@ -47,7 +47,7 @@ export default {
                 processAutomaticImports(env.DB, {
                   aiSettingsKey: env.AI_SETTINGS_KEY,
                   budgetMs: 20000,
-                  maxItems: 3,
+                  maxItems: 6,
                 }).catch(() => {}),
               )
           : undefined,

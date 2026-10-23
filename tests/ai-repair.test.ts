@@ -11,7 +11,7 @@ import {
 import { environmentRanges } from '../shared/texSyntax';
 import { createRuntime } from './runtime';
 import { adminAiRoute } from '../server/admin-ai';
-import { validateProsePreserved } from '../server/ai-repair';
+import { repairQuestions, validateProsePreserved } from '../server/ai-repair';
 import { upsertQuestions } from '../server/app';
 import { saveRepairedQuestion } from '../server/question-repair-save';
 import type { Question } from '../src/types';
@@ -128,12 +128,16 @@ test('AI repairs syntax and wrong solution, retries damaged figure tokens, saves
   };
   qid = q.id;
   await upsertQuestions(runtime.db, [q]);
-  const result = (await adminAiRoute(
+  const result = (await repairQuestions(
     runtime.db,
-    '/api/admin/ai/classify',
-    'POST',
-    { repair: true, save: true, questions: [{ id: qid }] },
-    { aiSettingsKey: 'repair-fixture-encryption-secret-32-characters', fetchGemini: fetchMock },
+    { save: true, questions: [{ id: qid }] },
+    {
+      provider: 'deepseek',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-flash',
+      apiKey: 'fixture',
+    },
+    { fetchGemini: fetchMock },
   )) as { items: any[] };
   assert.equal(calls, 2);
   assert.equal(result.items[0].saved, true);
@@ -239,12 +243,16 @@ test('unrepairable AI output stays pending without changing source or inventing 
   q.id = qid;
   await upsertQuestions(runtime.db, [q]);
   const before = (await runtime.db.query('SELECT * FROM questions')).rows;
-  const response = (await adminAiRoute(
+  const response = (await repairQuestions(
     runtime.db,
-    '/api/admin/ai/classify',
-    'POST',
-    { repair: true, save: true, questions: [{ id: qid }] },
-    { aiSettingsKey: 'repair-pending-encryption-secret-32-characters', fetchGemini: fetchMock },
+    { save: true, questions: [{ id: qid }] },
+    {
+      provider: 'deepseek',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-flash',
+      apiKey: 'fixture',
+    },
+    { fetchGemini: fetchMock },
   )) as { items: any[] };
   assert.equal(calls, 3);
   assert.equal(response.items[0].pending, true);

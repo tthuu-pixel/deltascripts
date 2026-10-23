@@ -33,20 +33,18 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 ## Nhập tự động bằng một nút
 
-- Bấm **Tải file · AI tự xuất bản**, chọn file `.tex`. Hệ thống tự sửa, gắn vào chuyên đề đã xuất bản theo mô tả, lưu và xuất bản. Không cần chọn chuyên đề hoặc bấm duyệt. Câu trùng nguồn được nhận diện, không thêm bản sao.
+- Bấm **Tải file · AI tự xuất bản**, chọn file `.tex`. Hệ thống chỉ nhận dạng, gắn vào chuyên đề đã xuất bản theo mô tả, lưu và xuất bản; giữ nguyên nguồn. Không cần chọn chuyên đề hoặc bấm duyệt. Câu trùng nguồn được nhận diện, không thêm bản sao.
 - Nguồn đang gửi được giữ trên trình duyệt; tiến trình AI lưu trên máy chủ. Khi máy chủ nhận đủ, có thể đóng trang. Hệ thống tự chạy tiếp mỗi phút và tự thử lại phần chưa xong. Nếu key/hạn mức dịch vụ không hoạt động, tiến trình chờ; thay cấu hình AI đánh thức tiến trình ngay. Các công cụ duyệt cũ nằm trong phần biên tập thủ công, chỉ dùng khi muốn sửa riêng.
-- Bài `bt` và bài tự luận ghi nhầm `ex` không có `\choice`, `\choiceTF` hoặc lệnh lựa chọn tương đương đều được xử lý. `ex` tự luận được lưu lại bằng `bt`. Trắc nghiệm có lựa chọn, `vd`, Word và nguồn ngoài phạm vi tự luận được bỏ qua trong tự động; vẫn có thể nhập thủ công.
-- `\immini` được bỏ khung, giữ đủ hai đối số và đặt hình giữa. TikZ, khai báo và comment kỹ thuật được khóa khỏi AI, khôi phục nguyên văn; mã hình không bị chuẩn hóa số thập phân hoặc phân số. File thiếu một lệnh đóng ngoài `bt/ex` có thể được phục hồi để xử lý tiếp, với bản ban đầu được lưu lại.
-- Giao diện báo tiến độ, số đã thêm và số chờ xử lý lại. AI tự thử sửa tối đa ba lượt trong thời gian mỗi yêu cầu; kết quả chưa hợp lệ được giữ nguồn, có thể tiếp tục, không giả thành công hoặc ép chọn chuyên đề không liên quan. Lỗi cấu hình/key/mạng vẫn có thông báo để khắc phục. Không thể bảo đảm AI đúng toán học hay phân loại 100%.
+- Bài `bt` và bài tự luận ghi nhầm `ex` không có `\choice`, `\choiceTF` hoặc lệnh lựa chọn tương đương đều được xử lý. `ex` tự luận giữ nguyên môi trường. Trắc nghiệm có lựa chọn, `vd`, Word và nguồn ngoài phạm vi tự luận được bỏ qua trong tự động; vẫn có thể nhập thủ công.
+- Giữ nguyên `immini`, môi trường, mã TeX, lời giải và TikZ. Mã vẽ và comment chỉ được bỏ khỏi bản đề gửi AI để giảm dữ liệu; không đổi nguồn lưu.
+- Giao diện báo tiến độ, số đã thêm và số chờ xử lý lại. AI chỉ trả chuyên đề trong một lượt, không kiểm tra hay sửa toán/cú pháp; kết quả chưa hợp lệ được giữ nguồn, có thể tiếp tục, không giả thành công hoặc ép chọn chuyên đề không liên quan. Lỗi cấu hình/key/mạng vẫn có thông báo để khắc phục. Không thể bảo đảm AI đúng toán học hay phân loại 100%.
 
-## Chuẩn hóa và AI tự sửa
+## Cấu hình và quét AI
 
-- Vào **Cấu hình AI**, chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek, nhập Base URL/API key và chọn model. **Kiểm tra & lấy model** đọc danh sách model từ dịch vụ; dùng **Model khác** để nhập tên mới. Chỉ dùng một cấu hình hoạt động mỗi lần; đổi nhà cung cấp/Base URL cần nhập lại key.
-- AI đọc đề và lời giải, kiểm tra phép tính, điều kiện và thế ngược; không tự đổi dữ kiện hoặc ý hỏi để ép đáp án, không bịa dữ kiện thiếu, không tạo lời giải khi nguồn trống. Bộ kiểm tra chặn thiếu token hình, mất ý hỏi, cắt nội dung quá nhiều, sai ID chuyên đề, ngoặc/môi trường/công thức chưa đóng.
-- Nút **AI quét và sắp xếp toàn bộ kho** quét mọi trang, cả nháp và đã xuất bản, độc lập với bộ lọc. Kết quả hợp lệ được lưu mã mới và chọn lại các chuyên đề phù hợp theo mô tả. Không dùng số Câu 1–7 để phân loại, không tạo chuyên đề mới. Nhãn, số nguồn và trạng thái xuất bản không đổi.
-- Trước khi AI thay mã trong kho, máy chủ lưu snapshot vào lịch sử riêng, rồi cập nhật mã và chuyên đề trong cùng giao dịch. Nếu nguồn hoặc liên kết vừa được chỉnh ở nơi khác, không ghi đè kết quả cũ. Nguồn mới nằm trong `raw`; nguồn trước khi sửa nằm trong lịch sử quản trị, không bị gửi cho học sinh. Bản nhập có **Nguồn gốc để đối chiếu** để xem nguồn ban đầu.
-- Quét kho dùng mốc bắt đầu/con trỏ ổn định, đọc 50 câu/trang; câu mới sau mốc để lần quét sau. Một lượt nhận tối đa 10 câu, tự chia phần dài, khóa hình để giảm dữ liệu gửi AI; không cắt nguồn rồi đoán. Mỗi yêu cầu có giới hạn thời gian, phần chưa xong còn chờ thử lại; khi gặp hạn mức có thể chờ một phút và thử lại tối đa hai lần/lượt.
-- Chuẩn hóa thủ công vẫn có **Chuẩn hóa & kiểm tra câu đã chọn** và phần đối chiếu cú pháp. Lịch sử chỉ quản trị đọc qua `GET /api/admin/ai/revisions?questionId=...`.
+- Vào **Cấu hình AI**, chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek, nhập Base URL/API key và chọn model. **Kiểm tra & lấy model** đọc danh sách model từ dịch vụ.
+- Nút **AI quét và sắp xếp toàn bộ kho** đọc mọi trang, gồm nháp và đã xuất bản. AI chỉ chọn chuyên đề theo mô tả; chỉ lưu liên kết chuyên đề, giữ nguyên nguồn và trạng thái xuất bản. Không phân loại theo Câu 1–7 hoặc tạo chuyên đề mới.
+- Chuyên đề chưa có mô tả không được chọn. Phân loại không khớp hoặc lỗi dịch vụ giữ nguồn để tự thử lại. Không ép gắn chuyên đề không liên quan.
+- Biên tập, đối chiếu và chuẩn hóa thủ công vẫn nằm trong phần tùy chọn. Không có sửa mã/chuẩn hóa bằng AI.
 
 ## Nội dung Góc học tập
 

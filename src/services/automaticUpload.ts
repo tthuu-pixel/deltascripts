@@ -111,7 +111,7 @@ export async function sendAutomaticUpload(
   options.onProgress(
     total,
     total,
-    'Máy chủ đã nhận đủ. AI sẽ tự sửa, phân chuyên đề và xuất bản; bạn có thể đóng trang.',
+    'Máy chủ đã nhận đủ. AI sẽ tự phân chuyên đề và xuất bản; bạn có thể đóng trang.',
   );
   return draft.id;
 }

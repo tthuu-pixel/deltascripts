@@ -25,12 +25,14 @@ async function upload(db: any, questions: any[], id = crypto.randomUUID()) {
   return id;
 }
 
-test('automatic imports repair, classify and publish without approval; repeated receipts and uploads do not duplicate sources', async (t) => {
+test('automatic imports only classify and publish unchanged sources without approval; repeated receipts and uploads do not duplicate sources', async (t) => {
   const topic = crypto.randomUUID();
   let calls = 0;
   const fetchMock: typeof fetch = async (_url, init) => {
     calls++;
     const data = JSON.parse(JSON.parse(String(init?.body)).messages.at(-1).content);
+    assert(!String(init?.body).includes('\\\\draw'));
+    assert(data.questions.every((q: any) => !('solution' in q)));
     assert.equal(data.topics.length, 1); // Unpublished topics cannot receive automatic publication.
     return Response.json({
       choices: [
@@ -42,6 +44,7 @@ test('automatic imports repair, classify and publish without approval; repeated 
                 statementRaw: q.statement,
                 solutionRaw: q.solution,
                 topicIds: [topic],
+                reason: 'Đã nhận dạng chuyên đề.',
               })),
             }),
           },
@@ -88,8 +91,9 @@ test('automatic imports repair, classify and publish without approval; repeated 
   assert.equal(job.waiting, 0);
   const saved = (await db.query('SELECT * FROM questions')).rows[0];
   assert.equal(saved.published, 1);
-  assert(String(saved.raw).startsWith('\\begin{bt}'));
-  assert(!String(saved.raw).includes('\\immini'));
+  assert.equal(saved.raw, source);
+  assert.equal(saved.statement_raw, essay.statementRaw);
+  assert.equal(saved.solution_raw, essay.solutionRaw);
   assert(
     String(saved.raw).includes(String.raw`\begin{tikzpicture}\draw (0,0)--(1,1);\end{tikzpicture}`),
   );
@@ -179,6 +183,7 @@ test('AI service errors preserve the uploaded batch and automatically retry afte
                   statementRaw: q.statement,
                   solutionRaw: q.solution,
                   topicIds: [topic],
+                  reason: 'Đã nhận dạng chuyên đề.',
                 })),
               }),
             },
@@ -404,6 +409,7 @@ test('each default background run and upload part stays within the D1 Free query
                   statementRaw: q.statement,
                   solutionRaw: q.solution,
                   topicIds: [topic],
+                  reason: 'Đã nhận dạng chuyên đề.',
                 })),
               }),
             },
@@ -413,5 +419,89 @@ test('each default background run and upload part stays within the D1 Free query
     },
   });
   assert(queries <= 45, `Background run used ${queries} queries.`);
-  assert.equal((await automaticImportJobs(runtime.db))[0].published, 4);
+  assert.equal((await automaticImportJobs(runtime.db))[0].published, 6);
+});
+
+test('legacy repair flags only save topic links, ignoring model-provided code and preserving malformed source', async (t) => {
+  const runtime = await createRuntime();
+  t.after(() => runtime.close());
+  const db = runtime.db,
+    topic = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO topics(id,title,description,published) VALUES(?,'Đại số','Tính biểu thức',1)",
+    )
+    .bind(topic)
+    .run();
+  await adminAiRoute(
+    db,
+    '/api/admin/ai/settings',
+    'POST',
+    {
+      provider: 'deepseek',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-chat',
+      apiKey: 'fixture',
+      version: 0,
+    },
+    { aiSettingsKey: secret },
+  );
+  const q = parseTexText(
+    String.raw`\begin{ex}Tính $\frac{1}{2}.\immini{Hình.}{\begin{tikzpicture}\draw (0,0)--(1,1);\end{tikzpicture}}\loigiai{Nguồn đáp án sai cũng giữ nguyên.}\end{ex}`,
+  )[0];
+  const { upsertQuestions } = await import('../server/question-storage');
+  await upsertQuestions(db, [q]);
+  const before = (await db.query('SELECT * FROM questions')).rows;
+  const response = await adminAiRoute(
+    db,
+    '/api/admin/ai/classify',
+    'POST',
+    { repair: true, save: true, questions: [q] },
+    {
+      aiSettingsKey: secret,
+      fetchGemini: async (_url, init) => {
+        const data = JSON.parse(JSON.parse(String(init?.body)).messages.at(-1).content);
+        assert.deepEqual(Object.keys(data.questions[0]).sort(), ['id', 'statement']);
+        assert(!String(init?.body).includes('Nguồn đáp án sai'));
+        assert(!String(init?.body).includes('\\\\draw'));
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: [
+                    {
+                      id: q.id,
+                      topicIds: [topic],
+                      reason: 'Chỉ nhận dạng.',
+                      statementRaw: 'Không được lưu',
+                      solutionRaw: 'Không được lưu',
+                      question: { statementRaw: 'Không được lưu' },
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        });
+      },
+    },
+  );
+  assert.deepEqual((await db.query('SELECT * FROM questions')).rows, before);
+  assert.equal((await db.query('SELECT topic_id FROM question_topics')).rows[0].topic_id, topic);
+  assert.equal((await db.query('SELECT id FROM question_revisions')).rows.length, 0);
+  assert('items' in response && !('question' in response.items![0]));
+});
+
+test('older normalized upload drafts are restored from their retained original before classification', async () => {
+  const original = parseTexText(
+    String.raw`\begin{ex}Tính $\frac{1}{2}$.\immini{Đề.}{Hình.}\loigiai{$3$.}\end{ex}`,
+  )[0];
+  const normalized = normalizeEssayQuestion(original);
+  const { uploadedQuestion } = await import('../shared/uploadedQuestion');
+  const restored = uploadedQuestion(normalized);
+  assert.equal(restored.id, original.id);
+  assert.equal(restored.raw, original.raw);
+  assert.equal(restored.statementRaw, original.statementRaw);
+  assert.equal(restored.solutionRaw, original.solutionRaw);
 });

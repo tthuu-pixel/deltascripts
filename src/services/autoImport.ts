@@ -1,9 +1,8 @@
-import { canProcessEssay, normalizeEssayQuestion } from '../../shared/essayNormalization';
+import { canProcessEssay } from '../../shared/essayNormalization';
 import { aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
 import type { Question } from '../types';
 import type { AiSuggestion } from '../../shared/ai';
 import type { TopicSummary } from '../../shared/content';
-import { inspectTex } from '../../shared/importReview';
 import { apiService } from './apiService';
 import { applySuggestion, scanQuestions, type ScanProgress } from './autoClassify';
 
@@ -38,14 +37,6 @@ export function autoImportIssue(
   checkClassification = true,
 ): string {
   if (!question.statementRaw.trim()) return 'Thiếu đề bài.';
-  if (question.sourceType === 'tex') {
-    const errors = [
-      ...inspectTex(question.statementRaw),
-      ...inspectTex(question.solutionRaw),
-    ].filter((issue) => issue.severity === 'error');
-    if (errors.length)
-      return errors.map((issue) => `Dòng ${issue.line}: ${issue.message}`).join(' ');
-  }
   if (new TextEncoder().encode(JSON.stringify(question)).length > 1_400_000)
     return 'Nguồn hoặc ảnh của câu này quá lớn; cần giảm kích thước trước khi thêm.';
   if (!checkClassification) return '';
@@ -152,16 +143,11 @@ export async function runAutoImport(
         continue;
       }
       try {
-        let q: Question;
-        try {
-          q = normalizeEssayQuestion(source);
-        } catch {
-          q = { ...source };
-        }
+        const q = { ...source };
         q.topicIds = [...new Set([...(q.topicIds || []), ...(options.topicIds || [])])];
         q.published = options.published;
         options.onQuestion(q);
-        // Syntax errors go to AI for repair instead of stopping before the model sees them.
+        // Classification does not validate or modify TeX syntax.
         if (!autoImportIssue(q, allowed) && options.resolvedIds?.has(q.id)) known.push(q);
         else prepared.push(q);
       } catch (error) {

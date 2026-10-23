@@ -2,9 +2,10 @@ import { generateReply, providerModels } from './ai-provider';
 import type { Database } from './database';
 import { HttpError, requireValue } from './errors';
 import { aiProviders, type AiProvider, type AiSettings, type AiSuggestion } from '../shared/ai';
-import { sourceEnvironment } from '../shared/questionEnvironment';
 import { readAiScanPage } from './ai-scan';
-import { repairQuestions } from './ai-repair';
+import { canProcessEssay } from '../shared/essayNormalization';
+import { protectedRanges } from '../shared/importReview';
+import { membershipStatements } from './content';
 
 interface StoredSettings {
   provider: AiProvider;
@@ -16,7 +17,7 @@ interface StoredSettings {
 export interface AdminAiOptions {
   aiSettingsKey?: string;
   fetchGemini?: typeof fetch;
-  repairBudgetMs?: number;
+  requestTimeoutMs?: number;
   publishedTopicsOnly?: boolean;
 }
 export function validateAiConfig(body: any) {
@@ -227,17 +228,14 @@ export async function adminAiRoute(
       Array.isArray(body.questions) && body.questions.length > 0 && body.questions.length <= 10,
       'Mỗi lượt AI nhận từ 1 đến 10 câu.',
     );
-    if (body.repair === true) {
-      const config = await credentials(
-        { provider: row.provider, baseUrl: row.base_url, model: row.model },
-        row,
-        options.aiSettingsKey,
-      );
-      return repairQuestions(db, body, config, options);
-    }
+    // Ignore legacy repair flags: this endpoint only returns topic metadata.
+    requireValue(
+      body.save === undefined || typeof body.save === 'boolean',
+      'Chế độ lưu không hợp lệ.',
+    );
     const ids: string[] = [];
     let size = 0;
-    const questions = body.questions.map((q: any) => {
+    const questions: { id: string; statement: string }[] = body.questions.map((q: any) => {
       requireValue(
         q &&
           typeof q.id === 'string' &&
@@ -245,21 +243,20 @@ export async function adminAiRoute(
           !ids.includes(q.id) &&
           typeof q.statementRaw === 'string' &&
           q.statementRaw.trim() &&
-          q.statementRaw.length <= 20_000,
+          q.statementRaw.length <= 1_000_000,
         'Câu hỏi gửi AI không hợp lệ hoặc vượt 20.000 ký tự.',
       );
       ids.push(q.id);
-      size += q.statementRaw.length;
-      return {
-        id: q.id,
-        statement: q.statementRaw,
-      };
+      const statement = classificationText(q.statementRaw);
+      requireValue(statement.length <= 20_000, 'Đề bài quá dài để phân chuyên đề trong một lượt.');
+      size += statement.length;
+      return { id: q.id, statement };
     });
     requireValue(size <= 80_000, 'Lượt phân loại vượt 80.000 ký tự. Hãy chọn ít câu hơn.');
     const storedQuestions = (
       await db
         .prepare(
-          `SELECT id,source_type,substr(raw,1,2048) AS sourceHeader FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
+          `SELECT id,source_type,raw,statement_raw FROM questions WHERE active=1 AND id IN (${ids.map(() => '?').join(',')})`,
         )
         .bind(...ids)
         .all()
@@ -267,18 +264,35 @@ export async function adminAiRoute(
     requireValue(
       body.questions.every((q: any) => {
         const stored = storedQuestions.find((item) => item.id === q.id);
-        return stored
-          ? stored.source_type === 'tex' &&
-              sourceEnvironment(String(stored.sourceHeader || '')) === 'bt'
-          : q.exerciseEnvironment === 'bt';
+        return canProcessEssay({
+          sourceType: stored ? (stored.source_type as 'tex' | 'word') : q.sourceType || 'tex',
+          raw: stored ? String(stored.raw || '') : q.raw,
+          exerciseEnvironment: q.exerciseEnvironment,
+          statementRaw: stored ? String(stored.statement_raw || '') : q.statementRaw,
+        });
       }),
-      'Chế độ phân loại cũ chỉ nhận môi trường bt. Dùng AI tự sửa để xử lý ex tự luận.',
+      'AI chỉ phân chuyên đề cho bt hoặc ex tự luận không có lựa chọn đáp án.',
     );
+    requireValue(
+      !body.save || storedQuestions.length === ids.length,
+      'Câu hỏi đã thay đổi hoặc bị xóa.',
+      409,
+    );
+    // Use current stored statements when classifying the bank, never an untrusted stale body.
+    for (const q of questions) {
+      const current = storedQuestions.find((item) => item.id === q.id);
+      if (current) q.statement = classificationText(String(current.statement_raw));
+    }
 
+    requireValue(
+      questions.every((q) => q.statement.length <= 20000) &&
+        questions.reduce((n, q) => n + q.statement.length, 0) <= 80000,
+      'Đề bài quá dài để phân chuyên đề trong một lượt.',
+    );
     const topics = (
       await db
         .prepare(
-          "SELECT id,title,category,description FROM topics WHERE trim(description)!='' ORDER BY position,id LIMIT 500",
+          `SELECT id,title,category,description FROM topics WHERE trim(description)!='' ${options.publishedTopicsOnly ? 'AND published=1' : ''} ORDER BY position,id LIMIT 500`,
         )
         .all()
     ).results;
@@ -316,13 +330,32 @@ export async function adminAiRoute(
         'AI chưa trả được JSON phân loại hợp lệ. Chưa có dữ liệu nào được lưu.',
       );
     }
-    return {
-      items: validateSuggestions(
-        parsed,
-        ids,
-        topics.map((t) => t.id as string),
-      ),
-    };
+    const items = validateSuggestions(
+      parsed,
+      ids,
+      topics.map((t) => t.id as string),
+    );
+    if (body.save) {
+      const assigned = items.filter((item) => item.topicIds.length);
+      if (assigned.length) await db.batch(membershipStatements(db, assigned, 'replace'));
+    }
+    return { items };
   }
   throw new HttpError(404, 'Không tìm thấy chức năng AI.');
+}
+
+// Only the compact classification prompt omits drawing code/comments. Stored TeX stays exact.
+export function classificationText(source: string) {
+  try {
+    let cursor = 0,
+      text = '';
+    for (const range of protectedRanges(source)) {
+      if (range.start < cursor) continue;
+      text += source.slice(cursor, range.start) + ' ';
+      cursor = range.end;
+    }
+    return (text + source.slice(cursor)).trim();
+  } catch {
+    return source;
+  }
 }

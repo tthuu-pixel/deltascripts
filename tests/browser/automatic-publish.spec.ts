@@ -112,6 +112,10 @@ test('only uploading a file is required; server resumes after closing the page a
       (await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [topic]))
         .rows,
     ).toHaveLength(26);
+    const storedSources = (await runtime.db.query('SELECT raw FROM questions')).rows
+      .map((q) => String(q.raw))
+      .sort();
+    expect(storedSources).toEqual(tex.split('\n').sort());
     await page.goto('/admin');
     await expect(panel.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
     await expect(panel).toContainText('26 / 26');

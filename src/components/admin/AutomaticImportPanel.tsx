@@ -16,7 +16,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     running = useRef(false);
   const [uploading, setUploading] = useState(false),
     [message, setMessage] = useState(
-      'Chỉ cần đưa file lên. AI tự sửa mã, chọn chuyên đề, lưu và xuất bản.',
+      'Chỉ cần đưa file lên. AI chỉ nhận dạng, gắn chuyên đề và tự xuất bản.',
     );
   const [progress, setProgress] = useState({ received: 0, total: 0 }),
     [jobs, setJobs] = useState<AutomaticImportJob[]>([]),
@@ -113,7 +113,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           reader.current = null;
           reject(new Error('Chưa đọc được nội dung tệp.'));
         };
-        worker.postMessage(files);
+        worker.postMessage({ files, preserveSource: true });
       });
       // Derived previews duplicate drawing data; queue the original source and parsed bodies only.
       const questions = parsed.questions.map(({ rawTikzBlocks, rawImageRefs, ...q }) => q);
@@ -138,7 +138,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     <section className="surface automatic-publish-panel" aria-label="Tải file để AI tự xuất bản">
       <span className="section-kicker">TẢI FILE LÀ XONG</span>
       <h2>AI lo phần còn lại</h2>
-      <p>Đọc file → sửa mã → gắn chuyên đề → xuất bản cho học sinh.</p>
+      <p>Đọc file → nhận dạng chuyên đề → tự gắn và xuất bản.</p>
       <div
         className="import-dropzone"
         onDragOver={(e) => e.preventDefault()}
@@ -191,8 +191,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         </p>
       )}
       <p className="field-help">
-        Giữ nguyên TikZ; tự chuyển ex tự luận sang bt và bỏ khung immini. Nguồn trước khi sửa được
-        lưu lại.
+        Giữ nguyên mã TeX, lời giải và TikZ. AI chỉ phân chuyên đề, không sửa hay chuẩn hóa nguồn.
       </p>
       {jobs.length > 0 && (
         <div className="automatic-job-list" aria-label="Tiến trình xuất bản tự động">

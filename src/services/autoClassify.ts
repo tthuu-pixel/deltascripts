@@ -33,20 +33,7 @@ export function waitForQuota(ms: number, signal: AbortSignal) {
 export function applySuggestion(question: Question, suggestion: AiSuggestion): Question {
   return {
     ...question,
-    ...(suggestion.question
-      ? {
-          aiRepaired: true,
-          statementRaw: suggestion.question.statementRaw,
-          solutionRaw: suggestion.question.solutionRaw,
-          raw: suggestion.question.raw,
-          originalRaw: suggestion.question.originalRaw,
-          exerciseEnvironment: suggestion.question.exerciseEnvironment,
-          sourceLength: suggestion.question.statementRaw.length,
-        }
-      : {}),
-    topicIds: suggestion.question
-      ? suggestion.topicIds
-      : [...new Set([...(question.topicIds || []), ...suggestion.topicIds])],
+    topicIds: [...new Set([...(question.topicIds || []), ...suggestion.topicIds])],
   };
 }
 
@@ -57,7 +44,7 @@ export async function scanQuestions(
   options: {
     signal: AbortSignal;
     completed?: Set<string>;
-    saveRepairs?: boolean;
+    saveTopics?: boolean;
     suggest?: (questions: Question[], signal: AbortSignal) => Promise<AiSuggestion[]>;
     apply: (
       question: Question,
@@ -88,7 +75,7 @@ export async function scanQuestions(
       finish(q, 'skipped', aiExerciseOnlyMessage);
       continue;
     }
-    if (!q.statementRaw.trim() || q.statementRaw.length > 1_000_000) {
+    if (!q.statementRaw.trim() || q.statementRaw.length > 20_000) {
       finish(q, 'failed', 'Nguồn đang chờ xử lý lại; hệ thống giữ nguyên dữ liệu.');
       continue;
     }
@@ -111,7 +98,7 @@ export async function scanQuestions(
         try {
           suggestions = await (
             options.suggest ||
-            ((items, signal) => apiService.repairQuestionTopics(items, signal, options.saveRepairs))
+            ((items, signal) => apiService.suggestQuestionTopics(items, signal, options.saveTopics))
           )(current, signal);
           break;
         } catch (e) {

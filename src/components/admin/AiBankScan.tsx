@@ -78,9 +78,9 @@ export default function AiBankScan({
         const scanned = await scanQuestions(page.items, {
           signal: abort.signal,
           completed: completed.current,
-          saveRepairs: true,
+          saveTopics: true,
           apply: async () => {
-            /* Repaired code and topic links are saved atomically by the server. */
+            /* Only topic links are saved by the server; source stays unchanged. */
           },
           onOutcome: (outcome) => {
             results.current.set(outcome.id, outcome);
@@ -116,7 +116,7 @@ export default function AiBankScan({
             setStatus(
               progress.waiting
                 ? 'Đang chờ hạn mức AI, sẽ tự tiếp tục sau một phút…'
-                : `Đã xử lý ${results.current.size} câu. Đang tự sửa mã, kiểm tra và chọn chuyên đề…`,
+                : `Đã xử lý ${results.current.size} câu. Đang nhận dạng và gắn chuyên đề…`,
             ),
         });
         if (abort.signal.aborted) break;
@@ -133,7 +133,7 @@ export default function AiBankScan({
       setStatus(
         abort.signal.aborted
           ? 'Đã dừng. Các câu đã gắn chuyên đề được giữ nguyên.'
-          : 'Đã quét hết kho tại thời điểm bắt đầu. Các câu xử lý thành công đã được sửa mã và lưu vào chuyên đề.',
+          : 'Đã quét hết kho tại thời điểm bắt đầu. Các câu phân loại thành công đã được gắn chuyên đề.',
       );
     } catch (e) {
       if (abort.signal.aborted) setStatus('Đã dừng. Bấm tiếp tục để quét phần còn lại.');
@@ -190,8 +190,8 @@ export default function AiBankScan({
       <div className="preview-body">
         <p>
           Dựa vào mô tả ngắn của mỗi chuyên đề để quét mọi câu trên mọi trang, gồm bản nháp và bài
-          đã xuất bản. AI tự sửa mã, kiểm tra lời giải và lưu chuyên đề phù hợp. Nguồn trước khi sửa
-          được lưu lại.
+          đã xuất bản. AI chỉ nhận dạng và lưu chuyên đề phù hợp; mã TeX, lời giải và hình vẽ giữ
+          nguyên.
         </p>
         <p className="field-help">{aiExerciseOnlyMessage}</p>
         <p className="notice notice-success" role="status">

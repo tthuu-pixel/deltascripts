@@ -203,7 +203,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
       'Trắc nghiệm',
       'tex',
       'Không phân loại.',
-      String.raw`\begin{ex}Không phân loại.\end{ex}`,
+      String.raw`\begin{ex}Không phân loại.\choice{A}{B}{C}{D}\end{ex}`,
     )
     .run();
   const callsBeforeExclusion = calls;
@@ -213,12 +213,20 @@ test('admin-only encrypted settings and four provider adapters return suggestion
     admin,
   );
   assert.equal(excluded.status, 400);
-  assert.match(excluded.data.error, /môi trường bt/);
+  assert.match(excluded.data.error, /bt hoặc ex tự luận/);
   assert.equal(
     (
       await req(
         '/admin/ai/classify',
-        { questions: [{ ...question, exerciseEnvironment: 'ex' }] },
+        {
+          questions: [
+            {
+              ...question,
+              exerciseEnvironment: 'ex',
+              statementRaw: String.raw`Chọn.\choice{A}{B}{C}{D}`,
+            },
+          ],
+        },
         admin,
       )
     ).status,

@@ -1,9 +1,10 @@
 import type { Database, Statement } from './database';
 import type { Question } from '../src/types';
 import type { AutomaticImportJob } from '../shared/automaticImport';
-import { canProcessEssay, normalizeEssayQuestion } from '../shared/essayNormalization';
+import { canProcessEssay } from '../shared/essayNormalization';
+import { uploadedQuestion } from '../shared/uploadedQuestion';
 import { validateQuestion } from './question-storage';
-import { adminAiRoute, type AdminAiOptions } from './admin-ai';
+import { adminAiRoute, classificationText, type AdminAiOptions } from './admin-ai';
 import { HttpError, requireValue } from './errors';
 
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9-]{36}$/i.test(v);
@@ -104,7 +105,8 @@ export async function automaticImportsRoute(
       'Mỗi lần nhận từ 1 đến 15 câu.',
     );
     const statements: Statement[] = [];
-    for (const q of body.items as Question[]) {
+    for (const input of body.items as Question[]) {
+      const q = uploadedQuestion(input);
       validateQuestion(q);
       const hash = await automaticSourceHash(q);
       const eligible = canProcessEssay(q);
@@ -177,7 +179,7 @@ interface Lease {
 export async function claimAutomaticImports(
   db: Database,
   now = Date.now(),
-  limit = 3,
+  limit = 6,
 ): Promise<Lease[]> {
   const token = crypto.randomUUID();
   const result = await db
@@ -224,7 +226,7 @@ export async function publishAutomaticImport(db: Database, lease: Lease, q: Ques
       .bind(q.id, JSON.stringify(q.topicIds || []), ...guard),
     db
       .prepare(
-        `INSERT INTO question_revisions(id,question_id,snapshot,reason) SELECT ?,?,?,'Nguồn tệp tải lên trước khi AI tự sửa và xuất bản' WHERE ${owns}`,
+        `INSERT INTO question_revisions(id,question_id,snapshot,reason) SELECT ?,?,?,'Nguồn tệp tải lên trước khi AI phân chuyên đề và xuất bản' WHERE ${owns}`,
       )
       .bind(q.id + ':automatic', q.id, history, ...guard),
     db.prepare(`UPDATE questions SET published=1 WHERE id=? AND ${owns}`).bind(q.id, ...guard),
@@ -260,18 +262,18 @@ export async function processAutomaticImports(
 ) {
   const deadline = Date.now() + (options.budgetMs || 50000);
   let processed = 0;
-  while (Date.now() < deadline - 3000 && processed < (options.maxItems || 4)) {
+  while (Date.now() < deadline - 3000 && processed < (options.maxItems || 6)) {
     const leases = await claimAutomaticImports(
       db,
       Date.now(),
-      Math.min(3, (options.maxItems || 4) - processed),
+      Math.min(6, (options.maxItems || 6) - processed),
     );
     if (!leases.length) break;
     const pending: Lease[] = [];
     // Adopt a matching published source from older imports, avoiding duplicates when retrying an old file.
     for (const lease of leases) {
       try {
-        const q = normalizeEssayQuestion(JSON.parse(lease.payload));
+        const q = uploadedQuestion(JSON.parse(lease.payload));
         const match = await db
           .prepare(
             `SELECT q.id FROM questions q WHERE q.active=1 AND q.published=1 AND q.label=? AND q.source_type=? AND q.statement_raw=? AND q.solution_raw=? AND q.latex_preamble=?
@@ -290,9 +292,14 @@ export async function processAutomaticImports(
           continue;
         }
       } catch {
-        /* Let AI attempt malformed prose; executable drawings remain protected. */
+        /* Failed duplicate lookup must not alter the uploaded source. */
       }
-      pending.push(lease);
+      if (
+        classificationText(uploadedQuestion(JSON.parse(lease.payload)).statementRaw).length > 20000
+      ) {
+        await retryAutomaticImport(db, lease, 'Đề bài quá dài để phân chuyên đề trong một lượt.');
+        processed++;
+      } else pending.push(lease);
     }
     if (!pending.length) continue;
     try {
@@ -300,33 +307,38 @@ export async function processAutomaticImports(
         db,
         '/api/admin/ai/classify',
         'POST',
-        { repair: true, save: false, questions: pending.map((l) => JSON.parse(l.payload)) },
+        { questions: pending.map((l) => uploadedQuestion(JSON.parse(l.payload))) },
         {
           ...options,
           publishedTopicsOnly: true,
-          repairBudgetMs: Math.max(2000, Math.min(43000, deadline - Date.now() - 1000)),
+          requestTimeoutMs: Math.max(2000, Math.min(43000, deadline - Date.now() - 1000)),
         },
       )) as { items: import('../shared/ai').AiSuggestion[] };
+      const topicIds = [...new Set(reply.items.flatMap((item) => item.topicIds))];
+      const publishedTopics = new Set(
+        topicIds.length
+          ? (
+              await db
+                .prepare(
+                  `SELECT id FROM topics WHERE published=1 AND id IN (${topicIds.map(() => '?').join(',')})`,
+                )
+                .bind(...topicIds)
+                .all()
+            ).results.map((t) => String(t.id))
+          : [],
+      );
       for (const lease of pending) {
         const item = reply.items.find((x) => x.id === lease.question_id);
-        if (item?.question && !item.pending && item.topicIds.length) {
+        if (item && !item.pending && item.topicIds.length) {
           const next = {
-            ...item.question,
+            ...uploadedQuestion(JSON.parse(lease.payload)),
             id: lease.question_id,
             topicIds: item.topicIds,
             published: true,
           };
           validateQuestion(next);
           // Recheck publication of topics; a topic unpublished during AI processing must not hide a freshly published question.
-          const topics = (
-            await db
-              .prepare(
-                `SELECT id FROM topics WHERE published=1 AND id IN (${next.topicIds.map(() => '?').join(',')})`,
-              )
-              .bind(...next.topicIds)
-              .all()
-          ).results;
-          if (topics.length !== next.topicIds.length) {
+          if (next.topicIds.some((id: string) => !publishedTopics.has(id))) {
             await retryAutomaticImport(db, lease, 'Đang tự chọn lại chuyên đề được xuất bản.');
             continue;
           }
