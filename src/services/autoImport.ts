@@ -1,8 +1,9 @@
-import { questionEnvironment, aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
+import { canProcessEssay, normalizeEssayQuestion } from '../../shared/essayNormalization';
+import { aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
 import type { Question } from '../types';
 import type { AiSuggestion } from '../../shared/ai';
 import type { TopicSummary } from '../../shared/content';
-import { inspectTex, normalizeQuestion } from '../../shared/importReview';
+import { inspectTex } from '../../shared/importReview';
 import { apiService } from './apiService';
 import { applySuggestion, scanQuestions, type ScanProgress } from './autoClassify';
 
@@ -146,25 +147,22 @@ export async function runAutoImport(
   try {
     for (const source of input) {
       checkStopped();
-      if (questionEnvironment(source) !== 'bt') {
+      if (!canProcessEssay(source)) {
         finish(source, 'skipped', aiExerciseOnlyMessage);
         continue;
       }
       try {
-        const q = normalizeQuestion(source).question;
+        let q: Question;
+        try {
+          q = normalizeEssayQuestion(source);
+        } catch {
+          q = { ...source };
+        }
         q.topicIds = [...new Set([...(q.topicIds || []), ...(options.topicIds || [])])];
         q.published = options.published;
         options.onQuestion(q);
-        const issue = autoImportIssue(q, allowed, false);
-        if (issue) {
-          finish(q, 'needs-review', issue);
-          continue;
-        }
-        if (
-          !autoImportIssue(q, allowed) &&
-          (options.resolvedIds?.has(q.id) || options.topicIds?.length)
-        )
-          known.push(q);
+        // Syntax errors go to AI for repair instead of stopping before the model sees them.
+        if (!autoImportIssue(q, allowed) && options.resolvedIds?.has(q.id)) known.push(q);
         else prepared.push(q);
       } catch (error) {
         finish(source, 'needs-review', (error as Error).message);

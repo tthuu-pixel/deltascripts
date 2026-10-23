@@ -27,7 +27,7 @@ const suggestion = (q: Question) => ({
 
 test('AI queue visits every question across batches, reports failures and resumes only unfinished IDs', async () => {
   const input = questions(31);
-  input[30].statementRaw = 'x'.repeat(20_001);
+  input[30].statementRaw = 'x'.repeat(1_000_001);
   const outcomes = new Map<string, ClassificationOutcome>();
   const completed = new Set<string>();
   const applied: string[] = [];

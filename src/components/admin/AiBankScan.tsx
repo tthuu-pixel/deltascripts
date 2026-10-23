@@ -78,18 +78,14 @@ export default function AiBankScan({
         const scanned = await scanQuestions(page.items, {
           signal: abort.signal,
           completed: completed.current,
-          apply: async (question, suggestion, signal) => {
-            // Add only topic links. The source, answer, existing type and publication stay intact.
-            if (suggestion.topicIds.length)
-              await apiService.classifyQuestions(
-                [question.id],
-                { topicIds: suggestion.topicIds, mode: 'add' },
-                signal,
-              );
+          saveRepairs: true,
+          apply: async () => {
+            /* Repaired code and topic links are saved atomically by the server. */
           },
           onOutcome: (outcome) => {
             results.current.set(outcome.id, outcome);
-            if (outcome.state !== 'failed') completed.current.add(outcome.id);
+            if (outcome.state === 'assigned' || outcome.state === 'skipped')
+              completed.current.add(outcome.id);
             if (outcome.state === 'assigned' || outcome.state === 'skipped') {
               if (outcome.state === 'assigned') assignedIds.current.add(outcome.id);
               else assignedIds.current.delete(outcome.id);
@@ -120,7 +116,7 @@ export default function AiBankScan({
             setStatus(
               progress.waiting
                 ? 'Đang chờ hạn mức AI, sẽ tự tiếp tục sau một phút…'
-                : `Đã xử lý ${results.current.size} câu. Đang tự nhận dạng và gắn chuyên đề…`,
+                : `Đã xử lý ${results.current.size} câu. Đang tự sửa mã, kiểm tra và chọn chuyên đề…`,
             ),
         });
         if (abort.signal.aborted) break;
@@ -139,7 +135,7 @@ export default function AiBankScan({
       setStatus(
         abort.signal.aborted
           ? 'Đã dừng. Các câu đã gắn chuyên đề được giữ nguyên.'
-          : 'Đã quét hết kho tại thời điểm bắt đầu. Các câu phù hợp đã được tự gắn vào chuyên đề có sẵn.',
+          : 'Đã quét hết kho tại thời điểm bắt đầu. Các câu xử lý thành công đã được sửa mã và lưu vào chuyên đề.',
       );
     } catch (e) {
       if (abort.signal.aborted) setStatus('Đã dừng. Bấm tiếp tục để quét phần còn lại.');
@@ -196,8 +192,8 @@ export default function AiBankScan({
       <div className="preview-body">
         <p>
           Dựa vào mô tả ngắn của mỗi chuyên đề để quét mọi câu trên mọi trang, gồm bản nháp và bài
-          đã xuất bản. Kết quả phù hợp được tự gắn thêm vào các chuyên đề đã có. Câu chưa khớp được
-          liệt kê để kiểm tra.
+          đã xuất bản. AI tự sửa mã, kiểm tra lời giải và lưu chuyên đề phù hợp. Nguồn trước khi sửa
+          được lưu lại.
         </p>
         <p className="field-help">{aiExerciseOnlyMessage}</p>
         <p className="notice notice-success" role="status">
@@ -220,10 +216,10 @@ export default function AiBankScan({
             Đã phân loại <strong>{assigned}</strong>
           </span>
           <span>
-            Cần kiểm tra <strong>{stats.needsReview}</strong>
+            Chờ xử lý lại <strong>{stats.needsReview}</strong>
           </span>
           <span>
-            Bỏ qua ngoài bt <strong>{stats.skipped}</strong>
+            Ngoài phạm vi tự luận <strong>{stats.skipped}</strong>
           </span>
         </div>
         <p className="field-help">
@@ -231,17 +227,10 @@ export default function AiBankScan({
           xử lý hạn mức.
         </p>
         {needsReview.length > 0 && (
-          <section className="scan-exceptions">
-            <h3>Câu cần kiểm tra</h3>
-            <ul>
-              {needsReview.slice(0, 50).map((item) => (
-                <li key={item.id}>
-                  <strong>{item.label}</strong> — {item.reason}
-                </li>
-              ))}
-            </ul>
-            {stats.needsReview > 50 && <p>Hiện 50 câu đầu. Tải báo cáo để xem đầy đủ.</p>}
-          </section>
+          <p className="field-help">
+            Các câu chưa hoàn tất được giữ nguồn và có thể thử lại. Xem chi tiết trong báo cáo khi
+            cần.
+          </p>
         )}
       </div>
       <div className="preview-footer">
@@ -273,7 +262,7 @@ export default function AiBankScan({
                   void run();
                 }}
               >
-                Thử lại các câu lỗi
+                AI tiếp tục xử lý
               </button>
             )}
           </>

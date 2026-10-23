@@ -2,8 +2,9 @@ import { generateReply, providerModels } from './ai-provider';
 import type { Database } from './database';
 import { HttpError, requireValue } from './errors';
 import { aiProviders, type AiProvider, type AiSettings, type AiSuggestion } from '../shared/ai';
-import { sourceEnvironment, aiExerciseOnlyMessage } from '../shared/questionEnvironment';
+import { sourceEnvironment } from '../shared/questionEnvironment';
 import { readAiScanPage } from './ai-scan';
+import { repairQuestions } from './ai-repair';
 
 interface StoredSettings {
   provider: AiProvider;
@@ -165,6 +166,20 @@ export async function adminAiRoute(
   url?: URL,
 ) {
   if (route === '/api/admin/ai/scan' && method === 'GET' && url) return readAiScanPage(db, url);
+  if (route === '/api/admin/ai/revisions' && method === 'GET' && url) {
+    const id = url.searchParams.get('questionId') || '';
+    requireValue(/^[a-f0-9-]{36}$/i.test(id), 'ID không hợp lệ.');
+    return {
+      items: (
+        await db
+          .prepare(
+            'SELECT id,snapshot,reason,created_at AS createdAt FROM question_revisions WHERE question_id=? ORDER BY created_at DESC,id LIMIT 50',
+          )
+          .bind(id)
+          .all()
+      ).results,
+    };
+  }
   const row = await stored(db);
   if (route === '/api/admin/ai/settings' && method === 'GET')
     return { settings: publicSettings(row, options.aiSettingsKey) };
@@ -210,6 +225,14 @@ export async function adminAiRoute(
       Array.isArray(body.questions) && body.questions.length > 0 && body.questions.length <= 10,
       'Mỗi lượt AI nhận từ 1 đến 10 câu.',
     );
+    if (body.repair === true) {
+      const config = await credentials(
+        { provider: row.provider, baseUrl: row.base_url, model: row.model },
+        row,
+        options.aiSettingsKey,
+      );
+      return repairQuestions(db, body, config, options);
+    }
     const ids: string[] = [];
     let size = 0;
     const questions = body.questions.map((q: any) => {
@@ -247,7 +270,7 @@ export async function adminAiRoute(
               sourceEnvironment(String(stored.sourceHeader || '')) === 'bt'
           : q.exerciseEnvironment === 'bt';
       }),
-      aiExerciseOnlyMessage,
+      'Chế độ phân loại cũ chỉ nhận môi trường bt. Dùng AI tự sửa để xử lý ex tự luận.',
     );
 
     const topics = (

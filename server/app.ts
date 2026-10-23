@@ -66,6 +66,18 @@ export function validateQuestion(q: any): unknown[] {
 export function questionStatements(db: Database, questions: any[]): Statement[] {
   const rows = [...new Map(questions.map(validateQuestion).map((row) => [row[0], row])).values()];
   const statements: Statement[] = [];
+  for (const q of questions) {
+    if (q.originalRaw)
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO question_revisions(id,question_id,snapshot,reason)
+      SELECT ?,id,json_object('id',id,'label',label,'number',number,'sourceType',source_type,'statementRaw',statement_raw,'solutionRaw',solution_raw,'raw',raw,'latexPreamble',latex_preamble,'published',json(CASE published WHEN 1 THEN 'true' ELSE 'false' END),'topicIds',json((SELECT json_group_array(topic_id) FROM question_topics WHERE question_id=questions.id))),'Trước khi áp dụng bản AI/chuẩn hóa'
+      FROM questions WHERE id=? AND (statement_raw!=? OR solution_raw!=? OR raw!=?)`,
+          )
+          .bind(crypto.randomUUID(), q.id, q.statementRaw, q.solutionRaw || '', q.raw || ''),
+      );
+  }
   // D1 allows 100 bound parameters per statement; each group uses at most 99.
   for (let i = 0; i < rows.length; i += 11) {
     const group = rows.slice(i, i + 11);
@@ -92,6 +104,22 @@ export function questionStatements(db: Database, questions: any[]): Statement[] 
       'replace',
     ),
   );
+  for (const q of questions) {
+    if (typeof q.originalRaw === 'string' && q.originalRaw && q.originalRaw !== q.raw) {
+      requireValue(q.originalRaw.length <= 1_000_000, 'Nguồn ban đầu quá dài.');
+      statements.push(
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO question_revisions(id,question_id,snapshot,reason) VALUES(?,?,?,'Nguồn nhập ban đầu')`,
+          )
+          .bind(
+            q.id + ':import',
+            q.id,
+            JSON.stringify({ ...q, raw: q.originalRaw, originalRaw: undefined }),
+          ),
+      );
+    }
+  }
   return statements;
 }
 export async function upsertQuestions(db: Database, questions: any[]) {

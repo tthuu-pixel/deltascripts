@@ -42,7 +42,7 @@ export function restoreQuestionSource(question: Question): Question {
 }
 
 // Only transform prose/math outside executable drawing code, macro declarations and comments.
-function protectedRanges(source: string) {
+export function protectedRanges(source: string) {
   const visible = maskTexComments(source);
   const ranges = environmentRanges(source, ['tikzpicture', 'axis', 'verbatim', 'lstlisting']);
   const protectedParts: { start: number; end: number }[] = [...ranges];

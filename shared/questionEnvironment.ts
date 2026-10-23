@@ -43,4 +43,4 @@ export function questionEnvironment(question: {
   return question.exerciseEnvironment || null;
 }
 export const aiExerciseOnlyMessage =
-  'AI chỉ phân loại bài tự luận trong môi trường bt; bỏ qua ex và nguồn ngoài bt.';
+  'AI tự sửa và phân loại bt; ex không có lựa chọn đáp án được chuyển sang bt. Giữ nguyên TikZ, bỏ immini và lưu bản trước khi sửa.';

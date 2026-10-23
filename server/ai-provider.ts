@@ -10,7 +10,7 @@ export interface ProviderConfig {
 export async function providerRequest(
   config: ProviderConfig,
   path: string,
-  options: { fetchGemini?: typeof fetch },
+  options: { fetchGemini?: typeof fetch; requestTimeoutMs?: number },
   body?: unknown,
 ) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -26,7 +26,7 @@ export async function providerRequest(
       headers,
       body: body ? JSON.stringify(body) : undefined,
       redirect: 'manual',
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(options.requestTimeoutMs || 45_000),
     });
   } catch {
     throw new HttpError(502, 'Không kết nối được dịch vụ AI. Kiểm tra Base URL hoặc thử lại.');
@@ -66,7 +66,7 @@ export async function providerRequest(
 }
 export async function providerModels(
   config: ProviderConfig,
-  options: { fetchGemini?: typeof fetch },
+  options: { fetchGemini?: typeof fetch; requestTimeoutMs?: number },
 ) {
   const data = await providerRequest(config, 'models', options);
   const models =
@@ -88,7 +88,7 @@ export async function providerModels(
 
 export async function generateReply(
   config: ProviderConfig,
-  options: { fetchGemini?: typeof fetch },
+  options: { fetchGemini?: typeof fetch; requestTimeoutMs?: number },
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
   maxTokens: number,

@@ -1,3 +1,4 @@
+import { canProcessEssay, normalizeEssayQuestion } from '../../../shared/essayNormalization';
 import { aiExerciseOnlyMessage } from '../../../shared/questionEnvironment';
 import { runAutoImport, type AutoImportOutcome } from '../../services/autoImport';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
@@ -243,7 +244,7 @@ export default function QuestionReview({
           resolvedIds: resolvedIds.current,
           onQuestion: (q) => {
             setDrafts((items) => items.map((item) => (item.id === q.id ? q : item)));
-            if (q.topicIds?.length) resolvedIds.current.add(q.id);
+            if (q.aiRepaired && q.topicIds?.length) resolvedIds.current.add(q.id);
             onAutoQuestion?.(q);
           },
           onSaved: (items) => {
@@ -258,14 +259,14 @@ export default function QuestionReview({
             setProgress(
               value.waiting
                 ? 'Đang chờ hạn mức AI; sẽ tự tiếp tục…'
-                : `AI tự xử lý ${value.processed} / ${value.total} câu · Đã thêm ${value.saved} · Cần làm riêng ${value.needsReview} · Chờ thử lại ${value.failed}`,
+                : `AI tự xử lý ${value.processed} / ${value.total} câu · Đã thêm ${value.saved} · Chờ xử lý lại ${value.needsReview} · Chờ thử lại ${value.failed}`,
             ),
         },
       );
       setProgress(
         result.stopped
           ? 'Đã dừng. Các câu đã thêm được giữ nguyên; có thể tiếp tục phần còn lại.'
-          : 'Đã xử lý hết. Các câu đủ điều kiện đã được thêm; chỉ các câu cần làm riêng còn chờ xử lý.',
+          : 'Đã xử lý hết lượt này. Các câu hoàn tất đã được lưu; câu chưa hoàn tất có thể để AI thử lại.',
       );
       if (result.stopped && !controller.signal.aborted) {
         setError(
@@ -314,7 +315,7 @@ export default function QuestionReview({
     }
     setBusy(true);
     try {
-      await onApply(remaining);
+      await onApply(remaining.map((q) => (canProcessEssay(q) ? normalizeEssayQuestion(q) : q)));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -396,24 +397,24 @@ export default function QuestionReview({
               <strong>
                 {savedCount} / {drafts.length}
               </strong>{' '}
-              câu · Cần làm riêng <strong>{autoExceptions.length}</strong>
-              {!!autoRetry.length && (
+              câu
+              {!!(autoExceptions.length + autoRetry.length) && (
                 <>
                   {' '}
-                  · Chờ thử lại <strong>{autoRetry.length}</strong>
+                  · Chờ xử lý lại <strong>{autoExceptions.length + autoRetry.length}</strong>
                 </>
               )}
             </p>
             {!!autoSkipped.length && (
               <p>
-                Bỏ qua <strong>{autoSkipped.length}</strong> câu ngoài môi trường bt; không gửi AI
-                hoặc tự thêm vào kho.
+                Bỏ qua <strong>{autoSkipped.length}</strong> câu không thuộc phạm vi tự luận; không
+                gửi AI hoặc tự thêm vào kho.
               </p>
             )}
             {savedCount === drafts.length && (
               <p>Tất cả câu đọc được đã được thêm vào ngân hàng và gắn chuyên đề.</p>
             )}
-            {!!autoRetry.length && (
+            {!autoShown && !!autoRetry.length && (
               <details open>
                 <summary>Câu chờ thử lại</summary>
                 <p>
@@ -429,7 +430,7 @@ export default function QuestionReview({
                 </ul>
               </details>
             )}
-            {!!autoExceptions.length && (
+            {!autoShown && !!autoExceptions.length && (
               <details open>
                 <summary>Các câu cần làm riêng</summary>
                 <ul>
@@ -457,8 +458,9 @@ export default function QuestionReview({
           <section className="auto-import-options surface" aria-label="Nhập bằng AI">
             <h3>Để AI xử lý toàn bộ</h3>
             <p>
-              AI xử lý bài trong môi trường bt, chuẩn hóa và phân theo mô tả ngắn của chuyên đề đã
-              có và thêm vào kho. Câu còn lỗi được giữ riêng, không chặn các câu khác.
+              AI xử lý bt và chuyển ex tự luận sang bt, bỏ immini, giữ nguyên TikZ, chuẩn hóa và
+              phân theo mô tả ngắn của chuyên đề đã có và thêm vào kho. AI tự sửa mã và lời giải,
+              chọn chuyên đề và lưu các câu hoàn tất.
             </p>
             <label className="publish-controls">
               <input
@@ -470,8 +472,8 @@ export default function QuestionReview({
               Xuất bản các câu xử lý được
             </label>
             <p className="field-help">
-              Bỏ chọn để lưu nháp. Nội dung và lời giải gốc được giữ; không tự bổ sung đáp án còn
-              thiếu.
+              Bỏ chọn để lưu nháp. Bản trước khi sửa được lưu lại. AI kiểm tra và sửa lời giải có
+              sẵn, giữ trống nếu nguồn chưa có lời giải.
             </p>
           </section>
         )}
@@ -482,7 +484,7 @@ export default function QuestionReview({
               <strong>
                 {Object.keys(outcomes).length} / {drafts.length}
               </strong>{' '}
-              câu · Cần kiểm tra{' '}
+              câu · Chờ xử lý lại{' '}
               <strong>
                 {
                   Object.values(outcomes).filter(
@@ -494,11 +496,11 @@ export default function QuestionReview({
             {Object.values(outcomes).some((o) => o.state === 'skipped') && (
               <p>
                 Bỏ qua {Object.values(outcomes).filter((o) => o.state === 'skipped').length} câu
-                ngoài môi trường bt.
+                không thuộc phạm vi tự luận.
               </p>
             )}
             <details>
-              <summary>Câu cần kiểm tra</summary>
+              <summary>Chi tiết các câu chờ xử lý lại</summary>
               <ul>
                 {Object.values(outcomes)
                   .filter((o) => o.state !== 'assigned' && o.state !== 'skipped')
@@ -586,7 +588,7 @@ export default function QuestionReview({
             {!!report.codes.length && <p>Mã trong nguồn: {report.codes.join(', ')}</p>}
           </details>
         )}
-        {mode !== 'classify' && (
+        {mode !== 'classify' && !autoShown && !autoClassify && (
           <section className="review-issues" aria-label="Kết quả kiểm tra">
             {issues.length ? (
               <ul>
@@ -612,15 +614,21 @@ export default function QuestionReview({
             aria-label="Nguồn gốc"
             readOnly
             rows={8}
-            value={current.raw || `${current.statementRaw}\n${current.solutionRaw}`}
+            value={
+              current.originalRaw ||
+              current.raw ||
+              `${current.statementRaw}\n${current.solutionRaw}`
+            }
           />
-          {mode !== 'classify' && current.raw && (
+          {mode !== 'classify' && (current.originalRaw || current.raw) && (
             <button
               className="text-button"
               disabled={busy || alreadySaved}
               onClick={() => {
                 try {
-                  update(restoreQuestionSource(current));
+                  update(
+                    restoreQuestionSource({ ...current, raw: current.originalRaw || current.raw }),
+                  );
                   setChanges((old) => ({
                     ...old,
                     [current.id]: {

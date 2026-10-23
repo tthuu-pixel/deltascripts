@@ -36,7 +36,11 @@ export interface AiSettings {
   version: number;
   encryptionReady: boolean;
 }
+import type { Question } from '../src/types';
 export interface AiSuggestion {
+  question?: Question;
+  saved?: boolean;
+  pending?: boolean;
   id: string;
   topicIds: string[];
   reason: string;

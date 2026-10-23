@@ -1,4 +1,5 @@
-import { questionEnvironment, aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
+import { canProcessEssay } from '../../shared/essayNormalization';
+import { aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
 import type { Question } from '../types';
 import type { AiSuggestion } from '../../shared/ai';
 import { apiService } from './apiService';
@@ -32,7 +33,20 @@ export function waitForQuota(ms: number, signal: AbortSignal) {
 export function applySuggestion(question: Question, suggestion: AiSuggestion): Question {
   return {
     ...question,
-    topicIds: [...new Set([...(question.topicIds || []), ...suggestion.topicIds])],
+    ...(suggestion.question
+      ? {
+          aiRepaired: true,
+          statementRaw: suggestion.question.statementRaw,
+          solutionRaw: suggestion.question.solutionRaw,
+          raw: suggestion.question.raw,
+          originalRaw: suggestion.question.originalRaw,
+          exerciseEnvironment: suggestion.question.exerciseEnvironment,
+          sourceLength: suggestion.question.statementRaw.length,
+        }
+      : {}),
+    topicIds: suggestion.question
+      ? suggestion.topicIds
+      : [...new Set([...(question.topicIds || []), ...suggestion.topicIds])],
   };
 }
 
@@ -43,6 +57,7 @@ export async function scanQuestions(
   options: {
     signal: AbortSignal;
     completed?: Set<string>;
+    saveRepairs?: boolean;
     suggest?: (questions: Question[], signal: AbortSignal) => Promise<AiSuggestion[]>;
     apply: (
       question: Question,
@@ -69,23 +84,15 @@ export async function scanQuestions(
     chars = 0;
   for (const q of remaining) {
     if (signal.aborted) throw aborted();
-    if (questionEnvironment(q) !== 'bt') {
+    if (q.aiEligible === false || (!q.aiEligible && !canProcessEssay(q))) {
       finish(q, 'skipped', aiExerciseOnlyMessage);
       continue;
     }
-    if (
-      !q.statementRaw.trim() ||
-      q.statementRaw.length > 20_000 ||
-      (q.sourceLength || 0) > 20_000
-    ) {
-      finish(
-        q,
-        'failed',
-        'Nguồn trống hoặc vượt 20.000 ký tự; cần xử lý riêng, không bị cắt để gửi AI.',
-      );
+    if (!q.statementRaw.trim() || q.statementRaw.length > 1_000_000) {
+      finish(q, 'failed', 'Nguồn đang chờ xử lý lại; hệ thống giữ nguyên dữ liệu.');
       continue;
     }
-    if (batch.length === 10 || chars + q.statementRaw.length > 80_000) {
+    if (batch.length && (batch.length === 10 || chars + q.statementRaw.length > 80_000)) {
       batches.push(batch);
       batch = [];
       chars = 0;
@@ -102,10 +109,10 @@ export async function scanQuestions(
     try {
       for (let attempt = 0; ; attempt++) {
         try {
-          suggestions = await (options.suggest || apiService.suggestQuestionTopics)(
-            current,
-            signal,
-          );
+          suggestions = await (
+            options.suggest ||
+            ((items, signal) => apiService.repairQuestionTopics(items, signal, options.saveRepairs))
+          )(current, signal);
           break;
         } catch (e) {
           if (signal.aborted) throw aborted();
@@ -143,6 +150,10 @@ export async function scanQuestions(
     for (const q of current) {
       if (signal.aborted) throw aborted();
       const suggestion = suggestions.find((s) => s.id === q.id)!;
+      if (suggestion.pending) {
+        finish(q, 'failed', suggestion.reason);
+        continue;
+      }
       const next = applySuggestion(q, suggestion);
       if ((next.topicIds?.length || 0) > 10) {
         finish(q, 'failed', 'Kết quả vượt 10 chuyên đề. Giữ nguyên phân loại cũ để bạn kiểm tra.');

@@ -122,6 +122,14 @@ export const apiService = {
       )
     ).items;
   },
+  async repairQuestionTopics(
+    questions: Question[],
+    signal?: AbortSignal,
+    save = false,
+  ): Promise<AiSuggestion[]> {
+    return (await apiRequest('/admin/ai/classify', { repair: true, save, questions }, 0, signal))
+      .items;
+  },
   async getAiScanPage(
     cutoff = '',
     cursor = '',

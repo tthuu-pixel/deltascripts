@@ -28,7 +28,8 @@ test('exercise environments survive parsing; comments, declarations and nested b
 
 test('AI scans send only bt statements and automatic imports neither send nor save ex/other sources', async () => {
   const topicId = crypto.randomUUID();
-  const questions = parseTexText(String.raw`\begin{ex}Không gửi AI.\loigiai{Đáp án riêng.}\end{ex}
+  const questions =
+    parseTexText(String.raw`\begin{ex}Không gửi AI.\choice{1}{2}{3}{4}\loigiai{Đáp án riêng.}\end{ex}
 \begin{bt}Bài tự luận $x+1=3$.\loigiai{$x=2$.}\end{bt}
 \begin{vd}Ví dụ không gửi AI.\end{vd}`);
   const sent: string[] = [],

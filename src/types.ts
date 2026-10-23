@@ -7,10 +7,14 @@ export interface Question {
   exerciseEnvironment?: string | null;
   numberOrigin?: 'explicit' | 'order' | 'ai' | 'manual';
   sourceLength?: number;
+  aiEligible?: boolean;
+  aiRepaired?: boolean;
   statementRaw: string;
   solutionRaw: string;
   sourceType: 'word' | 'tex';
   raw?: string;
+  /** First source before automatic normalization, saved privately in revision history. */
+  originalRaw?: string;
   latexPreamble?: string;
   rawTikzBlocks?: string[];
   rawImageRefs?: string[];

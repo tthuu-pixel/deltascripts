@@ -158,6 +158,7 @@ export function normalizeTexContent(text: string): string {
     choices.lastIndex = choice.index + html.length;
   }
   value = value
+    .replace(/\\(?:begingroup|endgroup)\b/g, '')
     .replace(/\\begin\{center\}/g, '<div class="text-center">')
     .replace(/\\end\{center\}/g, '</div>')
     .replace(/\\begin\{itemize\}/g, '<ul class="list-disc ml-6">')

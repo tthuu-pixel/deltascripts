@@ -1,4 +1,4 @@
-import { parseTexFile } from './texParser';
+import { parseRepairableTex } from '../../shared/essayNormalization';
 import { parseWordFile } from './wordParser';
 import { normalizeQuestion } from '../../shared/importReview';
 self.onmessage = async (event: MessageEvent<File[]>) => {
@@ -9,7 +9,8 @@ self.onmessage = async (event: MessageEvent<File[]>) => {
       try {
         if (file.size > 20 * 1024 * 1024) throw new Error('File vượt 20 MB.');
         if (/\.docx$/i.test(file.name)) questions.push(...(await parseWordFile(file)));
-        else if (/\.tex$/i.test(file.name)) questions.push(...(await parseTexFile(file)));
+        else if (/\.tex$/i.test(file.name))
+          questions.push(...parseRepairableTex(await file.text()));
         else throw new Error('Chỉ hỗ trợ file Word .docx hoặc LaTeX .tex.');
       } catch (error) {
         fileErrors.push(`${file.name}: ${(error as Error).message}`);

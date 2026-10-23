@@ -12,7 +12,7 @@ Mở **`/admin`** và đăng nhập bằng tài khoản quản lý hiện có. T
 
 Dùng mũi tên để đổi thứ tự chuyên đề. Xóa chuyên đề chỉ bỏ chuyên đề và các liên kết phân loại, không xóa câu hỏi trong kho. Chuyên đề cũ viết trong mã nguồn đã được thay bằng nội dung do người quản trị tự biên soạn; hệ thống không tự xuất bản bài mẫu.
 
-Danh mục [18 chuyên đề toán thực tế](practical-topics.md) được chuẩn bị theo bốn nhóm kiến thức, không chia lớp. Chuyên đề mới lưu nháp; người quản trị tự bổ sung nội dung và xuất bản.
+Danh mục hiện hành có 14 chuyên đề, 112 dạng bài và 28 ví dụ được biên soạn theo tài liệu chủ trang gửi. Danh mục 18 mục cũ chỉ là tài liệu khởi tạo. Chuyên đề mới tạo thủ công vẫn mặc định lưu nháp.
 
 ## Nhập và phân loại câu hỏi
 
@@ -29,29 +29,19 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 ## Nhập tự động bằng một nút
 
-- Bấm **AI nhập tự động** ở Ngân hàng câu hỏi rồi chọn file `.tex`/`.docx`. AI chỉ nhận các bài tự luận trong môi trường `bt`, bỏ qua `ex` và nguồn ngoài `bt`; tự chuẩn hóa, đối chiếu mô tả ngắn để gắn các chuyên đề hiện có và lưu các câu đủ điều kiện. Không cần duyệt từng câu hoặc bấm lưu thêm lần nữa.
-- Nếu đã mở cửa sổ duyệt, bấm **AI xử lý và thêm tất cả**. Kết quả phân loại đã nhận được sẽ được dùng lại. Có thể bật **Xuất bản các câu xử lý được**; mặc định lưu nháp.
-- Bảng **Kết quả AI tự động** ghi số câu đã thêm và các câu cần làm riêng cùng lý do. Câu sai cú pháp, chưa khớp chuyên đề hoặc quá lớn không chặn các câu khác. Tệp đọc lỗi được liệt kê riêng; tệp đọc được vẫn tiếp tục. Lỗi cấu hình AI, API hoặc mạng nằm ở nhóm **Chờ thử lại**, không bị tính là câu cần sửa thủ công; nguyên nhân được hiện ngay để khắc phục rồi tiếp tục.
-- Sửa câu còn lại hoặc chọn chuyên đề thủ công rồi bấm lại nút AI; các câu đã lưu được bỏ qua. Các câu đã sửa đủ thông tin được lưu mà không cần trả phí AI phân loại lại.
-- Có nút dừng; yêu cầu ghi đang chạy được đợi xác nhận trước khi dừng. Có thể tiếp tục trong cửa sổ hiện tại. Giữ tab mở tới khi hoàn tất; bản nhập chờ xử lý chưa được phục hồi sau khi đóng hoặc tải lại trang.
-- Nguồn TeX, lời giải và khai báo TikZ gốc được giữ để đối chiếu. Hệ thống chỉ áp dụng các quy tắc chuẩn hóa đã hỗ trợ, không tự dựng lại hình, thay số liệu, thêm đáp án hoặc tạo chuyên đề mới. Những trường hợp chưa chắc chắn được giữ cho người quản trị xử lý riêng.
-- Việc lưu theo đợt dùng lại ID câu hỏi khi thử lại, tránh tạo bản trùng nếu mạng bị ngắt lúc chờ xác nhận. Câu được AI nhận dạng nhưng chưa được lưu vẫn nằm trong bản nhập.
+- Bấm **AI nhập tự động**, chọn file `.tex`; AI tự kiểm tra mã, sửa cú pháp/lời giải có sẵn, đối chiếu mô tả chuyên đề và lưu. Không cần sửa từng lỗi trước khi AI nhận bài. Nếu đã mở bản duyệt, bấm **AI xử lý và thêm tất cả**; kết quả AI đã hoàn tất được dùng lại. Mặc định lưu nháp, có thể bật **Xuất bản các câu xử lý được**.
+- Bài `bt` và bài tự luận ghi nhầm `ex` không có `\choice`, `\choiceTF` hoặc lệnh lựa chọn tương đương đều được xử lý. `ex` tự luận được lưu lại bằng `bt`. Trắc nghiệm có lựa chọn, `vd`, Word và nguồn ngoài phạm vi tự luận được bỏ qua trong tự động; vẫn có thể nhập thủ công.
+- `\immini` được bỏ khung, giữ đủ hai đối số và đặt hình giữa. TikZ, khai báo và comment kỹ thuật được khóa khỏi AI, khôi phục nguyên văn; mã hình không bị chuẩn hóa số thập phân hoặc phân số. File thiếu một lệnh đóng ngoài `bt/ex` có thể được phục hồi để xử lý tiếp, với bản ban đầu được lưu lại.
+- Giao diện báo tiến độ, số đã thêm và số chờ xử lý lại. AI tự thử sửa tối đa ba lượt trong thời gian mỗi yêu cầu; kết quả chưa hợp lệ được giữ nguồn, có thể tiếp tục, không giả thành công hoặc ép chọn chuyên đề không liên quan. Lỗi cấu hình/key/mạng vẫn có thông báo để khắc phục. Không thể bảo đảm AI đúng toán học hay phân loại 100%.
 
-## Chuẩn hóa và AI phân loại
+## Chuẩn hóa và AI tự sửa
 
-AI nhập tự động, quét kho và phân loại câu đã chọn chỉ xử lý bài có nguồn TeX trong môi trường `bt`. `ex`, `vd`, Word và nguồn không xác định được môi trường được báo **Bỏ qua**, không gửi đến dịch vụ AI và không tự thêm vào chuyên đề. Các bài đã có vẫn được giữ nguyên; nhập thủ công và nội dung lý thuyết/ví dụ vẫn hỗ trợ các nguồn khác.
-
-- Chuẩn hóa file mới chạy trong Web Worker trên trình duyệt. Các quy tắc tự động hiện gồm: tách điểm số/tùy chọn nguồn đầu bài, bỏ nội dung comment mã nguồn đã nhận diện, chuẩn hóa `frac`, `ne/ge/le`, `quad`, `choiceTFt`, `loigiaiTF` và tùy chọn `enumerate`. Giữ nội dung toán, thứ tự, nguồn từng câu và khai báo hình vẽ. Macro, đường dẫn, comment kỹ thuật và mã TikZ được bảo vệ khỏi phép thay thế rộng.
-- Bộ kiểm tra xét ngoặc, môi trường, dấu phân cách công thức và báo tệp/thư viện ngoài cần kiểm tra. Lỗi cấu trúc phải sửa trước khi duyệt. Các quy tắc cần hiểu ngữ cảnh như `cases`, phép suy ra, đổi dữ kiện hay dựng lại hình cần người biên soạn kiểm tra; hệ thống không tự sửa toán và không khẳng định đã biên dịch toàn bộ tài liệu.
-- Với câu đã lưu: chọn các câu hoặc dùng **Chọn hết**, bấm **Chuẩn hóa & kiểm tra câu đã chọn**, duyệt rồi **Áp dụng các bài đã duyệt**. Không có thao tác tự sửa toàn bộ kho. Nguồn gốc vẫn được giữ.
-- Vào **Cấu hình AI** chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek; nhập Base URL, API key rồi chọn **Mô hình** trong danh sách xổ xuống. **Kiểm tra & lấy model** đọc danh sách model từ dịch vụ. Chọn **Model khác** nếu cần nhập tên model mới bằng tay. Đây là một cấu hình hoạt động tại một thời điểm; đổi nhà cung cấp/Base URL cần nhập lại key. Kiểm tra danh sách model không thay thế việc thử phân loại với model đã chọn.
-- Khi nhập file, AI **tự quét toàn bộ bản nhập** nếu đã lưu API key/model, tự gắn các chuyên đề đã có và báo số câu đã khớp/cần kiểm tra. Không cần bấm AI hoặc mở từng câu. Duyệt cả đợt rồi lưu; lỗi cú pháp hoặc chưa khớp chuyên đề mới cần xử lý riêng. AI không nhận dạng Câu 1–7, không suy loại bài từ số thứ tự nguồn.
-- Với kho đã có, bấm **AI quét và sắp xếp toàn bộ kho**: quét mọi trang, cả nháp và đã xuất bản, độc lập với bộ lọc hiện tại. Chuyên đề phù hợp được tự gắn thêm ngay; nguồn, lời giải, liên kết thủ công và trạng thái xuất bản được giữ. Cũng có thể chọn riêng câu để mở bản duyệt tự quét.
-- Quét kho dùng mốc bắt đầu và con trỏ ổn định, đọc 50 câu mỗi trang; các bản ghi mới sau mốc này để lần quét sau. Từng lượt AI tối đa 10 câu và 80.000 ký tự; nguồn vượt 20.000 ký tự/câu được báo xử lý riêng, không cắt nội dung rồi đoán. Một lượt lỗi không làm mất kết quả lượt khác; lỗi cấu hình/kết nối nghiêm trọng sẽ dừng để sửa. Khi gặp hạn mức, tự chờ một phút và thử lại tối đa hai lần/lượt.
-- Có tiến độ, **Dừng quét**, **Tiếp tục quét**, danh sách chưa khớp/lỗi và báo cáo JSON đầy đủ. Câu đã thành công không gọi AI lại khi tiếp tục cùng đợt. Giữ cửa sổ mở; khi tải lại trang, các liên kết đã ghi vẫn còn nhưng muốn tiếp tục sẽ cần bắt đầu một đợt mới. AI không tự tạo chuyên đề hay tự xuất bản câu hỏi.
-- Chỉ đề bài và danh sách chuyên đề có mô tả ngắn được gửi đến dịch vụ khi tự quét bản nhập hoặc bạn quét kho/câu đã chọn. Lời giải không được gửi trong yêu cầu phân loại. Bài chưa khớp được giữ để quản trị viên chọn chuyên đề. Hạn mức/chi phí API thuộc tài khoản nhà cung cấp, độc lập với hosting và gói chat.
-- Cấu hình phân loại chỉ dành cho admin, độc lập với trợ lý AI của học sinh hiện tại. Key được mã hóa AES-GCM trong D1 bằng secret máy chủ `AI_SETTINGS_KEY`, không trả lại key cho trình duyệt. Trình duyệt không lưu key vào localStorage/sessionStorage. Không tự động chạy AI khi học sinh mở bài.
-- Trước lần triển khai đầu tiên, thiết lập một secret ngẫu nhiên ít nhất 32 ký tự bằng `node scripts/wrangler.mjs secret put AI_SETTINGS_KEY`; khi chạy cục bộ, đặt vào `.dev.vars` riêng. Giữ nguyên secret ở các lần triển khai sau; thay secret sẽ cần nhập lại API key. Không đưa giá trị thật vào Git. Migration `0005_admin_ai.sql` chỉ thêm bảng cấu hình, không sửa câu hỏi hay chuyên đề.
+- Vào **Cấu hình AI**, chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek, nhập Base URL/API key và chọn model. **Kiểm tra & lấy model** đọc danh sách model từ dịch vụ; dùng **Model khác** để nhập tên mới. Chỉ dùng một cấu hình hoạt động mỗi lần; đổi nhà cung cấp/Base URL cần nhập lại key.
+- AI đọc đề và lời giải, kiểm tra phép tính, điều kiện và thế ngược; không tự đổi dữ kiện hoặc ý hỏi để ép đáp án, không bịa dữ kiện thiếu, không tạo lời giải khi nguồn trống. Bộ kiểm tra chặn thiếu token hình, mất ý hỏi, cắt nội dung quá nhiều, sai ID chuyên đề, ngoặc/môi trường/công thức chưa đóng.
+- Nút **AI quét và sắp xếp toàn bộ kho** quét mọi trang, cả nháp và đã xuất bản, độc lập với bộ lọc. Kết quả hợp lệ được lưu mã mới và chọn lại các chuyên đề phù hợp theo mô tả. Không dùng số Câu 1–7 để phân loại, không tạo chuyên đề mới. Nhãn, số nguồn và trạng thái xuất bản không đổi.
+- Trước khi AI thay mã trong kho, máy chủ lưu snapshot vào lịch sử riêng, rồi cập nhật mã và chuyên đề trong cùng giao dịch. Nếu nguồn hoặc liên kết vừa được chỉnh ở nơi khác, không ghi đè kết quả cũ. Nguồn mới nằm trong `raw`; nguồn trước khi sửa nằm trong lịch sử quản trị, không bị gửi cho học sinh. Bản nhập có **Nguồn gốc để đối chiếu** để xem nguồn ban đầu.
+- Quét kho dùng mốc bắt đầu/con trỏ ổn định, đọc 50 câu/trang; câu mới sau mốc để lần quét sau. Một lượt nhận tối đa 10 câu, tự chia phần dài, khóa hình để giảm dữ liệu gửi AI; không cắt nguồn rồi đoán. Mỗi yêu cầu có giới hạn thời gian, phần chưa xong còn chờ thử lại; khi gặp hạn mức có thể chờ một phút và thử lại tối đa hai lần/lượt.
+- Chuẩn hóa thủ công vẫn có **Chuẩn hóa & kiểm tra câu đã chọn** và phần đối chiếu cú pháp. Lịch sử chỉ quản trị đọc qua `GET /api/admin/ai/revisions?questionId=...`.
 
 ## Nội dung Góc học tập
 

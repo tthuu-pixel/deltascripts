@@ -26,7 +26,8 @@
     "deploy": "npm run build && node scripts/deploy.mjs",
     "topics:seed": "tsx server/seed-topics.ts",
     "guide:seed": "tsx server/seed-study-guide.ts",
-    "topics:rewrite": "tsx server/rewrite-curriculum.ts"
+    "topics:rewrite": "tsx server/rewrite-curriculum.ts",
+    "questions:normalize": "tsx server/normalize-essay-bank.ts"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.12",

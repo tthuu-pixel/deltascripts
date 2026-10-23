@@ -25,6 +25,8 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
               content: JSON.stringify({
                 items: input.questions.map((q: any) => ({
                   id: q.id,
+                  statementRaw: q.statement,
+                  solutionRaw: q.solution,
                   topicIds: [topicId],
                   reason: 'Cùng nội dung căn thức trong chuyên đề đã tạo.',
                 })),
@@ -105,6 +107,9 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
       /thiếu dấu đóng/,
     );
     await review.getByLabel('Đề bài đang dùng', { exact: true }).fill('Đề đã sửa $x+1=3$.');
+    await review
+      .getByRole('checkbox', { name: 'Căn thức do thầy tạo · nháp', exact: true })
+      .check();
     await review.getByRole('button', { name: 'Xem trước bản đang dùng', exact: true }).click();
     await page.screenshot({ path: testInfo.outputPath('review-mobile.png'), fullPage: true });
     for (const width of [320, 390, 768, 1440]) {
@@ -132,15 +137,13 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     expect(
       saved.some(
         (q) =>
-          String(q.raw).includes('%[9H4V1-4]') &&
+          String(q.raw).startsWith('\\begin{bt}') &&
           String(q.statement_raw).includes(String.raw`\dfrac{1}{2}`),
       ),
     ).toBeTruthy();
     expect(
       saved.some(
-        (q) =>
-          String(q.raw).includes('thiếu dấu đóng $x+1.') &&
-          String(q.statement_raw).includes('Đề đã sửa'),
+        (q) => String(q.raw).includes('Đề đã sửa') && String(q.statement_raw).includes('Đề đã sửa'),
       ),
     ).toBeTruthy();
     expect(

@@ -401,12 +401,8 @@ export default function AdminView() {
                 setImportReviewed(true);
                 setNotice('Đã duyệt bản nhập. Chọn trạng thái rồi lưu lên hệ thống.');
               } else if (review.mode === 'classify') {
-                for (const q of items)
-                  await apiService.classifyQuestions([q.id], {
-                    topicIds: q.topicIds || [],
-                    mode: 'replace',
-                  });
-                setNotice('Đã áp dụng phân loại đã duyệt.');
+                for (const q of items) await apiService.saveQuestions([q]);
+                setNotice('Đã lưu mã AI sửa và chuyên đề đã chọn.');
                 reload();
               } else {
                 for (const q of items) await apiService.saveQuestions([q]);
@@ -499,11 +495,10 @@ export default function AdminView() {
               </div>
               <div className="import-instructions">
                 <span>01</span>
-                <p>AI chỉ phân loại bài tự luận trong môi trường bt; bỏ qua ex.</p>
+                <p>AI tự sửa bt và chuyển ex tự luận sang bt; giữ nguyên TikZ.</p>
                 <span>02</span>
                 <p>
-                  Dùng <strong>AI nhập tự động</strong> để thêm thẳng vào kho; chỉ xử lý riêng các
-                  câu còn lỗi.
+                  Dùng <strong>AI nhập tự động</strong> để sửa mã, chọn chuyên đề và thêm vào kho.
                 </p>
               </div>
               {!!importFileErrors.length && (
@@ -633,7 +628,7 @@ export default function AdminView() {
                 <Icon name="spark" size={19} /> AI quét và sắp xếp toàn bộ kho
               </button>
               <span className="field-help">
-                Chỉ quét bài trong môi trường bt, dựa vào mô tả ngắn của chuyên đề.
+                Tự sửa bt và ex tự luận, rồi chọn chuyên đề theo mô tả ngắn.
               </span>
             </div>
             <div className="bank-toolbar">

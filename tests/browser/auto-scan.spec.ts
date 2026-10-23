@@ -24,6 +24,11 @@ async function prepare(page: Page, count: number) {
               content: JSON.stringify({
                 items: input.questions.map((q: any) => ({
                   id: q.id,
+                  statementRaw: q.statement.replace(
+                    'Công thức lỗi $x+1.',
+                    'Công thức đã sửa $x+1$.',
+                  ),
+                  solutionRaw: q.solution,
                   topicIds: q.statement.includes('Không khớp') ? [] : [topicId],
                   reason: q.statement.includes('Không khớp')
                     ? 'Chưa có chuyên đề phù hợp.'
@@ -125,7 +130,7 @@ test('upload automatically classifies every question, keeps source labels and ac
       saved.every(
         (q) =>
           q.published === 0 &&
-          String(q.raw).includes('[Câu') &&
+          String(q.raw).startsWith('\\begin{bt}') &&
           String(q.solution_raw).includes('Đáp án'),
       ),
     ).toBeTruthy();
@@ -142,7 +147,7 @@ test('upload automatically classifies every question, keeps source labels and ac
   }
 });
 
-test('whole-bank scan crosses all pages regardless of active filters and saves topic links without changing sources or publication', async ({
+test('whole-bank scan repairs every page, saves canonical sources with history and keeps publication', async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
@@ -155,25 +160,25 @@ test('whole-bank scan crosses all pages regardless of active filters and saves t
     const scan = page.getByRole('dialog', { name: 'AI quét toàn bộ kho', exact: true });
     await expect(scan.getByRole('status')).toContainText('Đã quét hết kho', { timeout: 60_000 });
     await expect(scan.locator('.scan-counts')).toContainText('63 / 63');
-    await expect(scan.locator('.scan-counts')).toContainText('Đã phân loại 61');
-    await expect(scan.locator('.scan-counts')).toContainText('Cần kiểm tra 2');
-    expect(calls).toHaveLength(7);
+    await expect(scan.locator('.scan-counts')).toContainText('Đã phân loại 62');
+    await expect(scan.locator('.scan-counts')).toContainText('Chờ xử lý lại 1');
+    expect(calls).toHaveLength(9);
     expect(calls.every((batch) => batch.length > 0 && batch.length <= 10)).toBeTruthy();
-    expect(new Set(calls.flat()).size).toBe(62);
+    expect(new Set(calls.flat()).size).toBe(63);
     expect(
       (
         await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
           topicId,
         ])
       ).rows,
-    ).toHaveLength(61);
+    ).toHaveLength(62);
     expect(
       (
         await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
           manualTopic,
         ])
       ).rows,
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     const rows = (
       await runtime.db.query(
         'SELECT id,number,statement_raw,solution_raw,raw,published FROM questions',
@@ -184,7 +189,14 @@ test('whole-bank scan crosses all pages regardless of active filters and saves t
       expect(row.number).toBe(original.number);
       expect(row.statement_raw).toBe(original.statementRaw);
       expect(row.solution_raw).toBe(original.solutionRaw);
-      expect(row.raw).toBe(original.raw);
+      if (!original.statementRaw.includes('Không khớp')) {
+        expect(String(row.raw)).toContain('\\begin{bt}');
+        const revision = await runtime.db
+          .prepare('SELECT snapshot FROM question_revisions WHERE question_id=?')
+          .bind(row.id)
+          .first();
+        expect(JSON.parse(String(revision!.snapshot)).raw).toBe(original.raw);
+      } else expect(row.raw).toBe(original.raw);
       expect(row.published).toBe(original.published ? 1 : 0);
     }
     for (const width of [320, 390, 768, 1440]) {
@@ -297,8 +309,10 @@ test('one click saves the already scanned import, reuses AI results and publishe
     await expect(review.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeEnabled();
     expect(calls).toHaveLength(3);
     expect(
-      payloads.every((body) =>
-        body.questions.every((q: any) => !('solutionRaw' in q) && !('raw' in q)),
+      payloads.every(
+        (body) =>
+          body.repair === true &&
+          body.questions.every((q: any) => 'solutionRaw' in q && 'raw' in q),
       ),
     ).toBeTruthy();
     const rows = (
@@ -313,7 +327,7 @@ test('one click saves the already scanned import, reuses AI results and publishe
           row.published === 1 &&
           String(row.statement_raw).includes('\\dfrac') &&
           row.solution_raw === 'Lời giải gốc.' &&
-          String(row.raw).includes('\\frac'),
+          String(row.raw).includes('\\dfrac'),
       ),
     ).toBeTruthy();
     expect(rows.filter((row) => row.number === 1)).toHaveLength(4);
@@ -332,87 +346,59 @@ test('one click saves the already scanned import, reuses AI results and publishe
   }
 });
 
-test('automatic file import saves good questions, isolates bad files and questions, then adds only manually fixed exceptions', async ({
+test('automatic import fixes syntax, converts essay ex, flattens immini and recovers a missing closing tag without manual error handling', async ({
   page,
-}, testInfo) => {
+}) => {
   const { runtime, calls, topicId } = await prepare(page, 0);
   try {
-    const tex = Array.from({ length: 17 }, (_, i) =>
+    const drawing = String.raw`\begin{tikzpicture}[scale=0.6]\draw (2.5,0)--(0,1);\end{tikzpicture}`;
+    const source = Array.from({ length: 17 }, (_, i) =>
       i === 16
         ? String.raw`\begin{bt}Công thức lỗi $x+1.\loigiai{Lời giải gốc.}\end{bt}`
-        : String.raw`\begin{bt}${i === 15 ? 'Không khớp chuyên đề nào.' : `Tính $${i + 1}+1$.`}\loigiai{Lời giải gốc.}\end{bt}`,
+        : i === 15
+          ? String.raw`\begin{ex}\immini[thm]{Tự luận $x+1=3$.}{` +
+            drawing +
+            String.raw`}\loigiai{Lời giải gốc.}\end{ex}`
+          : String.raw`\begin{bt}Tính $1+1$.\loigiai{Lời giải gốc.}\end{bt}`,
     ).join('\n');
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'AI nhập tự động', exact: true }).click();
     await (
       await chooser
     ).setFiles([
-      { name: '17-cau.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) },
+      { name: '17-cau.tex', mimeType: 'text/plain', buffer: Buffer.from(source) },
       {
-        name: 'loi-file.tex',
+        name: 'thieu-dong.tex',
         mimeType: 'text/plain',
         buffer: Buffer.from(String.raw`\begin{bt}Thiếu lệnh đóng.`),
       },
     ]);
     const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
-    const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
-    await expect(summary).toContainText('15 / 17');
-    await expect(review.locator('.notice-success[role=status]')).toContainText('Đã xử lý hết');
-    await expect(review.getByRole('region', { name: 'Tệp cần xử lý riêng' })).toContainText(
-      'loi-file.tex',
+    await expect(review.getByRole('region', { name: 'Kết quả AI tự động' })).toContainText(
+      '18 / 18',
     );
-    expect(calls.flat()).toHaveLength(16);
-    const rows = (
-      await runtime.db.query('SELECT id,number,published,raw,solution_raw FROM questions')
-    ).rows;
-    expect(rows).toHaveLength(15);
-    expect(
-      rows.every((row) => row.published === 0 && row.solution_raw === 'Lời giải gốc.'),
-    ).toBeTruthy();
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: testInfo.outputPath('auto-import-exceptions-mobile.png') });
-    for (const width of [320, 390, 768, 1440]) {
-      await page.setViewportSize({ width, height: 900 });
-      expect(
-        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-      ).toBeTruthy();
-      expect(
-        await review.evaluate((element) => element.scrollWidth <= element.clientWidth),
-      ).toBeTruthy();
-    }
-    // The unmatched question is first. Assign it manually without re-running AI for the other 15.
-    await review
-      .getByRole('group', { name: /Chuyên đề của bài đang duyệt/ })
-      .getByRole('checkbox', { name: 'Chuyên đề AI nhận dạng', exact: true })
-      .check();
-    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
-    await expect(summary).toContainText('16 / 17');
-    await expect(review.getByLabel('Đề bài đang dùng')).toHaveValue('Công thức lỗi $x+1.');
-    await review.getByLabel('Đề bài đang dùng').fill('Công thức đã sửa $x+1$.');
-    await review
-      .getByRole('group', { name: /Chuyên đề của bài đang duyệt/ })
-      .getByRole('checkbox', { name: 'Chuyên đề AI nhận dạng', exact: true })
-      .check();
-    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
-    await expect(summary).toContainText('17 / 17');
     await expect(review.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeEnabled();
-    expect(calls.flat()).toHaveLength(16);
-    const stored = (await runtime.db.query('SELECT * FROM questions')).rows;
-    expect(stored).toHaveLength(17);
+    await expect(review.getByRole('region', { name: 'Kết quả kiểm tra' })).toHaveCount(0);
+    const rows = (await runtime.db.query('SELECT * FROM questions')).rows;
+    expect(rows).toHaveLength(18);
     expect(
-      stored.some(
-        (row) =>
-          String(row.raw).includes('Công thức lỗi $x+1.') &&
-          row.statement_raw === 'Công thức đã sửa $x+1$.',
+      rows.every(
+        (q) =>
+          String(q.raw).startsWith('\\begin{bt}') && !String(q.statement_raw).includes('\\immini'),
       ),
     ).toBeTruthy();
+    expect(rows.some((q) => String(q.statement_raw).includes(drawing))).toBeTruthy();
+    expect(rows.some((q) => q.statement_raw === 'Công thức đã sửa $x+1$.')).toBeTruthy();
+    expect((await runtime.db.prepare('SELECT count(*) n FROM question_revisions').first())!.n).toBe(
+      18,
+    );
+    expect(calls.flat()).toHaveLength(18);
     expect(
-      (
-        await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
-          topicId,
-        ])
-      ).rows,
-    ).toHaveLength(17);
+      (await runtime.db
+        .prepare('SELECT count(*) n FROM question_topics WHERE topic_id=?')
+        .bind(topicId)
+        .first())!.n,
+    ).toBe(18);
   } finally {
     await runtime.close();
   }
@@ -448,14 +434,13 @@ test('API errors wait for retry instead of requiring manual edits for every ques
     });
     const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
     const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
-    await expect(summary).toContainText('Cần làm riêng 0');
-    await expect(summary).toContainText('Chờ thử lại 3');
+    await expect(summary).toContainText('Chờ xử lý lại 3');
     await expect(review.getByRole('alert')).toContainText('Kiểm tra API key và model');
     expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(0);
     unavailable = false;
     await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
     await expect(summary).toContainText('3 / 3');
-    await expect(summary).not.toContainText('Chờ thử lại');
+    await expect(summary).not.toContainText('Chờ xử lý lại');
     expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(3);
     expect(calls.flat()).toHaveLength(3);
   } finally {
@@ -468,9 +453,9 @@ test('mixed imports classify and automatically save only bt; ex stays out of pai
 }) => {
   const { runtime, topicId, calls } = await prepare(page, 0);
   try {
-    const source = String.raw`\begin{ex}Trắc nghiệm không gửi AI.\loigiai{Đáp án riêng.}\end{ex}
+    const source = String.raw`\begin{ex}Trắc nghiệm không gửi AI.\choice{A}{B}{C}{D}\loigiai{Đáp án riêng.}\end{ex}
 \begin{bt}Tự luận cần phân loại $x+1=3$.\loigiai{$x=2$.}\end{bt}
-\begin{ex}Trắc nghiệm khác không gửi AI.\end{ex}`;
+\begin{ex}Trắc nghiệm khác không gửi AI.\choice{A}{B}{C}{D}\end{ex}`;
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'AI nhập tự động', exact: true }).click();
     await (
@@ -479,7 +464,7 @@ test('mixed imports classify and automatically save only bt; ex stays out of pai
     const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
     const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
     await expect(summary).toContainText('1 / 3');
-    await expect(summary).toContainText('Bỏ qua 2 câu ngoài môi trường bt');
+    await expect(summary).toContainText('Bỏ qua 2 câu không thuộc phạm vi tự luận');
     await expect(review.locator('.notice-success[role=status]')).toContainText('Đã xử lý hết');
     expect(calls.flat()).toHaveLength(1);
     const stored = (await runtime.db.query('SELECT id,raw FROM questions')).rows;
@@ -498,8 +483,8 @@ test('mixed imports classify and automatically save only bt; ex stays out of pai
       number: 1,
       sourceType: 'tex',
       label: 'Bài trắc nghiệm cũ',
-      statementRaw: 'Trắc nghiệm cũ.',
-      raw: String.raw`\begin{ex}Trắc nghiệm cũ.\end{ex}`,
+      statementRaw: String.raw`Trắc nghiệm cũ.\choice{A}{B}{C}{D}`,
+      raw: String.raw`\begin{ex}Trắc nghiệm cũ.\choice{A}{B}{C}{D}\end{ex}`,
     };
     await upsertQuestions(runtime.db, [ex]);
     await review.getByRole('button', { name: 'Hoàn tất', exact: true }).click();
@@ -507,7 +492,7 @@ test('mixed imports classify and automatically save only bt; ex stays out of pai
     await page.getByRole('button', { name: 'AI quét và sắp xếp toàn bộ kho', exact: true }).click();
     const bank = page.getByRole('dialog', { name: 'AI quét toàn bộ kho', exact: true });
     await expect(bank.getByRole('status')).toContainText('Đã quét hết kho');
-    await expect(bank.locator('.scan-counts')).toContainText('Bỏ qua ngoài bt 1');
+    await expect(bank.locator('.scan-counts')).toContainText('Ngoài phạm vi tự luận 1');
     expect(calls.flat()).toHaveLength(2);
     expect(
       (await runtime.db.query('SELECT * FROM question_topics WHERE question_id=?', [ex.id])).rows,
