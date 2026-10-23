@@ -53,6 +53,12 @@ AI nhập tự động, quét kho và phân loại câu đã chọn chỉ xử l
 - Cấu hình phân loại chỉ dành cho admin, độc lập với trợ lý AI của học sinh hiện tại. Key được mã hóa AES-GCM trong D1 bằng secret máy chủ `AI_SETTINGS_KEY`, không trả lại key cho trình duyệt. Trình duyệt không lưu key vào localStorage/sessionStorage. Không tự động chạy AI khi học sinh mở bài.
 - Trước lần triển khai đầu tiên, thiết lập một secret ngẫu nhiên ít nhất 32 ký tự bằng `node scripts/wrangler.mjs secret put AI_SETTINGS_KEY`; khi chạy cục bộ, đặt vào `.dev.vars` riêng. Giữ nguyên secret ở các lần triển khai sau; thay secret sẽ cần nhập lại API key. Không đưa giá trị thật vào Git. Migration `0005_admin_ai.sql` chỉ thêm bảng cấu hình, không sửa câu hỏi hay chuyên đề.
 
+## Nội dung Góc học tập
+
+Bản nội dung khởi đầu gồm năm phần: buổi học 30 phút; trình bày bài đại số và hình học; bốn lỗi thường gặp; kế hoạch học một tuần; cách hỏi bài và tự kiểm tra. Dùng các đường dẫn đầu bài để chuyển nhanh tới từng phần. Nội dung là HTML/LaTeX lưu trong D1, có thể xem trước và chỉnh tại **Trang học sinh → Nội dung góc học tập**.
+
+Với một môi trường đã có dữ liệu nhưng Góc học tập còn trống, chạy `npm run guide:seed -- --remote` để xem trạng thái, rồi `npm run guide:seed -- --remote --apply` để bổ sung. Lệnh lưu bản cấu hình cũ trong `.data/backups`, chỉ điền nội dung khi còn trống, giữ tiêu đề/tên tab và kiểm tra phiên bản để tránh ghi đè thay đổi đồng thời. Không thay nội dung đã được chủ web biên soạn; bỏ `--remote` để áp dụng trên D1 cục bộ.
+
 ## Cấu hình các tab học sinh
 
 Trong **Trang học sinh**, bạn có thể chỉnh lời chào, giới thiệu, tên và mô tả của ba tab, thứ tự, trạng thái ẩn/hiện, lời giới thiệu chuyên đề và nội dung Góc học tập. Luôn cần ít nhất một tab hiển thị. Các tab giữ chức năng chuyên đề, tạo đề và bài hướng dẫn; hiện chưa có trình tạo thêm loại tab tùy ý.

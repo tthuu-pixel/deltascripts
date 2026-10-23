@@ -8,6 +8,8 @@ Nhận diện dùng xanh dương, đỏ san hô và vàng; logo/favicon và bộ
 
 Ảnh nền hình học được tạo riêng cho dự án và phục vụ tại `public/images`: WebP khoảng 27 KB cho máy tính, 9 KB cho điện thoại. Minh họa SVG dùng tam giác vuông, đường tròn và căn thức; không dùng phương trình đường tròn trong hệ tọa độ. Xem [nội dung chuyên đề và cách thêm nguồn](docs/curriculum.md).
 
+Các trang học bên trong dùng nền chuyển sắc nhẹ và màu nhận diện: xanh cho lý thuyết, đỏ cho ví dụ, vàng cho vận dụng. Góc học tập có nội dung hướng dẫn tự học, trình bày bài, kiểm tra lỗi, kế hoạch một tuần và cách hỏi bài; người quản trị vẫn sửa được nội dung trong **Trang học sinh**.
+
 Học sinh có ba tab: **Chuyên đề**, **Tạo đề thi** và **Góc học tập**. Người quản trị đổi tên, mô tả, thứ tự và trạng thái ẩn/hiện của các tab ngay trên web. Nội dung chuyên đề và góc học tập do chủ web tự đưa lên; không còn bài mẫu viết cứng trong giao diện.
 
 Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo viên/quản lý hiện có. Bạn tạo chuyên đề, nhập lý thuyết từ TeX (tùy chọn), nhập Word/TeX vào kho câu hỏi, sửa nguồn/lời giải, phân loại theo chuyên đề, rồi chọn xuất bản. Một câu dùng chung cho nhiều chuyên đề, luyện tập và tạo đề; không cần nhập lặp lại. Bài mới mặc định là bản nháp. Câu hỏi và chuyên đề có trạng thái xuất bản riêng; học sinh chỉ nhận nội dung đã xuất bản.

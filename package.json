@@ -24,7 +24,8 @@
     "cf:whoami": "node scripts/wrangler.mjs whoami --json",
     "cf:setup": "node scripts/cloudflare-setup.mjs",
     "deploy": "npm run build && node scripts/deploy.mjs",
-    "topics:seed": "tsx server/seed-topics.ts"
+    "topics:seed": "tsx server/seed-topics.ts",
+    "guide:seed": "tsx server/seed-study-guide.ts"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.12",

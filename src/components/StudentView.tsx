@@ -18,10 +18,11 @@ import {
   type StudentTabKey,
 } from '../../shared/content';
 const Topics = lazy(() => import('./Topics'));
+const StudyGuide = lazy(() => import('./StudyGuide'));
 const tabDecorations: Record<StudentTabKey, { icon: IconName; color: string }> = {
   topics: { icon: 'topics', color: 'blue' },
   exam: { icon: 'exam', color: 'yellow' },
-  guide: { icon: 'guide', color: 'blue' },
+  guide: { icon: 'guide', color: 'red' },
 };
 const LatexContent = lazy(() => import('./LatexContent'));
 const AIAssistantPanel = lazy(() => import('./AIAssistantPanel'));
@@ -409,14 +410,7 @@ export default function StudentView({ user }: { user: User }) {
             </>
           )}
           {tab === 'guide' && (
-            <section className="surface managed-guide lesson-content">
-              <h2>{contentSettings.guideTitle}</h2>
-              {contentSettings.guideContent ? (
-                <LatexContent html={contentSettings.guideContent} />
-              ) : (
-                <p className="muted">Nội dung góc học tập đang được quản trị viên chuẩn bị.</p>
-              )}
-            </section>
+            <StudyGuide title={contentSettings.guideTitle} content={contentSettings.guideContent} />
           )}
         </Suspense>
       </div>

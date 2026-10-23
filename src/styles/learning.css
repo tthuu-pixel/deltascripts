@@ -1,0 +1,674 @@
+/* Learning interiors: blue for foundations, coral for examples, gold for practice. */
+.topic-detail {
+  --detail-accent: #2855dd;
+  --detail-soft: #edf2ff;
+  --detail-line: #d6e1ff;
+}
+.topic-detail.detail-red {
+  --detail-accent: #bc403c;
+  --detail-soft: #fff0eb;
+  --detail-line: #f5d1c7;
+}
+.topic-detail.detail-yellow {
+  --detail-accent: #8b5d0d;
+  --detail-soft: #fff7df;
+  --detail-line: #edd797;
+}
+.topic-detail-heading {
+  position: relative;
+  isolation: isolate;
+  padding: 30px 34px;
+  border: 1px solid var(--detail-line);
+  border-left: 5px solid var(--detail-accent);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 100% 0, #ffffffdd 0 16%, transparent 16.2%),
+    linear-gradient(115deg, var(--detail-soft), #fffdf7);
+}
+.topic-detail-heading > div {
+  min-width: 0;
+}
+.topic-detail-heading > .icon-tile {
+  flex-shrink: 0;
+  background: #ffffffd9;
+  box-shadow: 0 5px 18px #233d7710;
+}
+.topic-detail-heading .eyebrow {
+  color: var(--detail-accent);
+}
+.topic-detail-heading h2 {
+  font-size: clamp(1.6rem, 2.6vw, 2.35rem);
+  line-height: 1.4;
+}
+.topic-detail-heading .muted {
+  color: #526683;
+  line-height: 1.85;
+}
+.topic-section-tabs {
+  gap: 14px;
+}
+.topic-section-tab {
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 20px 22px;
+  color: #31518e;
+  background: #edf3ff;
+  border-color: #d8e3ff;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.topic-section-tab svg {
+  padding: 9px;
+  box-sizing: content-box;
+  background: #ffffffc7;
+  border-radius: 12px;
+}
+.topic-section-tab:nth-child(2) {
+  color: #a83c37;
+  background: #fff0eb;
+  border-color: #f4d2c7;
+}
+.topic-section-tab:nth-child(3) {
+  color: #81570e;
+  background: #fff7db;
+  border-color: #ead799;
+}
+.topic-section-tab.is-active {
+  color: #fff;
+  background: #2855dd;
+  border-color: #2855dd;
+  box-shadow: 0 5px 15px #2855dd20;
+}
+.topic-section-tab:nth-child(2).is-active {
+  color: #fff;
+  background: #c44942;
+  border-color: #c44942;
+}
+.topic-section-tab:nth-child(3).is-active {
+  color: #503709;
+  background: #ffda70;
+  border-color: #e3ba4e;
+}
+.topic-section-tab.is-active svg {
+  background: #ffffff22;
+}
+.topic-section-tab:nth-child(3).is-active svg {
+  background: #fff6d2;
+}
+.managed-lesson,
+.managed-examples {
+  overflow: hidden;
+  border-top: 4px solid #4168e6;
+  box-shadow: 0 8px 30px #263e7306;
+}
+.managed-examples {
+  border-top-color: #e36d5f;
+}
+.lesson-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: -4px 0 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5eafa;
+}
+.managed-examples .lesson-section-heading {
+  border-color: #f7dfd7;
+}
+.lesson-section-heading h3 {
+  margin: 4px 0 0;
+}
+.lesson-section-heading .icon-tile {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+.managed-examples .section-kicker {
+  color: #b34a41;
+}
+.topic-practice > .section-heading {
+  padding: 22px 26px;
+  background: linear-gradient(110deg, #fff2c4, #fffaf0);
+  border: 1px solid #efda9b;
+  border-radius: 18px;
+}
+.topic-practice > .section-heading .section-kicker {
+  color: #895c0b;
+}
+.topic-practice > .section-heading .muted {
+  color: #725e39;
+}
+.topic-exercise {
+  border-top: 3px solid #e6bd52;
+}
+.topic-exercise:nth-child(3n + 2) {
+  border-top-color: #ee9587;
+}
+.topic-exercise:nth-child(3n) {
+  border-top-color: #8aa7f2;
+}
+.topic-exercise .exercise-heading {
+  background: #fff9e9;
+  margin: -1px -1px 0;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid #f4e7c8;
+}
+.topic-exercise:nth-child(3n + 2) .exercise-heading {
+  background: #fff2ed;
+  border-color: #f6ddd4;
+}
+.topic-exercise:nth-child(3n) .exercise-heading {
+  background: #eff4ff;
+  border-color: #dce6ff;
+}
+.topic-question-list .solution-panel,
+.exam-question .solution-panel {
+  border-color: #cbdaf5;
+  background: linear-gradient(110deg, #edf4ff, #f8fbff);
+  border-left: 3px solid #6688df;
+}
+.exam-create-card {
+  background:
+    radial-gradient(circle at 100% 0, #ffe8aa55 0 22%, transparent 22.2%),
+    linear-gradient(125deg, #fff8df, #fffdf8 64%);
+  border-color: #ead8aa;
+}
+.exam-create-copy > .eyebrow {
+  color: #91630d;
+}
+.exam-create-copy > p {
+  color: #5c6780;
+}
+.exam-specs > span {
+  background: #ffffffc4;
+  border-radius: 10px;
+  padding: 7px 10px;
+}
+.exam-toolbar.surface {
+  border-top: 3px solid #f0c652;
+  background: linear-gradient(100deg, #fff8df, #fff);
+}
+.exam-question {
+  border-top: 3px solid #829eeb;
+}
+.exam-question .exercise-heading .small-label {
+  color: #5b6f96;
+  background: #edf3ff;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+/* The guide uses ordinary editable HTML, with generous reading space. */
+.managed-guide {
+  min-width: 0;
+}
+.guide-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 34px 40px;
+  border: 1px solid #d5dffa;
+  border-radius: 24px;
+  color: white;
+  background:
+    radial-gradient(circle at 96% 0, #486ee8 0 22%, transparent 22.1%),
+    linear-gradient(115deg, #1b3991, #2855c9);
+}
+.guide-hero .section-kicker {
+  color: #ffe19a;
+}
+.managed-guide .guide-hero h2 {
+  color: #fff;
+  font-size: clamp(1.6rem, 2.8vw, 2.3rem);
+  line-height: 1.4;
+  margin: 10px 0;
+}
+.guide-hero p {
+  color: #e2eaff;
+  line-height: 1.8;
+}
+.guide-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.guide-hero-tags span {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #f4f7ff;
+  background: #ffffff16;
+  border: 1px solid #ffffff32;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+.guide-hero-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 132px;
+  height: 132px;
+  border: 1px solid #ffffff30;
+  border-radius: 30px;
+  background: #ffffff14;
+  transform: rotate(7deg);
+  color: #ffe197;
+}
+.guide-hero-art > span {
+  position: absolute;
+  top: -20px;
+  right: -12px;
+  color: #ff9d8e;
+  font-size: 44px;
+}
+.guide-reading {
+  padding-top: 26px;
+}
+.guide-reading > .math-content {
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  color: #344762;
+}
+.guide-reading > .math-content:not(:has(.study-guide-content)) {
+  padding: 30px;
+  background: white;
+  border: 1px solid #dde5f4;
+  border-radius: 20px;
+}
+.study-guide-content {
+  min-width: 0;
+}
+.guide-welcome {
+  padding: 28px 32px;
+  border: 1px solid #eedaa6;
+  border-radius: 20px;
+  background: linear-gradient(115deg, #fff6d8, #fffaf0);
+}
+.guide-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #586e98;
+  letter-spacing: 1.2px;
+  line-height: 1.7;
+}
+.guide-welcome .guide-label {
+  color: #8b600f;
+}
+.study-guide-content h3 {
+  color: #1d3154;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.5;
+  margin: 5px 0 12px;
+  letter-spacing: -0.3px;
+}
+.study-guide-content p {
+  margin: 0;
+}
+.guide-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 20px 0 4px;
+}
+.guide-shortcuts a {
+  color: #3154a0;
+  font-size: 0.875rem;
+  font-weight: 750;
+  padding: 9px 14px;
+  border: 1px solid #d6e1f7;
+  border-radius: 12px;
+  background: #fff;
+  text-decoration: none;
+}
+.guide-shortcuts a:hover {
+  background: #eaf1ff;
+  border-color: #9ab0e6;
+}
+.guide-section {
+  margin-top: 36px;
+  scroll-margin-top: 125px;
+}
+.guide-section-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.guide-section-heading h3 {
+  margin-bottom: 0;
+}
+.guide-section-number {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #e4ecff;
+  color: #3157bc;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.guide-section:nth-of-type(2n) .guide-section-number {
+  color: #ad443c;
+  background: #ffe9e2;
+}
+.guide-section > p {
+  margin: 0 0 20px;
+}
+.guide-routine {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.guide-two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.guide-card {
+  --guide-accent: #315bc4;
+  --guide-tint: #eef3ff;
+  --guide-border: #d5e0fb;
+  min-width: 0;
+  padding: 24px;
+  background: linear-gradient(155deg, var(--guide-tint), #ffffff 75%);
+  border: 1px solid var(--guide-border);
+  border-top: 3px solid var(--guide-accent);
+  border-radius: 18px;
+}
+.guide-card.guide-red {
+  --guide-accent: #c35347;
+  --guide-tint: #fff0eb;
+  --guide-border: #f1d7cf;
+}
+.guide-card.guide-yellow {
+  --guide-accent: #b18422;
+  --guide-tint: #fff7dc;
+  --guide-border: #ecdeb5;
+}
+.study-guide-content h4 {
+  font-size: 1.0625rem;
+  color: #243b61;
+  font-weight: 800;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.guide-card p,
+.guide-card li {
+  font-size: 1rem;
+  line-height: 1.9;
+}
+.guide-time {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--guide-accent);
+  background: #ffffffd9;
+  border: 1px solid var(--guide-border);
+  padding: 5px 10px;
+  border-radius: 9px;
+  margin-bottom: 15px;
+}
+.guide-card ol {
+  list-style: decimal;
+  padding-left: 21px;
+  margin: 0;
+}
+.guide-card li + li {
+  margin-top: 12px;
+}
+.guide-card p.guide-example {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--guide-border);
+  color: #526783;
+  font-size: 0.9375rem;
+}
+.guide-card blockquote {
+  border-left: 3px solid #7190e0;
+  background: #e9f0ff;
+  color: #29467f;
+  margin: 18px 0;
+  padding: 16px 18px;
+  border-radius: 0 12px 12px 0;
+  font-size: 0.9375rem;
+}
+.guide-week-plan {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+}
+.guide-week-plan li {
+  min-width: 0;
+  display: flex;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #dbe4f5;
+  border-radius: 16px;
+  background: white;
+}
+.guide-week-plan li > span {
+  color: #3158bc;
+  background: #edf2ff;
+  padding: 7px 10px;
+  font-size: 0.8125rem;
+  border-radius: 9px;
+  align-self: flex-start;
+  white-space: nowrap;
+  font-weight: 800;
+}
+.guide-week-plan li:nth-child(3n + 2) > span {
+  color: #ae4a3e;
+  background: #fff0e9;
+}
+.guide-week-plan li:nth-child(3n) > span {
+  color: #815c14;
+  background: #fff5d5;
+}
+.guide-week-plan li:last-child {
+  grid-column: 1 / -1;
+  background: linear-gradient(100deg, #fff7df, #fffdf8);
+  border-color: #ead8a6;
+}
+.guide-week-plan h4 {
+  margin-bottom: 5px;
+}
+.guide-week-plan p {
+  font-size: 0.9375rem;
+  line-height: 1.8;
+}
+.guide-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.guide-checklist li {
+  position: relative;
+  padding-left: 27px;
+}
+.guide-checklist li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #8a6419;
+  font-weight: 800;
+}
+.guide-closing {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 30px;
+  padding: 24px 30px;
+  border-radius: 18px;
+  border: 1px solid #f1d5cb;
+  background: #fff0e9;
+  color: #7e4037;
+}
+.guide-closing > span {
+  color: #d26950;
+  font-size: 36px;
+}
+.guide-closing p {
+  font-size: 1rem;
+  font-weight: 650;
+}
+/* Bring the same palette into the editorial and question-bank workspaces. */
+.teacher-page .content-editor > h3 {
+  color: #3154a4;
+}
+.teacher-page .bank-question-card {
+  border-left: 3px solid #8ba7ed;
+}
+.teacher-page .bank-question-card:nth-child(3n + 2) {
+  border-left-color: #e69a87;
+}
+.teacher-page .bank-question-card:nth-child(3n) {
+  border-left-color: #e1bf68;
+}
+.teacher-page .tab-settings-row {
+  border-color: #d7e3fa;
+  background: #f6f9ff;
+}
+@media (max-width: 1100px) {
+  .guide-routine {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .topic-detail-heading {
+    padding: 23px 20px;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  .topic-detail-heading > .icon-tile {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+  }
+  .topic-section-tab {
+    padding: 15px 10px;
+    gap: 9px;
+    flex-direction: column;
+  }
+  .topic-section-tab svg {
+    padding: 7px;
+  }
+  .topic-section-tab > span {
+    font-size: 0.9375rem;
+    text-align: center;
+    white-space: normal;
+  }
+  .lesson-section-heading {
+    gap: 12px;
+  }
+  .lesson-section-heading .section-kicker {
+    font-size: 0.65rem;
+  }
+  .topic-practice > .section-heading {
+    padding: 20px;
+  }
+  .guide-hero {
+    padding: 27px 23px;
+    gap: 15px;
+  }
+  .guide-hero-art {
+    width: 70px;
+    height: 86px;
+    border-radius: 20px;
+  }
+  .guide-hero-art svg {
+    width: 48px;
+    height: 48px;
+  }
+  .guide-hero-art > span {
+    font-size: 30px;
+    top: -17px;
+    right: -7px;
+  }
+  .guide-two-columns,
+  .guide-week-plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .guide-week-plan li {
+    gap: 13px;
+    padding: 18px;
+  }
+  .guide-welcome {
+    padding: 24px;
+  }
+  .guide-reading > .math-content {
+    font-size: 1rem;
+  }
+  .guide-card {
+    padding: 22px;
+  }
+}
+@media (max-width: 430px) {
+  .topic-section-tabs {
+    gap: 7px;
+  }
+  .topic-section-tab {
+    padding-inline: 5px;
+  }
+  .topic-section-tab > span {
+    font-size: 0.8125rem;
+  }
+  .guide-hero {
+    display: block;
+  }
+  .guide-hero-art {
+    display: none;
+  }
+  .guide-routine {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .guide-shortcuts a {
+    font-size: 0.8125rem;
+    padding: 8px 10px;
+  }
+  .guide-welcome {
+    padding: 21px;
+  }
+  .study-guide-content h3 {
+    font-size: 1.25rem;
+  }
+  .guide-section-heading {
+    gap: 11px;
+  }
+  .guide-section-number {
+    width: 38px;
+    height: 42px;
+    border-radius: 11px;
+  }
+  .guide-closing {
+    padding: 20px;
+    gap: 12px;
+  }
+}
+/* Keep reading text distinct from the older overview-card styles. */
+.study-guide-content .guide-card {
+  display: block;
+}
+.study-guide-content .guide-card p,
+.study-guide-content .guide-card li {
+  color: #445672;
+}
+.study-guide-content .guide-card p {
+  flex: initial;
+  margin-bottom: 0;
+}

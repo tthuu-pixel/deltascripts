@@ -1,3 +1,4 @@
+import { studyGuideContent } from './studyGuide';
 export const topicIcons = [
   'topics',
   'radical',
@@ -144,7 +145,7 @@ export const defaultStudentSettings: StudentSettings = {
   heroIntro: 'Vững kiến thức hôm nay. Tự tin cho những bước tiếp theo.',
   topicsIntro: 'Chọn chuyên đề bạn muốn luyện tập hôm nay.',
   guideTitle: 'Góc học tập',
-  guideContent: '',
+  guideContent: studyGuideContent,
   tabs: [
     { key: 'topics', label: 'Chuyên đề', description: 'Học theo chuyên đề', visible: true },
     { key: 'exam', label: 'Tạo đề thi', description: 'Thử sức, bứt phá', visible: true },

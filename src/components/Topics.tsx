@@ -75,7 +75,7 @@ export default function Topics({ topics, intro }: { topics: TopicSummary[]; intr
   const current = topics.find((t) => t.id === selected);
   if (selected && current)
     return (
-      <div className="topic-detail">
+      <div className={`topic-detail detail-${current.color}`}>
         <button
           className="text-button"
           onClick={() => {
@@ -121,7 +121,7 @@ export default function Topics({ topics, intro }: { topics: TopicSummary[]; intr
               aria-controls={`topic-panel-${item.key}`}
               aria-selected={section === item.key}
               tabIndex={section === item.key ? 0 : -1}
-              className={`topic-section-tab ${section === item.key ? 'is-active' : ''}`}
+              className={`topic-section-tab section-${item.key} ${section === item.key ? 'is-active' : ''}`}
               onClick={() => {
                 setSection(item.key);
                 if (item.key === 'practice') setPracticeOpened(true);
@@ -154,7 +154,15 @@ export default function Topics({ topics, intro }: { topics: TopicSummary[]; intr
           >
             {section === 'theory' && detail?.id === selected && (
               <section className="surface lesson-content managed-lesson">
-                <h3>Lý thuyết</h3>
+                <div className="lesson-section-heading">
+                  <span className="icon-tile tone-blue">
+                    <Icon name="guide" size={25} />
+                  </span>
+                  <div>
+                    <span className="section-kicker">NẮM CHẮC KIẾN THỨC</span>
+                    <h3>Lý thuyết</h3>
+                  </div>
+                </div>
                 {detail.theory ? (
                   <LatexContent html={detail.theory} preamble={detail.preamble} />
                 ) : (
@@ -174,7 +182,15 @@ export default function Topics({ topics, intro }: { topics: TopicSummary[]; intr
           >
             {section === 'examples' && detail?.id === selected && (
               <section className="surface lesson-content managed-examples">
-                <h3>Ví dụ</h3>
+                <div className="lesson-section-heading">
+                  <span className="icon-tile tone-red">
+                    <Icon name="geometry" size={25} />
+                  </span>
+                  <div>
+                    <span className="section-kicker">HIỂU TỪNG BƯỚC GIẢI</span>
+                    <h3>Ví dụ</h3>
+                  </div>
+                </div>
                 {detail.examples ? (
                   <LatexContent html={detail.examples} preamble={detail.examplesPreamble} />
                 ) : (
