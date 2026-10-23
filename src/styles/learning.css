@@ -672,3 +672,119 @@
   flex: initial;
   margin-bottom: 0;
 }
+
+/* Authored curriculum: knowledge, methods and collapsible exercise types. */
+.topic-curriculum {
+  color: #344968;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.topic-curriculum h3 {
+  color: #192f52;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  margin: 0.4rem 0 1rem;
+}
+.topic-curriculum h4 {
+  color: #234bc3;
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+}
+.topic-curriculum p {
+  margin: 0.4rem 0 1rem;
+}
+.topic-curriculum ul,
+.topic-curriculum ol {
+  padding-left: 1.4rem;
+}
+.topic-curriculum li {
+  padding-left: 0.3rem;
+  margin: 0.6rem 0;
+}
+.curriculum-intro,
+.curriculum-method,
+.curriculum-caution,
+.curriculum-example {
+  border: 1px solid #dce5ff;
+  border-radius: 18px;
+  padding: clamp(18px, 3vw, 30px);
+  margin-bottom: 24px;
+}
+.curriculum-intro {
+  background: linear-gradient(120deg, #edf3ff, #fafcff);
+}
+.curriculum-code {
+  color: #2855d9;
+  font-size: 0.875rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+}
+.curriculum-method {
+  background: #fff;
+}
+.curriculum-caution {
+  background: #fff8dd;
+  border-color: #f2d87b;
+  color: #765714;
+}
+.curriculum-caution p {
+  margin-bottom: 0;
+}
+.curriculum-type {
+  background: #fff;
+  border: 1px solid #dfe6f5;
+  border-radius: 14px;
+  margin: 12px 0;
+}
+.curriculum-type > summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  color: #1b3558;
+  font-weight: 650;
+}
+.curriculum-type > summary .curriculum-code {
+  margin-right: 10px;
+}
+.curriculum-type[open] {
+  border-color: #91acff;
+  box-shadow: 0 5px 20px #3158c008;
+}
+.curriculum-type-body {
+  padding: 6px 22px 18px;
+}
+.curriculum-type-body p:last-child {
+  margin-bottom: 0;
+}
+.curriculum-example {
+  background: linear-gradient(130deg, #fff9f6, #fff);
+  border-color: #ffdbce;
+}
+.curriculum-example .curriculum-code {
+  color: #c64a38;
+}
+.curriculum-solution {
+  border-top: 1px solid #f0d9d2;
+  margin-top: 20px;
+  padding-top: 12px;
+}
+.curriculum-solution > summary {
+  cursor: pointer;
+  color: #bd4434;
+  font-weight: 700;
+  padding: 6px 0;
+}
+.curriculum-solution[open] > summary {
+  margin-bottom: 12px;
+}
+.topic-curriculum .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+@media (max-width: 480px) {
+  .curriculum-type > summary {
+    padding: 14px;
+  }
+  .curriculum-type-body {
+    padding: 4px 14px 16px;
+  }
+}

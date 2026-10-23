@@ -145,3 +145,14 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:tikz
 ```
 
 Kiểm tra này cần mạng, dùng tam giác, hình đường cao và biểu đồ tròn; tôn trọng HTTPS_PROXY và xác minh TLS. Test thông thường bỏ qua ca mạng này. Kết quả Playwright nằm trong `test-results`.
+
+## Viết lại chuyên đề theo tài liệu tháng 10/2026
+
+`content/ts10-topics.json` là bản biên soạn 14 chuyên đề, 112 dạng bài và 28 ví dụ có lời giải từ tài liệu người quản trị cung cấp. Nội dung học sinh gồm kiến thức, cách tiếp cận, lưu ý, các dạng mở rộng và ví dụ. Mã CĐ01–CĐ14 dùng để tra cứu kiến thức, không gắn lại số Câu 1–7 cho ngân hàng. Phần hướng dẫn AI, thống kê tần suất chưa kiểm chứng và cấu hình biên dịch trong tài liệu nguồn không được đưa vào bài học.
+
+- Xem kế hoạch: `npm run topics:rewrite -- --remote` (bỏ `--remote` để dùng D1 cục bộ).
+- Áp dụng và xuất bản toàn bộ 14 chuyên đề: `npm run topics:rewrite -- --remote --apply`.
+- Lệnh này **ghi đè có chủ đích** tiêu đề, mô tả, lý thuyết, ví dụ, icon, thứ tự và trạng thái của các chuyên đề trong kế hoạch; nên dùng sau khi đối chiếu nội dung. Không chạy seed danh mục 18 mục cũ sau khi viết lại.
+- Trước khi ghi, CLI sao lưu riêng vào `.data/backups/curriculum-*.json` (không commit). Chuyên đề ngoài kế hoạch làm lệnh dừng để đối chiếu. Những chỉnh sửa mới có kiểm tra phiên bản; câu hỏi được gắn sang nhóm mới trước khi bỏ nhóm cũ, đồng thời chuyển các lựa chọn trong cấu hình tạo đề.
+- Nguồn câu hỏi, lời giải, trạng thái nháp/xuất bản, tài khoản và cấu hình trang học sinh được giữ nguyên. “Xuất bản tất cả” trong lệnh này chỉ áp dụng chuyên đề, không xuất bản các câu hỏi nháp. Không gọi dịch vụ AI khi chạy lệnh; quy tắc AI chỉ quét `bt`, bỏ qua `ex` vẫn giữ nguyên.
+- Chạy lại ngay trên cùng nội dung không tạo bản trùng hoặc tăng phiên bản. Sau khi quản trị viên biên tập thêm trên web, chạy lại có `--apply` sẽ thay nội dung đó bằng bản trong Git; chỉnh sửa thường ngày nên thực hiện ở trang quản trị.

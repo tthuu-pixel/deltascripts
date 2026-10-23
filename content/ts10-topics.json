@@ -1,0 +1,1214 @@
+[
+  {
+    "code": "CĐ01",
+    "title": "Hàm số y = ax² (a ≠ 0) và đồ thị",
+    "category": "Hàm số và đồ thị",
+    "icon": "function",
+    "description": "Vẽ parabol y=ax²; tìm điểm biết hoành độ, tung độ hoặc quan hệ tọa độ; giao điểm parabol–đường thẳng, xác định hệ số, tham số và điều kiện hình học. Dùng cho yêu cầu trực tiếp về đồ thị (P); công thức thực tế chỉ thay số thuộc chuyên đề hàm số và công thức thực tế.",
+    "knowledge": [
+      "Với $a\\ne0$, đồ thị $y=ax^2$ là parabol có đỉnh $O(0;0)$ và trục đối xứng $Oy$. Parabol mở lên khi $a>0$, mở xuống khi $a<0$.",
+      "Điểm $M(x_0;y_0)$ thuộc đồ thị khi và chỉ khi $y_0=ax_0^2$. Hai điểm có hoành độ đối nhau có cùng tung độ.",
+      "Tìm giao điểm với $y=mx+n$ bằng cách giải $ax^2=mx+n$, rồi thay từng hoành độ tìm được vào một trong hai công thức."
+    ],
+    "steps": [
+      "Xác định hệ số a, yêu cầu và điều kiện của điểm.",
+      "Lập bảng giá trị đối xứng hoặc chuyển quan hệ tọa độ thành phương trình.",
+      "Giải phương trình, tính đủ hai tọa độ.",
+      "Loại điểm không phù hợp điều kiện và kết luận bằng tọa độ."
+    ],
+    "caution": "Không chia hai vế cho $x$ trước khi xét $x=0$. Khi tìm hoành độ từ tung độ, kiểm tra dấu của $y/a$ và lấy đủ hai căn nếu dương.",
+    "examples": [
+      {
+        "title": "Tìm điểm theo quan hệ tọa độ",
+        "question": "Tìm các điểm trên $(P):y=\\dfrac12x^2$ có tung độ gấp đôi hoành độ.",
+        "solution": "Ta có $\\dfrac12x^2=2x$, nên $x(x-4)=0$. Với $x=0$ thì $y=0$; với $x=4$ thì $y=8$. Hai điểm cần tìm là $O(0;0)$ và $A(4;8)$."
+      },
+      {
+        "title": "Giao điểm parabol và đường thẳng",
+        "question": "Tìm giao điểm của $y=x^2$ và $y=x+2$.",
+        "solution": "Giải $x^2-x-2=0$, được $(x-2)(x+1)=0$. Với $x=2$ thì $y=4$; với $x=-1$ thì $y=1$. Các giao điểm là $(2;4)$ và $(-1;1)$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ01.01",
+        "title": "Vẽ đồ thị (P)",
+        "recognition": "Đề yêu cầu vẽ parabol với hệ số đã biết.",
+        "method": "Lập bảng ít nhất năm điểm đối xứng, đánh dấu đỉnh và trục đối xứng, nối bằng đường cong mềm; không nối các điểm bằng đoạn thẳng.",
+        "variants": ["Hệ số dương, âm hoặc phân số; cùng hệ trục có thêm một đường thẳng."]
+      },
+      {
+        "code": "CĐ01.02",
+        "title": "Tìm điểm thuộc (P) khi biết hoành độ",
+        "recognition": "Biết hoành độ của điểm trên parabol.",
+        "method": "Thay trực tiếp hoành độ vào $y=ax^2$, rồi viết đầy đủ tọa độ điểm."
+      },
+      {
+        "code": "CĐ01.03",
+        "title": "Tìm điểm thuộc (P) khi biết tung độ",
+        "recognition": "Biết tung độ và cần tìm hoành độ.",
+        "method": "Giải $x^2=y_0/a$; xét dấu vế phải, lấy đủ hai nghiệm đối nhau khi dương và một nghiệm khi bằng $0$."
+      },
+      {
+        "code": "CĐ01.04",
+        "title": "Điểm thuộc (P) có tung độ gấp $k$ lần hoành độ",
+        "recognition": "Tung độ bằng $k$ lần hoành độ.",
+        "method": "Thay $y=kx$ vào $y=ax^2$ để được $x(ax-k)=0$; xét yêu cầu khác gốc tọa độ nếu có."
+      },
+      {
+        "code": "CĐ01.05",
+        "title": "Điểm thuộc (P) có hoành độ gấp $k$ lần tung độ",
+        "recognition": "Hoành độ bằng $k$ lần tung độ.",
+        "method": "Dùng $x=ky=kax^2$, nên $x(ka x-1)=0$. Nếu $k=0$, chỉ có $x=0$ và $y=0$; không chia cho $k$."
+      },
+      {
+        "code": "CĐ01.06",
+        "title": "Điểm thuộc (P) thỏa quan hệ đặc biệt khác",
+        "recognition": "Có tổng, hiệu, trị tuyệt đối hoặc quan hệ đặc biệt của hai tọa độ.",
+        "method": "Thế $y=ax^2$ vào quan hệ đã cho; với trị tuyệt đối phải chia trường hợp hoặc dùng tính không âm rồi kiểm tra lại.",
+        "variants": ["$y=x$, $y=-x$, $|y|=|x|$; tổng hoặc hiệu hai tọa độ bằng một số cho trước."]
+      },
+      {
+        "code": "CĐ01.07",
+        "title": "Giao điểm của (P) và đường thẳng (d) bằng phép tính",
+        "recognition": "Đề cho cả parabol và đường thẳng, hỏi giao điểm.",
+        "method": "Cho hai biểu thức tung độ bằng nhau, giải phương trình hoành độ; thay lại để tìm tung độ và viết các giao điểm."
+      },
+      {
+        "code": "CĐ01.08",
+        "title": "Xác định hệ số và viết phương trình đường thẳng liên quan (P)",
+        "recognition": "Đề cần hệ số của parabol hoặc phương trình đường thẳng qua các điểm.",
+        "method": "Thay tọa độ điểm đã biết vào công thức; nếu tìm đường thẳng, lập hai điều kiện độc lập để xác định hai hệ số."
+      },
+      {
+        "code": "CĐ01.09",
+        "title": "Tham số $m$: vị trí tương đối của (d) và (P)",
+        "recognition": "Đường thẳng hoặc parabol có tham số, hỏi số giao điểm.",
+        "method": "Lập phương trình hoành độ rồi xét biệt thức; kiểm tra riêng trường hợp hệ số bậc hai bằng $0$ nếu tham số tác động đến hệ số đó."
+      },
+      {
+        "code": "CĐ01.10",
+        "title": "Điểm thuộc (P) gắn với yếu tố hình học",
+        "recognition": "Điểm trên parabol còn thỏa độ dài, góc, diện tích hoặc khoảng cách.",
+        "method": "Gọi điểm $M(x;ax^2)$, biểu diễn điều kiện hình học bằng tọa độ rồi giải; đối chiếu vị trí điểm và loại nghiệm ngoại lai."
+      }
+    ]
+  },
+  {
+    "code": "CĐ02",
+    "title": "Phương trình bậc hai và hệ thức Vi-ét",
+    "category": "Đại số",
+    "icon": "quadratic-equation",
+    "description": "Phương trình ax²+bx+c=0: biệt thức, giải phương trình, hệ thức Vi-ét, biểu thức đối xứng và không đối xứng theo hai nghiệm; phân thức, lũy thừa, căn và tham số m. Phân biệt với bài toán lời văn cần lập phương trình bậc hai.",
+    "knowledge": [
+      "Với $a\\ne0$, đặt $\\Delta=b^2-4ac$. Phương trình có hai nghiệm thực phân biệt nếu $\\Delta>0$, nghiệm kép nếu $\\Delta=0$, vô nghiệm thực nếu $\\Delta<0$.",
+      "Khi có nghiệm thực $x_1,x_2$, đặt $S=x_1+x_2=-b/a$, $P=x_1x_2=c/a$. Khi đó $x_1^2+x_2^2=S^2-2P$, $x_1^3+x_2^3=S^3-3PS$.",
+      "Mỗi nghiệm thỏa $ax_i^2+bx_i+c=0$; có thể dùng hệ thức này để hạ bậc lũy thừa. Công thức nghiệm: $x=\\dfrac{-b\\pm\\sqrt\\Delta}{2a}$."
+    ],
+    "steps": [
+      "Xét điều kiện phương trình thật sự bậc hai và có nghiệm thực.",
+      "Đặt tổng S, tích P và ghi điều kiện của mẫu, căn.",
+      "Biến đổi biểu thức về S, P hoặc dùng phương trình nghiệm để hạ bậc.",
+      "Thay giá trị, kiểm tra điều kiện và kết luận."
+    ],
+    "caution": "Biểu thức không đối xứng có thể phụ thuộc cách đặt tên $x_1,x_2$. Không tự chọn thứ tự nghiệm nếu đề chưa quy định; không dùng Vi-ét cho hai nghiệm thực khi $\\Delta<0$.",
+    "examples": [
+      {
+        "title": "Tính biểu thức không cần giải phương trình",
+        "question": "Gọi $x_1,x_2$ là nghiệm của $x^2-5x+3=0$. Tính $x_1^2+x_2^2$.",
+        "solution": "$\\Delta=25-12=13>0$, nên có hai nghiệm phân biệt. Theo Vi-ét, $S=5$, $P=3$. Do đó $x_1^2+x_2^2=S^2-2P=25-6=19$."
+      },
+      {
+        "title": "Biểu thức phân thức",
+        "question": "Với hai nghiệm trên, tính $A=\\dfrac1{x_1+1}+\\dfrac1{x_2+1}$.",
+        "solution": "Vì $(-1)^2-5(-1)+3=9\\ne0$, các mẫu khác $0$. Ta có $A=\\dfrac{S+2}{P+S+1}=\\dfrac{7}{9}$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ02.01",
+        "title": "Chứng minh phương trình có hai nghiệm phân biệt",
+        "recognition": "Yêu cầu chứng minh phương trình có hai nghiệm thực phân biệt.",
+        "method": "Kiểm tra $a\\ne0$ và chứng minh $\\Delta>0$; nếu $ac<0$ thì $-4ac>0$ nên $\\Delta=b^2-4ac>0$."
+      },
+      {
+        "code": "CĐ02.02",
+        "title": "Biểu thức đối xứng cơ bản",
+        "recognition": "Biểu thức đối xứng gồm tổng, tích, bình phương hoặc lập phương hai nghiệm.",
+        "method": "Đặt $S=x_1+x_2$, $P=x_1x_2$; dùng $x_1^2+x_2^2=S^2-2P$, $x_1^3+x_2^3=S^3-3PS$.",
+        "variants": [
+          "$x_1^2+x_2^2$, $(x_1-x_2)^2$, $1/x_1+1/x_2$, $x_1/x_2+x_2/x_1$; ghi điều kiện các mẫu."
+        ]
+      },
+      {
+        "code": "CĐ02.03",
+        "title": "Biểu thức đối xứng dạng phân thức có hằng số",
+        "recognition": "Có các phân thức với mẫu $x_1+k$, $x_2+k$ hoặc dạng tương tự.",
+        "method": "Ghi điều kiện mẫu khác $0$, quy đồng; mẫu tích trở thành $P+kS+k^2$ rồi thay Vi-ét.",
+        "variants": ["Các mẫu dịch $x_i+k$, mẫu bậc hai được hạ bậc nhờ phương trình gốc."]
+      },
+      {
+        "code": "CĐ02.04",
+        "title": "Biểu thức đối xứng dạng tích",
+        "recognition": "Có tích của hai biểu thức đổi vai $x_1,x_2$.",
+        "method": "Khai triển có tổ chức hoặc ghép nhân tử để đưa về tổng và tích hai nghiệm; tránh thế căn thức quá sớm."
+      },
+      {
+        "code": "CĐ02.05",
+        "title": "Biểu thức không đối xứng",
+        "recognition": "Đổi chỗ hai nghiệm có thể làm biểu thức thay đổi.",
+        "method": "Dùng phương trình nghiệm để hạ bậc và kiểm tra biểu thức có thực sự độc lập thứ tự không. Nếu vẫn phụ thuộc thứ tự, cần điều kiện như $x_1<x_2$ hoặc trình bày các giá trị có thể có.",
+        "variants": [
+          "Biểu thức tuyến tính theo hai nghiệm, thương không đối xứng hoặc căn thức phụ thuộc thứ tự nghiệm."
+        ]
+      },
+      {
+        "code": "CĐ02.06",
+        "title": "Biểu thức chứa lũy thừa lớn, căn hoặc hai biểu thức cùng lúc",
+        "recognition": "Biểu thức chứa lũy thừa cao, căn hoặc nhiều đại lượng liên kết.",
+        "method": "Dùng truy hồi $x_i^2=(-bx_i-c)/a$ để hạ bậc; với căn phải kiểm tra miền xác định và dấu trước khi rút gọn."
+      },
+      {
+        "code": "CĐ02.07",
+        "title": "Biểu thức có chữ đã khai triển sẵn, hỏi chứng minh",
+        "recognition": "Đề yêu cầu chứng minh đẳng thức theo hệ số hoặc tham số.",
+        "method": "Biến đổi một vế về $S,P$ hoặc dùng phương trình gốc của mỗi nghiệm; giữ đầy đủ điều kiện để đẳng thức có nghĩa."
+      },
+      {
+        "code": "CĐ02.08",
+        "title": "Giải phương trình bậc hai (không dùng Vi-ét)",
+        "recognition": "Đề yêu cầu tìm trực tiếp nghiệm phương trình bậc hai.",
+        "method": "Đưa về dạng chuẩn, dùng phân tích nhân tử hoặc công thức nghiệm; kiểm tra nghiệm bằng tổng và tích."
+      },
+      {
+        "code": "CĐ02.09",
+        "title": "Phương trình chứa tham số $m$",
+        "recognition": "Phương trình có tham số và điều kiện về nghiệm.",
+        "method": "Tách trường hợp suy biến, dùng biệt thức để bảo đảm nghiệm thực rồi kết hợp điều kiện Vi-ét; kiểm tra nghiệm tham số vào các điều kiện ban đầu."
+      }
+    ]
+  },
+  {
+    "code": "CĐ03",
+    "title": "Thống kê và xác suất",
+    "category": "Thống kê và xác suất",
+    "icon": "bar-chart",
+    "description": "Đọc biểu đồ cột, cột kép, đoạn thẳng, hình quạt; tổng, trung bình, phần trăm; bảng tần số và tần số tương đối. Xác suất từ bảng/biểu đồ, xác suất thực nghiệm, không gian mẫu, chọn người, thẻ, bóng, xúc xắc, đồng xu và phép thử hai bước.",
+    "knowledge": [
+      "Tần số $n_i$ là số lần xuất hiện của giá trị hoặc nhóm. Với cỡ mẫu $N$, tần số tương đối là $f_i=n_i/N$; phần trăm bằng $100f_i\\%$.",
+      "Số trung bình của dữ liệu có tần số là $\\overline{x}=\\dfrac{\\sum n_ix_i}{N}$. Đọc đúng nhãn trục, đơn vị, chú giải và gốc của trục trước khi tính.",
+      "Với không gian mẫu hữu hạn gồm các kết quả đồng khả năng, $P(A)=\\dfrac{n(A)}{n(\\Omega)}$. Xác suất thực nghiệm bằng số lần biến cố xuất hiện chia số lần thử."
+    ],
+    "steps": [
+      "Đọc dữ liệu và mô tả phép thử, biến cố bằng lời.",
+      "Lập bảng hoặc liệt kê không gian mẫu; xác định có thứ tự và có hoàn lại hay không.",
+      "Đếm trường hợp thuận lợi hoặc tính các đại lượng thống kê.",
+      "Kiểm tra tổng tần số, tổng tỉ lệ và xác suất thuộc khoảng từ 0 đến 1."
+    ],
+    "caution": "Không lấy số loại chia cho số loại nếu các loại có số lượng khác nhau. Các kết quả chỉ được dùng công thức đếm cổ điển khi đồng khả năng.",
+    "examples": [
+      {
+        "title": "Tần số và số trung bình",
+        "question": "Điểm $6,7,8$ có tần số lần lượt $2,3,5$. Tính điểm trung bình và tỉ lệ điểm từ $8$ trở lên.",
+        "solution": "Cỡ mẫu $N=2+3+5=10$. Điểm trung bình là $(6\\cdot2+7\\cdot3+8\\cdot5)/10=7{,}3$. Có $5$ bài đạt ít nhất $8$, nên tỉ lệ là $5/10=50\\%$."
+      },
+      {
+        "title": "Rút thẻ không hoàn lại",
+        "question": "Hộp có ba thẻ đánh số $1,2,3$. Rút ngẫu nhiên liên tiếp hai thẻ không hoàn lại. Tính xác suất tổng hai số bằng $4$.",
+        "solution": "Các cặp có thứ tự đồng khả năng là $(1;2),(1;3),(2;1),(2;3),(3;1),(3;2)$. Thuận lợi có $(1;3),(3;1)$, nên $P=2/6=1/3$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ03.01",
+        "title": "Đọc biểu đồ: giá trị lớn nhất, nhỏ nhất, chênh lệch, so sánh",
+        "recognition": "Biểu đồ hỏi lớn nhất, nhỏ nhất, chênh lệch hoặc so sánh.",
+        "method": "Đọc đúng chú giải và đơn vị; lấy giá trị từ dữ liệu thay vì ước lượng chiều cao cột khi trục không bắt đầu từ $0$.",
+        "variants": [
+          "Biểu đồ cột đơn, cột kép, đoạn thẳng, hình quạt; so sánh trực tiếp hoặc so sánh đại lượng tính từ dữ liệu."
+        ]
+      },
+      {
+        "code": "CĐ03.02",
+        "title": "Tổng, số trung bình, tỉ lệ phần trăm từ biểu đồ/bảng",
+        "recognition": "Cần tổng, trung bình hoặc phần trăm từ bảng, biểu đồ.",
+        "method": "Tính tổng số đối tượng trước; trung bình có trọng số phải nhân giá trị với tần số. Xác định đúng mẫu số của tỉ lệ được hỏi."
+      },
+      {
+        "code": "CĐ03.03",
+        "title": "Lập bảng tần số và tần số tương đối, vẽ biểu đồ",
+        "recognition": "Dữ liệu thô hoặc bảng cần chuyển thành tần số, tỉ lệ hay biểu đồ.",
+        "method": "Đếm từng nhóm, kiểm tra tổng tần số bằng cỡ mẫu; chia cho cỡ mẫu để được tần số tương đối và ghi rõ nhãn trục."
+      },
+      {
+        "code": "CĐ03.04",
+        "title": "Xác suất cổ điển lấy dữ liệu từ biểu đồ/bảng",
+        "recognition": "Chọn ngẫu nhiên một đối tượng từ nhóm được mô tả bằng bảng hoặc biểu đồ.",
+        "method": "Cộng số đối tượng thỏa điều kiện; nếu mỗi đối tượng có cơ hội như nhau, chia cho tổng số đối tượng được chọn.",
+        "variants": [
+          "Chọn một nhóm, hợp nhiều nhóm, ngưỡng từ một giá trị trở lên hoặc điều kiện tính từ dữ liệu."
+        ]
+      },
+      {
+        "code": "CĐ03.05",
+        "title": "Xác suất thực nghiệm",
+        "recognition": "Đề cho số lần thử và số lần biến cố đã xảy ra.",
+        "method": "Lấy số lần xuất hiện chia số lần thử. Phân biệt tỉ lệ quan sát được với xác suất lí thuyết; dự đoán chỉ là ước lượng."
+      },
+      {
+        "code": "CĐ03.06",
+        "title": "Liệt kê không gian mẫu – chọn người/đồ vật",
+        "recognition": "Chọn người hoặc đồ vật, cần liệt kê các khả năng.",
+        "method": "Dùng danh sách, bảng hoặc sơ đồ cây; quyết định có phân biệt thứ tự hay không và tránh bỏ sót, đếm lặp."
+      },
+      {
+        "code": "CĐ03.07",
+        "title": "Gieo xúc xắc, đồng xu, quay đĩa, hai phép thử liên tiếp",
+        "recognition": "Gieo xúc xắc, tung xu, quay đĩa hoặc thực hiện hai bước.",
+        "method": "Lập không gian mẫu có thứ tự nếu hai bước phân biệt; kiểm tra tính công bằng và độc lập trước khi nhân xác suất."
+      },
+      {
+        "code": "CĐ03.08",
+        "title": "Rút thẻ và lấy bóng đánh số $1\\ldots n$",
+        "recognition": "Rút thẻ hoặc lấy bóng có đánh số.",
+        "method": "Liệt kê các số thỏa điều kiện chẵn, lẻ, chia hết, tổng hoặc tích; chú ý có hoàn lại hay không và số lượng từng nhãn."
+      },
+      {
+        "code": "CĐ03.09",
+        "title": "Xác suất kèm suy luận khác",
+        "recognition": "Có giao, hợp biến cố, suy luận hoặc nhiều cách chọn.",
+        "method": "Vẽ sơ đồ hay chia thành các trường hợp không giao nhau; với hợp hai nhóm dùng nguyên tắc cộng rồi trừ phần giao.",
+        "variants": [
+          "Sơ đồ Venn có hai nhóm; chọn theo trọng số; biến cố đối và phép thử nhiều giai đoạn."
+        ]
+      }
+    ]
+  },
+  {
+    "code": "CĐ04",
+    "title": "Biểu thức đại số mô hình hóa thực tế",
+    "category": "Đại số và mô hình hóa",
+    "icon": "difference-squares",
+    "description": "Viết và rút gọn biểu thức theo x hoặc hai biến: lối đi, mở rộng/thu hẹp khu đất, cắt góc làm hộp, hình tròn trong hình vuông, vành khuyên, đất thu hồi và tiền đền bù, chi phí theo số lượng, biểu thức trên hình khối. Trọng tâm là lập mô hình, chưa phải chỉ giải phương trình.",
+    "knowledge": [
+      "Chọn biến kèm đơn vị và điều kiện. Ghi kích thước mới theo biến rồi mới lập công thức chu vi, diện tích, thể tích hoặc số tiền.",
+      "Hình chữ nhật có $S=ab$; hình tròn có $S=\\pi R^2$. Phần còn lại bằng phần ban đầu trừ phần bị lấy đi, chú ý vùng giao nhau.",
+      "Cắt bốn hình vuông cạnh $x$ từ tấm bìa $a\\times b$ rồi gấp hộp không nắp: $V=x(a-2x)(b-2x)$, với $0<x<\\min(a,b)/2$. Biểu thức này thường có bậc ba."
+    ],
+    "steps": [
+      "Vẽ sơ đồ đơn giản, đánh dấu đại lượng cố định và biến.",
+      "Biểu diễn từng kích thước theo cùng đơn vị.",
+      "Dùng công thức phù hợp và cộng/trừ các phần không chồng lặp.",
+      "Rút gọn, ghi điều kiện và kiểm tra bằng một giá trị thử."
+    ],
+    "caution": "Không cộng diện tích hoặc thể tích với độ dài. Lối đi cắt nhau phải trừ vùng giao chỉ một lần; không gọi mọi biểu thức theo x là phương trình bậc hai.",
+    "examples": [
+      {
+        "title": "Lối đi quanh vườn",
+        "question": "Vườn hình chữ nhật dài $20$ m, rộng $12$ m. Làm lối đi rộng $x$ m ở phía trong, sát cả bốn cạnh. Viết diện tích phần trồng cây.",
+        "solution": "Phần trồng cây có chiều dài $20-2x$, chiều rộng $12-2x$. Vậy $S(x)=(20-2x)(12-2x)=4x^2-64x+240$ m², với $0<x<6$."
+      },
+      {
+        "title": "Hộp không nắp",
+        "question": "Tấm bìa $30$ cm × $20$ cm được cắt bốn góc hình vuông cạnh $x$ cm để gấp hộp. Lập thể tích và tính khi $x=2$.",
+        "solution": "Kích thước hộp là $(30-2x)$ cm, $(20-2x)$ cm, $x$ cm, nên $V=x(30-2x)(20-2x)$ cm³, $0<x<10$. Với $x=2$, $V=2\\cdot26\\cdot16=832$ cm³."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ04.01",
+        "title": "Lối đi trong mảnh vườn/khu đất hình chữ nhật",
+        "recognition": "Lối đi có bề rộng biến đổi trong hoặc quanh mảnh vườn.",
+        "method": "Biểu diễn kích thước phần còn lại. Lối đi quanh bốn cạnh bên trong làm mỗi kích thước giảm $2x$; xét riêng lối đi cắt nhau và vùng giao.",
+        "variants": [
+          "Lối đi quanh bốn cạnh, sát một số cạnh hoặc hai lối đi vuông góc cắt nhau; mỗi cấu hình cho một biểu thức khác nhau."
+        ]
+      },
+      {
+        "code": "CĐ04.02",
+        "title": "Mở rộng và thu hẹp kích thước",
+        "recognition": "Chiều dài, rộng tăng hoặc giảm theo một biến.",
+        "method": "Viết kích thước mới trước khi nhân; diện tích thay đổi bằng diện tích mới trừ cũ, không chỉ cộng các đoạn tăng."
+      },
+      {
+        "code": "CĐ04.03",
+        "title": "Cắt góc tấm bìa và hộp không nắp",
+        "recognition": "Cắt bốn góc tấm bìa rồi gấp hộp không nắp.",
+        "method": "Đáy có kích thước $a-2x$, $b-2x$, chiều cao $x$; lập thể tích và điều kiện $0<x<\\min(a,b)/2$."
+      },
+      {
+        "code": "CĐ04.04",
+        "title": "Hình tròn đặt trong hình vuông/chữ nhật, vành khuyên",
+        "recognition": "Hình tròn nằm trong hình vuông, chữ nhật hoặc có vành khuyên.",
+        "method": "Tìm bán kính từ kích thước đã cho; phần tô màu là tổng hoặc hiệu diện tích các phần phù hợp, không tự coi hình tròn luôn nội tiếp."
+      },
+      {
+        "code": "CĐ04.05",
+        "title": "Đất bị thu hồi, đền bù",
+        "recognition": "Đất bị lấy một phần, có đơn giá đền bù.",
+        "method": "Biểu diễn diện tích bị thu hồi và diện tích còn lại; nhân từng phần với đúng đơn giá, cộng các khoản hỗ trợ nếu đề có."
+      },
+      {
+        "code": "CĐ04.06",
+        "title": "Biểu thức tiền – mua hàng theo số lượng",
+        "recognition": "Cần viết số tiền theo số món hàng hoặc số người.",
+        "method": "Tách phí cố định, giá theo món và ưu đãi; với giảm giá từ một ngưỡng phải viết công thức theo từng khoảng."
+      },
+      {
+        "code": "CĐ04.07",
+        "title": "Biểu thức trên hình khối",
+        "recognition": "Yêu cầu biểu diễn diện tích hoặc thể tích khối theo biến.",
+        "method": "Chọn công thức khối phù hợp, thay kích thước theo biến và giữ điều kiện hình học; bài tính hình khối trực tiếp có thể gắn thêm CĐ10."
+      },
+      {
+        "code": "CĐ04.08",
+        "title": "Biểu thức hai biến và hình phức hợp",
+        "recognition": "Hình gồm nhiều phần hoặc biểu thức phụ thuộc hai biến.",
+        "method": "Đặt tên từng phần, tính tổng trừ phần giao; biểu diễn bằng hai biến đúng đề, chỉ giảm số biến khi có thêm quan hệ.",
+        "variants": [
+          "Hình chữ nhật ghép nửa hình tròn; sân có bồn hoa; biểu thức diện tích theo chiều dài và chiều rộng độc lập."
+        ]
+      }
+    ]
+  },
+  {
+    "code": "CĐ05",
+    "title": "Hàm số bậc nhất và công thức thực tế",
+    "category": "Hàm số và đồ thị",
+    "icon": "linear-graph",
+    "description": "Lập hàm số y=ax+b từ mức ban đầu và tốc độ thay đổi hoặc hai cặp giá trị; dự đoán, tìm ngược đại lượng, so sánh phương án, cước bậc thang. Thay số vào công thức chuyên ngành như BMI, đổi nhiệt độ, thời gian, công thức bậc hai thực tế khi không yêu cầu khảo sát parabol.",
+    "knowledge": [
+      "Hàm số $y=ax+b$ có mức ban đầu $b$ và mức thay đổi $a$ cho mỗi đơn vị $x$. Với hai điểm có $x_1\\ne x_2$, $a=\\dfrac{y_2-y_1}{x_2-x_1}$, $b=y_1-ax_1$.",
+      "Tìm $y$ bằng thay $x$; tìm $x$ từ $y$ bằng giải phương trình, sau đó đối chiếu miền áp dụng.",
+      "Cước bậc thang phải viết theo từng khoảng. Công thức thực tế cho sẵn không nhất thiết là hàm bậc nhất: chẳng hạn $BMI=m/h^2$ hoặc $s=kt^2$."
+    ],
+    "steps": [
+      "Xác định đầu vào, đầu ra, đơn vị và miền áp dụng.",
+      "Tách phần cố định, phần thay đổi hoặc chọn đúng công thức cho sẵn.",
+      "Lập mô hình, thay số hay giải phương trình so sánh.",
+      "Kiểm tra khoảng giá trị, cách tính cước và ý nghĩa kết quả."
+    ],
+    "caution": "Phí mở đầu, phí cho từng ki-lô-mét và phí lũy tiến phải đọc đúng đề. Không kéo dài công thức ngoài khoảng áp dụng.",
+    "examples": [
+      {
+        "title": "Xác định mô hình từ hai giá trị",
+        "question": "Chi phí thuê xe theo $y=ax+b$ (nghìn đồng), với $x$ là số giờ. Thuê $2$ giờ hết $90$, $5$ giờ hết $180$. Tìm công thức và chi phí $4$ giờ.",
+        "solution": "$a=(180-90)/(5-2)=30$, $b=90-30\\cdot2=30$. Vậy $y=30x+30$ và $y(4)=150$ nghìn đồng."
+      },
+      {
+        "title": "Cước theo từng bậc",
+        "question": "Dịch vụ thu $15$ nghìn đồng cho ki-lô-mét đầu tiên và $12$ nghìn cho mỗi ki-lô-mét tiếp theo. Chuyến đi $5$ km hết bao nhiêu?",
+        "solution": "Với $x>1$, chi phí là $C(x)=15+12(x-1)$ nghìn đồng. Do đó $C(5)=15+12\\cdot4=63$ nghìn đồng. Không tính $5\\cdot12+15$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ05.01",
+        "title": "Lập hàm số bậc nhất từ lời văn",
+        "recognition": "Đại lượng có mức ban đầu và tăng hoặc giảm đều.",
+        "method": "Viết $y=ax+b$, trong đó $b$ là giá trị khi $x=0$, $a$ là mức thay đổi mỗi đơn vị; ghi miền áp dụng."
+      },
+      {
+        "code": "CĐ05.02",
+        "title": "Xác định $a$, $b$ từ hai cặp giá trị hoặc đồ thị",
+        "recognition": "Biết hai cặp giá trị hoặc hai điểm trên đồ thị đường thẳng.",
+        "method": "Lập hai phương trình cho $a,b$ hoặc tính hệ số góc từ chênh lệch; hai hoành độ phải khác nhau."
+      },
+      {
+        "code": "CĐ05.03",
+        "title": "Dùng hàm số để dự đoán và tìm $x$ khi biết $y$",
+        "recognition": "Công thức đã có, cần dự đoán đầu ra hoặc tìm ngược đầu vào.",
+        "method": "Thay số đúng đơn vị hoặc giải phương trình theo đại lượng cần tìm; kiểm tra nghiệm thuộc miền của mô hình."
+      },
+      {
+        "code": "CĐ05.04",
+        "title": "So sánh hai phương án",
+        "recognition": "Hai gói dịch vụ hoặc phương án có chi phí khác nhau.",
+        "method": "Lập hai công thức, giải điểm hòa vốn bằng cho chúng bằng nhau; xét dấu hiệu hai chi phí trên từng khoảng để chọn phương án."
+      },
+      {
+        "code": "CĐ05.05",
+        "title": "Công thức chuyên ngành cho sẵn – thay số",
+        "recognition": "Đề cung cấp công thức chuyên ngành.",
+        "method": "Giải thích các biến theo đề, đổi đơn vị rồi thay số; không mặc định công thức đó là tuyến tính.",
+        "variants": [
+          "BMI theo khối lượng và chiều cao; đổi nhiệt độ; công thức dao động hoặc chuyển động cho sẵn; đổi giờ theo quy ước đề bài."
+        ]
+      },
+      {
+        "code": "CĐ05.06",
+        "title": "Cước bậc thang",
+        "recognition": "Giá phụ thuộc các bậc sử dụng hoặc ngưỡng số lượng.",
+        "method": "Lập bảng các bậc, phân biệt tính lũy tiến từng phần với áp một mức cho toàn bộ; cộng đúng phí cố định và thuế nếu có."
+      },
+      {
+        "code": "CĐ05.07",
+        "title": "Hàm số $y=ax^2$ trong thực tế",
+        "recognition": "Bối cảnh thực tế cho công thức bậc hai, chủ yếu thay số hoặc tìm đại lượng.",
+        "method": "Dùng công thức được cho và miền thời gian, độ dài thực tế. Nếu yêu cầu trực tiếp vẽ, khảo sát parabol hoặc tìm điểm trên (P), gắn thêm CĐ01."
+      }
+    ]
+  },
+  {
+    "code": "CĐ06",
+    "title": "Phần trăm, giá cả, lãi suất và nồng độ",
+    "category": "Đại số và mô hình hóa",
+    "icon": "compound-interest",
+    "description": "Tăng/giảm giá liên tiếp, khuyến mãi theo số lượng, doanh thu–chi phí–lợi nhuận, lãi đơn và lãi kép, lương/thuế/tăng ca, nồng độ dung dịch và hợp kim, tỉ lệ và hao hụt. Nếu cần tìm hai lượng chưa biết bằng hai phương trình, gắn thêm chuyên đề lập hệ.",
+    "knowledge": [
+      "Tăng $p\\%$ tương ứng nhân với $1+p/100$; giảm $p\\%$ tương ứng nhân với $1-p/100$. Các lần thay đổi liên tiếp nhân các hệ số, không cộng tỉ lệ một cách máy móc.",
+      "Doanh thu bằng giá bán nhân số lượng; lợi nhuận bằng doanh thu trừ toàn bộ chi phí được nêu. Lãi đơn $A=P(1+nr)$; lãi kép $A=P(1+r)^n$, với $r$ cùng kì hạn với $n$.",
+      "Nồng độ phần trăm khối lượng: $C\\%=\\dfrac{m_{\\text{chất tan}}}{m_{\\text{dung dịch}}}\\cdot100\\%$. Khi trộn không phản ứng và không hao hụt, bảo toàn khối lượng chất tan."
+    ],
+    "steps": [
+      "Xác định đại lượng gốc của mỗi tỉ lệ.",
+      "Đổi phần trăm về số thập phân và thống nhất kì hạn, đơn vị.",
+      "Viết từng bước tính hoặc bảng khối lượng chất tan.",
+      "Kiểm tra tổng tiền, nồng độ và quy tắc làm tròn."
+    ],
+    "caution": "Tăng rồi giảm cùng một phần trăm không đưa về giá ban đầu. Chỉ dùng bảo toàn khối lượng khi đề cho phép; không đồng nhất nồng độ khối lượng và nồng độ thể tích.",
+    "examples": [
+      {
+        "title": "Hai lần giảm giá",
+        "question": "Áo giá $500\\,000$ đồng được giảm $20\\%$, sau đó giảm thêm $10\\%$ trên giá đã giảm. Tính số tiền trả.",
+        "solution": "Số tiền trả là $500\\,000\\cdot0{,}8\\cdot0{,}9=360\\,000$ đồng. Mức giảm chung là $1-0{,}8\\cdot0{,}9=28\\%$."
+      },
+      {
+        "title": "Pha thêm nước",
+        "question": "Có $200$ g dung dịch muối $10\\%$. Thêm $50$ g nước, không làm mất muối. Tính nồng độ mới.",
+        "solution": "Khối lượng muối là $200\\cdot10\\%=20$ g. Khối lượng dung dịch mới là $250$ g. Nồng độ mới $20/250\\cdot100\\%=8\\%$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ06.01",
+        "title": "Giảm giá, tăng giá liên tiếp",
+        "recognition": "Giá hoặc số lượng tăng giảm qua nhiều lần.",
+        "method": "Nhân lần lượt các hệ số $1+p/100$ hoặc $1-p/100$; mỗi phần trăm phải áp trên cơ sở đúng của lần đó."
+      },
+      {
+        "code": "CĐ06.02",
+        "title": "Khuyến mãi theo số lượng",
+        "recognition": "Mua theo gói, tặng thêm, giảm từ món thứ k.",
+        "method": "Tách đủ gói và phần lẻ, kiểm tra hàng tặng có được tính điều kiện ưu đãi hay không; tính tổng tiền thực trả."
+      },
+      {
+        "code": "CĐ06.03",
+        "title": "Giá nhập, giá bán, lợi nhuận, doanh thu",
+        "recognition": "Đề cho giá nhập, giá bán, chi phí và số lượng bán.",
+        "method": "Viết doanh thu và tổng chi phí riêng rồi lấy hiệu; phân biệt lãi theo giá vốn với lãi theo doanh thu."
+      },
+      {
+        "code": "CĐ06.04",
+        "title": "Lãi suất ngân hàng",
+        "recognition": "Gửi tiền hoặc vay có lãi theo kì.",
+        "method": "Xác định lãi đơn hay nhập lãi vào vốn; dùng $P(1+nr)$ hoặc $P(1+r)^n$ khi không có dòng tiền khác, thống nhất đơn vị kì hạn."
+      },
+      {
+        "code": "CĐ06.05",
+        "title": "Lương, thuế, tăng ca",
+        "recognition": "Lương cơ bản, tăng ca, phụ cấp hoặc thuế.",
+        "method": "Tính từng khoản theo cơ sở được nêu; với thuế lũy tiến, tính từng bậc sau các khoản giảm trừ mà đề cho."
+      },
+      {
+        "code": "CĐ06.06",
+        "title": "Nồng độ dung dịch, hợp kim, quặng, độ mặn",
+        "recognition": "Dung dịch, hợp kim, quặng hoặc độ mặn.",
+        "method": "Lập bảng khối lượng hỗn hợp và thành phần; bảo toàn chất cần xét nếu không phản ứng/hao hụt. Nếu tìm hai lượng chưa biết bằng hệ, gắn thêm CĐ07."
+      },
+      {
+        "code": "CĐ06.07",
+        "title": "Tỉ lệ, tỉ số, đổi đơn vị",
+        "recognition": "Tỉ lệ, tỉ số bản đồ, hao hụt hoặc đổi đơn vị.",
+        "method": "Viết tỉ lệ dưới dạng phân số và đổi về cùng đơn vị; phần còn lại sau hao hụt $p\\%$ bằng ban đầu nhân $1-p/100$.",
+        "variants": [
+          "Tỉ lệ bản đồ; khối lượng trước và sau chế biến; phần trăm hao hụt nguyên liệu; đổi đơn vị đo."
+        ]
+      }
+    ]
+  },
+  {
+    "code": "CĐ07",
+    "title": "Lập hệ hai phương trình bậc nhất hai ẩn",
+    "category": "Đại số và mô hình hóa",
+    "icon": "equation-system",
+    "description": "Hai đại lượng chưa biết và hai quan hệ tuyến tính: mua bán, sản lượng và phần trăm, pha trộn, chuyển động, làm chung–riêng, cây trồng, xếp chỗ thừa–thiếu, chia nhóm, chuyển đồ vật, dinh dưỡng, điểm số và số học sinh. Kiểm tra hệ thực sự bậc nhất sau khi chọn ẩn.",
+    "knowledge": [
+      "Chọn hai ẩn kèm điều kiện rồi dùng hai dữ kiện độc lập để lập hệ $\\begin{cases}a_1x+b_1y=c_1\\\\a_2x+b_2y=c_2\\end{cases}$. Giải bằng thế hoặc cộng đại số.",
+      "Có thể chọn năng suất mỗi giờ làm ẩn để hệ trở thành tuyến tính. Các công thức hay dùng là $s=vt$, sản lượng = năng suất × thời gian, tiền = giá × số lượng.",
+      "Khi chuyển một lượng từ nhóm này sang nhóm kia, một bên giảm và bên kia tăng cùng lượng đó."
+    ],
+    "steps": [
+      "Lập bảng đại lượng và chọn hai ẩn có đơn vị.",
+      "Dịch riêng từng dữ kiện thành một phương trình.",
+      "Giải hệ và đối chiếu điều kiện dương, nguyên hoặc tỉ lệ.",
+      "Trả lời đúng các đại lượng được hỏi và kiểm tra lại đề."
+    ],
+    "caution": "Có hai đại lượng chưa biết chưa đủ để kết luận dùng hệ bậc nhất. Nếu xuất hiện tích hai ẩn hoặc ẩn ở mẫu, cần đổi ẩn hợp lí hoặc chọn phương pháp khác.",
+    "examples": [
+      {
+        "title": "Mua hai loại vé",
+        "question": "Mua $10$ vé gồm vé người lớn $50$ nghìn và vé trẻ em $30$ nghìn, hết $420$ nghìn. Tìm số vé mỗi loại.",
+        "solution": "Gọi $x,y$ là số vé người lớn, trẻ em, $x,y$ nguyên không âm. Ta có $x+y=10$, $50x+30y=420$. Trừ $30(x+y)=300$ được $20x=120$, nên $x=6$, $y=4$. Có $6$ vé người lớn và $4$ vé trẻ em."
+      },
+      {
+        "title": "Hai đội làm việc",
+        "question": "Hai đội cùng làm xong trong $6$ giờ. Năng suất đội A gấp đôi đội B. Tìm thời gian mỗi đội làm riêng.",
+        "solution": "Gọi $u,v$ là phần công việc mỗi đội làm trong một giờ. Có $u+v=1/6$, $u=2v$. Suy ra $v=1/18$, $u=1/9$. Đội A làm riêng trong $9$ giờ, đội B trong $18$ giờ."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ07.01",
+        "title": "Mua bán hai loại hàng",
+        "recognition": "Hai loại hàng có tổng số lượng và tổng tiền.",
+        "method": "Gọi số lượng mỗi loại làm ẩn; phương trình thứ nhất là tổng lượng, phương trình thứ hai là tổng giá nhân lượng."
+      },
+      {
+        "code": "CĐ07.02",
+        "title": "Vượt mức và tăng phần trăm",
+        "recognition": "Hai nhóm cùng có mức tăng hoặc vượt kế hoạch khác nhau.",
+        "method": "Gọi lượng ban đầu của mỗi nhóm; biểu diễn lượng tăng riêng và tổng sau tăng, đặt phần trăm trên đúng lượng gốc."
+      },
+      {
+        "code": "CĐ07.03",
+        "title": "Pha trộn nồng độ",
+        "recognition": "Cần tìm lượng của hai dung dịch hoặc hai thành phần.",
+        "method": "Dùng phương trình tổng khối lượng và phương trình bảo toàn chất tan; đổi nồng độ phần trăm sang số thập phân."
+      },
+      {
+        "code": "CĐ07.04",
+        "title": "Chuyển động",
+        "recognition": "Có hai vận tốc hoặc hai quãng đường chưa biết với quan hệ tuyến tính.",
+        "method": "Lập bảng $s,v,t$; chọn ẩn giúp phương trình tuyến tính, kể cả đổi ẩn khi phù hợp. Không ép bài chứa nghịch đảo vận tốc thành hệ bậc nhất.",
+        "variants": [
+          "Hai phương tiện đi ngược chiều hoặc cùng chiều; thuyền xuôi dòng và ngược dòng khi dữ kiện tạo hệ tuyến tính về vận tốc."
+        ]
+      },
+      {
+        "code": "CĐ07.05",
+        "title": "Công việc làm chung – làm riêng",
+        "recognition": "Hai người hoặc đội làm chung, làm riêng.",
+        "method": "Chọn phần công việc hoàn thành trong một giờ làm ẩn; tổng năng suất nhân thời gian bằng phần công việc tương ứng."
+      },
+      {
+        "code": "CĐ07.06",
+        "title": "Năng suất cây trồng, sản lượng",
+        "recognition": "Hai loại cây, hai thửa ruộng hoặc hai mức năng suất.",
+        "method": "Chọn diện tích hoặc sản lượng chưa biết, dùng tổng diện tích và sản lượng; đổi ha, m², kg, tấn thống nhất."
+      },
+      {
+        "code": "CĐ07.07",
+        "title": "Xếp chỗ thừa – thiếu, chia nhóm",
+        "recognition": "Xếp ghế, chia nhóm có tình huống thừa và thiếu.",
+        "method": "Biểu diễn tổng người theo từng cách xếp; phân biệt ghế còn trống với người chưa có chỗ và kiểm tra nghiệm nguyên."
+      },
+      {
+        "code": "CĐ07.08",
+        "title": "Phân số của tập hợp",
+        "recognition": "Một phần của hai nhóm được chọn hoặc chuyển loại.",
+        "method": "Gọi quy mô từng nhóm, nhân với các phân số tương ứng rồi lập quan hệ tổng; số người phải là số nguyên phù hợp."
+      },
+      {
+        "code": "CĐ07.09",
+        "title": "Đổ chất lỏng, chuyển đồ vật giữa hai nơi",
+        "recognition": "Chuyển đồ vật hoặc chất lỏng giữa hai nơi.",
+        "method": "Viết lượng trước và sau chuyển; một nơi bớt bao nhiêu thì nơi kia tăng bấy nhiêu nếu không hao hụt."
+      },
+      {
+        "code": "CĐ07.10",
+        "title": "Dinh dưỡng, thành phần, đổi chác",
+        "recognition": "Hai thành phần dinh dưỡng, đổi hàng hoặc tổng điểm theo hai mức.",
+        "method": "Lập phương trình cho từng đại lượng bảo toàn hoặc tiêu chuẩn; kiểm tra đơn vị của hệ số trước mỗi ẩn.",
+        "variants": [
+          "Hai loại thực phẩm đáp ứng dinh dưỡng; đổi chác hàng hóa; số lần ghi điểm ở hai mức."
+        ]
+      },
+      {
+        "code": "CĐ07.11",
+        "title": "Số học sinh, xếp loại, điểm trung bình",
+        "recognition": "Hai nhóm học sinh, hai mức điểm hoặc tỉ lệ xếp loại.",
+        "method": "Dùng tổng học sinh và tổng số đạt tiêu chí; với trung bình cộng phải đổi về tổng điểm trước khi lập hệ.",
+        "variants": [
+          "Số học sinh hai lớp; chuyển mức xếp loại sau kiểm tra; điểm trung bình của hai nhóm có số lượng khác nhau."
+        ]
+      },
+      {
+        "code": "CĐ07.12",
+        "title": "Hệ có điều kiện nghiệm nguyên và suy luận",
+        "recognition": "Nghiệm phải nguyên hoặc còn ràng buộc suy luận.",
+        "method": "Giải hệ rồi lọc theo điều kiện nguyên, dương và phạm vi; nếu hệ chưa đủ dữ kiện, dùng ràng buộc đã cho thay vì tự thêm giả thiết."
+      }
+    ]
+  },
+  {
+    "code": "CĐ08",
+    "title": "Giải bài toán bằng cách lập phương trình bậc hai",
+    "category": "Đại số và mô hình hóa",
+    "icon": "work-rate",
+    "description": "Bài toán lời văn có một ẩn dẫn đến phương trình bậc hai: năng suất kế hoạch–thực tế, chia đều người/quà/xe, chuyển động thay đổi vận tốc, bắt tay và vòng tròn một lượt, kích thước hình học, tìm x từ diện tích, doanh thu bậc hai. Khác chuyên đề Vi-ét thuần đại số.",
+    "knowledge": [
+      "Mô hình một ẩn có dạng $ax^2+bx+c=0$ sau khi biến đổi, với $a\\ne0$. Khi quy đồng phải ghi điều kiện mẫu khác $0$ trước.",
+      "Chuyển động dùng $t=s/v$; năng suất dùng thời gian = khối lượng công việc / năng suất. Chọn ẩn để các đại lượng còn lại biểu diễn được theo ẩn.",
+      "Số cặp không phân biệt thứ tự trong $n$ người là $n(n-1)/2$. Công thức này áp dụng cho bắt tay một lần mỗi cặp hoặc thi đấu vòng tròn một lượt."
+    ],
+    "steps": [
+      "Chọn một ẩn và đặt điều kiện thực tế.",
+      "Lập bảng hoặc sơ đồ, biểu diễn các đại lượng liên quan.",
+      "Lập phương trình, quy đồng và giải phương trình bậc hai.",
+      "Thử nghiệm vào mô hình gốc, loại nghiệm sai điều kiện và kết luận."
+    ],
+    "caution": "Không nhận mọi nghiệm đại số làm đáp số. Với số người, xe, quà phải có điều kiện nguyên; với vận tốc, kích thước phải dương.",
+    "examples": [
+      {
+        "title": "Thay đổi vận tốc",
+        "question": "Xe đi $120$ km. Nếu tăng vận tốc thêm $10$ km/h thì thời gian giảm $1$ giờ. Tìm vận tốc ban đầu.",
+        "solution": "Gọi vận tốc ban đầu $v>0$. Có $120/v-120/(v+10)=1$. Quy đồng được $v^2+10v-1200=0$, tức $(v-30)(v+40)=0$. Nhận $v=30$, loại $-40$. Vận tốc ban đầu $30$ km/h."
+      },
+      {
+        "title": "Thi đấu vòng tròn",
+        "question": "Mỗi đội bóng gặp mỗi đội khác đúng một lần. Tổng cộng có $45$ trận. Có bao nhiêu đội?",
+        "solution": "Gọi số đội là số nguyên $n\\ge2$. Ta có $n(n-1)/2=45$, nên $n^2-n-90=0$, hay $(n-10)(n+9)=0$. Nhận $n=10$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ08.01",
+        "title": "Năng suất: kế hoạch – thực tế",
+        "recognition": "Năng suất thay đổi làm thời gian kế hoạch và thực tế chênh lệch.",
+        "method": "Lập bảng khối lượng, năng suất, thời gian; dùng thời gian bằng khối lượng chia năng suất và ghi mẫu dương trước quy đồng."
+      },
+      {
+        "code": "CĐ08.02",
+        "title": "Số xe – số người, số quà – số người",
+        "recognition": "Chia đều người, hàng hoặc quà khi số đơn vị chia thay đổi.",
+        "method": "Gọi số xe hoặc số người là ẩn nguyên dương; biểu diễn phần mỗi đơn vị bằng tổng chia số đơn vị rồi lập chênh lệch."
+      },
+      {
+        "code": "CĐ08.03",
+        "title": "Chuyển động có vận tốc thay đổi",
+        "recognition": "Cùng quãng đường nhưng vận tốc thay đổi làm thời gian thay đổi.",
+        "method": "Viết $t=s/v$ cho từng trường hợp, lập chênh lệch hoặc tổng thời gian; loại vận tốc không dương."
+      },
+      {
+        "code": "CĐ08.04",
+        "title": "Bắt tay, thi đấu vòng tròn",
+        "recognition": "Mỗi cặp bắt tay hoặc thi đấu đúng một lần.",
+        "method": "Dùng số cặp $n(n-1)/2$. Nếu thi đấu hai lượt thì số trận là $n(n-1)$; luôn đọc rõ thể thức."
+      },
+      {
+        "code": "CĐ08.05",
+        "title": "Kích thước hình học",
+        "recognition": "Biết chu vi, diện tích hoặc quan hệ giữa hai kích thước.",
+        "method": "Chọn một kích thước, biểu diễn kích thước còn lại, lập phương trình diện tích; chỉ nhận nghiệm cho hình tồn tại."
+      },
+      {
+        "code": "CĐ08.06",
+        "title": "Tìm ẩn từ biểu thức diện tích",
+        "recognition": "Đã có biểu thức diện tích theo x và đề cho giá trị diện tích.",
+        "method": "Cho biểu thức bằng diện tích yêu cầu, giải phương trình và giao nghiệm với điều kiện hình học đã lập ở bước mô hình hóa."
+      },
+      {
+        "code": "CĐ08.07",
+        "title": "Doanh thu bậc hai",
+        "recognition": "Giá bán thay đổi kéo theo lượng bán thay đổi tuyến tính.",
+        "method": "Doanh thu là tích giá bán và lượng bán, thường ra bậc hai; nếu xét lợi nhuận phải trừ chi phí trước khi giải hoặc tối ưu."
+      }
+    ]
+  },
+  {
+    "code": "CĐ09",
+    "title": "Bất phương trình và bài toán tối đa – tối thiểu",
+    "category": "Đại số và mô hình hóa",
+    "icon": "inequality",
+    "description": "Ngân sách giới hạn, số lượng mua nhiều nhất, trọng tải và sức chứa, khoảng giá trị, so sánh hai phương án theo thời gian, tối ưu đơn giản bằng điều kiện hoặc bình phương không âm. Gắn thêm cho bài có yêu cầu ít nhất, nhiều nhất, không vượt quá.",
+    "knowledge": [
+      "“Không vượt quá” tương ứng $\\le$; “ít nhất” tương ứng $\\ge$. Khi nhân hoặc chia bất phương trình cho số âm phải đổi chiều.",
+      "Kết hợp nghiệm với điều kiện thực tế: số lượng nguyên, thời gian không âm, giới hạn hình học hoặc năng lực chứa.",
+      "Tối ưu đơn giản có thể dùng tính tăng/giảm của biểu thức bậc nhất, xét biên hoặc hoàn thành bình phương: $A-(x-h)^2\\le A$."
+    ],
+    "steps": [
+      "Chuyển giới hạn bằng lời thành bất phương trình.",
+      "Giải và giao với miền thực tế.",
+      "Chọn số nguyên phù hợp hoặc điểm đạt dấu bằng.",
+      "Thử đáp số và kiểm tra không còn giá trị tốt hơn trong miền cho phép."
+    ],
+    "caution": "Số món mua tối đa thường lấy phần nguyên xuống; số thùng hay xe tối thiểu thường làm tròn lên. Phải xem chiều yêu cầu trước khi làm tròn.",
+    "examples": [
+      {
+        "title": "Mua nhiều nhất trong ngân sách",
+        "question": "Có $250$ nghìn đồng, cần trả phí giao hàng $20$ nghìn. Mỗi quyển vở $18$ nghìn. Mua tối đa bao nhiêu quyển?",
+        "solution": "Gọi $n$ nguyên không âm là số vở. Có $18n+20\\le250$, suy ra $n\\le230/18\\approx12{,}78$. Mua tối đa $12$ quyển; $13$ quyển sẽ tốn $254$ nghìn."
+      },
+      {
+        "title": "Diện tích lớn nhất",
+        "question": "Hình chữ nhật có chu vi $40$ m. Tìm diện tích lớn nhất.",
+        "solution": "Gọi một cạnh $x$ m, $0<x<20$, cạnh kia $20-x$. Diện tích $S=x(20-x)=100-(x-10)^2\\le100$. Dấu bằng khi $x=10$. Diện tích lớn nhất $100$ m², đạt ở hình vuông cạnh $10$ m."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ09.01",
+        "title": "Số tiền có hạn – mua được nhiều nhất",
+        "recognition": "Ngân sách có hạn và cần mua số lượng lớn nhất.",
+        "method": "Tổng chi phí không vượt ngân sách; trừ phí cố định trước, giải bất phương trình rồi chọn số nguyên lớn nhất hợp lệ."
+      },
+      {
+        "code": "CĐ09.02",
+        "title": "Trọng tải, sức chứa",
+        "recognition": "Tải trọng, sức chứa hoặc số phương tiện tối thiểu.",
+        "method": "Tổng tải không vượt giới hạn mỗi lần; số chuyến, xe hoặc hộp cần đủ chứa nên thường làm tròn lên, đồng thời xét các giới hạn khác."
+      },
+      {
+        "code": "CĐ09.03",
+        "title": "Khoảng giá trị",
+        "recognition": "Hỏi đại lượng nằm trong khoảng nào.",
+        "method": "Lập từng bất phương trình từ các giới hạn, giải riêng rồi lấy giao với miền thực tế."
+      },
+      {
+        "code": "CĐ09.04",
+        "title": "So sánh phương án theo thời gian",
+        "recognition": "Chọn gói hoặc phương án theo thời gian sử dụng.",
+        "method": "Lập hiệu hai chi phí, giải bất phương trình xác định khi nào một phương án không đắt hơn; kiểm tra các ngưỡng cước."
+      },
+      {
+        "code": "CĐ09.05",
+        "title": "Tối ưu: lớn nhất – nhỏ nhất",
+        "recognition": "Tìm diện tích, chi phí hoặc lợi nhuận lớn nhất/nhỏ nhất.",
+        "method": "Xét biểu thức trên miền cho phép; dùng tính đơn điệu, xét biên hoặc hoàn thành bình phương và chỉ rõ khi dấu bằng đạt được."
+      }
+    ]
+  },
+  {
+    "code": "CĐ10",
+    "title": "Hình học trực quan và hình khối thực tế",
+    "category": "Hình học và đo lường",
+    "icon": "volume",
+    "description": "Thể tích, diện tích hình trụ, nón, cầu, hộp, lăng trụ, chóp và khối ghép; phần rỗng, vật vừa khít, nước dâng/tràn, khối bị cắt, vật liệu, chi phí và làm tròn số lượng. Ưu tiên chuyên đề này khi phép tính trọng tâm là hình khối, dù có tiền hoặc phần trăm.",
+    "knowledge": [
+      "Hình trụ: $V=\\pi r^2h$, $S_{xq}=2\\pi rh$. Hình nón: $V=\\dfrac13\\pi r^2h$, $S_{xq}=\\pi rl$, với $l^2=r^2+h^2$ ở nón tròn xoay.",
+      "Hình cầu: $V=\\dfrac43\\pi r^3$, $S=4\\pi r^2$. Bán cầu đặc có thể tích $\\dfrac23\\pi r^3$ và diện tích mặt cong $2\\pi r^2$; chỉ cộng đáy tròn khi cần.",
+      "Hộp chữ nhật: $V=abc$. Lăng trụ đứng: $V=S_{\\text{đáy}}h$. Hình chóp: $V=\\dfrac13S_{\\text{đáy}}h$. Khối ghép cộng thể tích phần không chồng lặp và chỉ tính các mặt thực sự lộ ra."
+    ],
+    "steps": [
+      "Tách vật thể thành các khối quen thuộc và thống nhất đơn vị.",
+      "Phân biệt bán kính, đường kính, chiều cao và đường sinh.",
+      "Chọn diện tích hoặc thể tích phù hợp; cộng/trừ phần ghép, phần rỗng.",
+      "Đổi đơn vị, tính chi phí hoặc số lượng, rồi làm tròn theo đề."
+    ],
+    "caution": "Khi thả vật, chỉ phần thể tích chìm chiếm chỗ nước. Công thức $\\Delta h=V_{\\text{chìm}}/S_{\\text{đáy}}$ cần thành bình thẳng và chưa tràn; phải kiểm tra vật chìm hoàn toàn, khoảng trống và sức chứa.",
+    "examples": [
+      {
+        "title": "Dung tích bồn trụ",
+        "question": "Bồn trụ có bán kính đáy $0{,}5$ m, chiều cao $1{,}2$ m. Tính dung tích theo lít.",
+        "solution": "$V=\\pi\\cdot0{,}5^2\\cdot1{,}2=0{,}3\\pi$ m³. Vì $1$ m³ = $1000$ lít, dung tích là $300\\pi\\approx942{,}48$ lít."
+      },
+      {
+        "title": "Mực nước dâng",
+        "question": "Bình trụ đứng bán kính đáy $5$ cm còn đủ khoảng trống. Nhúng chìm hoàn toàn vật đặc không thấm nước có thể tích $50\\pi$ cm³. Mực nước dâng bao nhiêu?",
+        "solution": "Diện tích đáy $S=\\pi\\cdot5^2=25\\pi$ cm². Vì vật chìm hoàn toàn và nước chưa tràn, $\\Delta h=50\\pi/(25\\pi)=2$ cm."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ10.01",
+        "title": "Thể tích một hình trụ",
+        "recognition": "Bồn, cốc hoặc ống có dạng trụ, hỏi dung tích.",
+        "method": "Dùng $V=\\pi r^2h$; với ống rỗng trừ hai khối trụ, với khối lượng dùng thêm khối lượng riêng và đổi đơn vị.",
+        "variants": [
+          "Rót nước giữa các bình; múc bằng ca; ống trụ rỗng; khối trụ tính khối lượng qua khối lượng riêng."
+        ]
+      },
+      {
+        "code": "CĐ10.02",
+        "title": "Diện tích xung quanh và toàn phần hình trụ",
+        "recognition": "Tính vật liệu làm thành, nắp hoặc toàn bộ hình trụ.",
+        "method": "Diện tích thành là $2\\pi rh$; cộng đúng số đáy $\\pi r^2$ cần làm, kể cả bồn không nắp hoặc không đáy.",
+        "variants": [
+          "Lon kín có hai đáy; thùng hở một đáy; nhãn giấy chỉ phủ mặt xung quanh; hao hụt vật liệu."
+        ]
+      },
+      {
+        "code": "CĐ10.03",
+        "title": "Hình nón",
+        "recognition": "Vật có dạng nón, khai triển hình quạt hoặc hai nón đồng dạng.",
+        "method": "Phân biệt chiều cao h với đường sinh l, dùng $l^2=r^2+h^2$; nón đồng dạng tỉ số k có thể tích tỉ số $k^3$.",
+        "variants": [
+          "Nón lá; ly hình nón; khai triển mặt bên thành hình quạt; nón nhỏ đồng dạng được cắt từ nón lớn."
+        ]
+      },
+      {
+        "code": "CĐ10.04",
+        "title": "Hình cầu",
+        "recognition": "Quả cầu, bán cầu hoặc vỏ cầu.",
+        "method": "Dùng đúng diện tích mặt cầu và thể tích; vỏ cầu trừ thể tích hai cầu đồng tâm, bán cầu chỉ cộng đáy khi đó là bề mặt cần tính.",
+        "variants": [
+          "Quả bóng; bán cầu; vỏ cầu có độ dày; tìm bán kính từ thể tích hoặc diện tích; đổi kích thước theo tỉ lệ."
+        ]
+      },
+      {
+        "code": "CĐ10.05",
+        "title": "Vật thể ghép",
+        "recognition": "Vật ghép từ trụ, nón, cầu hoặc bán cầu.",
+        "method": "Tách các khối không chồng lặp để cộng thể tích; diện tích ngoài không tính mặt tiếp giáp bên trong.",
+        "variants": [
+          "Viên thuốc gồm trụ và hai bán cầu; bồn có đáy bán cầu; ly kem nón và bán cầu; kho chứa trụ ghép mái nón."
+        ]
+      },
+      {
+        "code": "CĐ10.06",
+        "title": "Vật đặt vừa khít trong vật khác – phần trống",
+        "recognition": "Một vật vừa khít trong vật khác, hỏi khoảng trống.",
+        "method": "Tìm quan hệ kích thước từ tiếp xúc, tính thể tích vật chứa trừ thể tích vật nằm trong; không tự thêm điều kiện tiếp xúc ngoài đề.",
+        "variants": [
+          "Cầu vừa khít trong trụ; nón nằm trong trụ; nhiều vật xếp trong hộp; thể tích vật liệu hoặc phần không khí còn lại."
+        ]
+      },
+      {
+        "code": "CĐ10.07",
+        "title": "Thả vật vào nước – mực nước dâng, nước tràn",
+        "recognition": "Thả vật vào nước, hỏi mức dâng hay nước tràn.",
+        "method": "Tính thể tích phần chìm. Nếu bình có tiết diện ngang không đổi và chưa tràn, mức dâng bằng thể tích chiếm chỗ chia diện tích đáy; kiểm tra sức chứa.",
+        "variants": [
+          "Vật chìm hoàn toàn; vật chỉ chìm một phần; nhiều vật cùng thả; bình đã gần đầy và có nước tràn."
+        ]
+      },
+      {
+        "code": "CĐ10.08",
+        "title": "Hình hộp chữ nhật có lỗ rỗng và chứa vật",
+        "recognition": "Gạch rỗng hoặc khối hộp bị khoét lỗ.",
+        "method": "Thể tích vật liệu bằng thể tích khối ngoài trừ các lỗ; khi tính diện tích chú ý cả mặt bên trong lỗ nếu cần sơn/phủ."
+      },
+      {
+        "code": "CĐ10.09",
+        "title": "Hình hộp, lập phương, lăng trụ, chóp, nón cụt",
+        "recognition": "Khối hộp, lập phương, lăng trụ, chóp hoặc nón cụt.",
+        "method": "Chọn công thức theo loại khối; với nón cụt tròn xoay có hai bán kính R,r, dùng $V=\\pi h(R^2+Rr+r^2)/3$ khi dữ kiện phù hợp.",
+        "variants": [
+          "Hộp chữ nhật và lập phương; lăng trụ tam giác; chóp tam giác hoặc tứ giác đều; nón cụt."
+        ]
+      },
+      {
+        "code": "CĐ10.10",
+        "title": "Bài toán chi phí, số lượng trên hình khối",
+        "recognition": "Cần tiền vật liệu, số viên, số hộp hoặc phần hao hụt.",
+        "method": "Tính diện tích hay thể tích cần dùng trước, áp đơn giá hoặc dung tích mỗi đơn vị, xét hao hụt và làm tròn theo yêu cầu đủ dùng."
+      },
+      {
+        "code": "CĐ10.11",
+        "title": "Hình trụ nghiêng và cắt khối",
+        "recognition": "Trụ đặt nghiêng, bị cắt hoặc chất lỏng có mặt nghiêng.",
+        "method": "Vẽ thiết diện và đọc rõ giả thiết. Với trụ xiên có hai đáy song song, thể tích dùng chiều cao vuông góc; trụ bị cắt cần dữ kiện mặt cắt, không thay tùy ý chiều cao mép."
+      }
+    ]
+  },
+  {
+    "code": "CĐ11",
+    "title": "Hình học phẳng thực tế",
+    "category": "Hình học và đo lường",
+    "icon": "protractor",
+    "description": "Đo chiều cao/khoảng cách bằng sin, cos, tan; Pythagore và tam giác đồng dạng, Thalès, bóng nắng. Chu vi, độ dài cung, số vòng quay bánh xe; diện tích hình tròn, quạt, viên phân, vành khuyên; đường tròn gắn tam giác trong bối cảnh thực tế.",
+    "knowledge": [
+      "Trong tam giác vuông, với góc nhọn $\\alpha$: $\\sin\\alpha=\\dfrac{\\text{đối}}{\\text{huyền}}$, $\\cos\\alpha=\\dfrac{\\text{kề}}{\\text{huyền}}$, $\\tan\\alpha=\\dfrac{\\text{đối}}{\\text{kề}}$. Pythagore: $a^2+b^2=c^2$ với $c$ là cạnh huyền.",
+      "Tam giác đồng dạng có các cạnh tương ứng tỉ lệ; phải ghép đúng đỉnh. Đo bằng bóng nắng giả thiết tia nắng song song và mặt đất phù hợp.",
+      "Đường tròn: $C=2\\pi R$, $S=\\pi R^2$. Với góc ở tâm $n^\\circ$, độ dài cung $l=\\dfrac n{360}\\,2\\pi R$, diện tích quạt $S_q=\\dfrac n{360}\\,\\pi R^2$. Vành khuyên: $\\pi(R^2-r^2)$."
+    ],
+    "steps": [
+      "Vẽ sơ đồ, đánh dấu góc vuông và độ dài cần tìm.",
+      "Chọn lượng giác, Pythagore, đồng dạng hoặc công thức đường tròn.",
+      "Lập quan hệ và tính với máy ở chế độ độ nếu góc cho bằng độ.",
+      "Cộng chiều cao mắt/máy nếu có, rồi ghi đơn vị và làm tròn cuối cùng."
+    ],
+    "caution": "Góc nâng được đo từ phương ngang. Không nhầm cung với dây, hình quạt với tam giác; viên phân thường bằng quạt trừ tam giác tương ứng.",
+    "examples": [
+      {
+        "title": "Đo chiều cao cây",
+        "question": "Điểm quan sát cao $1{,}5$ m, cách gốc cây $20$ m theo phương ngang. Góc nâng tới ngọn cây là $30^\\circ$. Tính chiều cao cây.",
+        "solution": "Phần cây cao hơn mắt là $20\\tan30^\\circ=20/\\sqrt3$ m. Chiều cao cây $h=1{,}5+20/\\sqrt3\\approx13{,}05$ m, giả sử gốc cây và chân người cùng mặt phẳng ngang."
+      },
+      {
+        "title": "Diện tích hình quạt",
+        "question": "Hình quạt có bán kính $6$ cm và góc ở tâm $60^\\circ$. Tính diện tích và độ dài cung.",
+        "solution": "$S_q=(60/360)\\pi\\cdot6^2=6\\pi$ cm². Độ dài cung $l=(60/360)2\\pi\\cdot6=2\\pi$ cm."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ11.01",
+        "title": "Tỉ số lượng giác – đo chiều cao, khoảng cách",
+        "recognition": "Góc nâng, góc hạ, đo chiều cao hoặc khoảng cách.",
+        "method": "Vẽ tam giác vuông, chọn sin/cos/tan theo cạnh biết; cộng chiều cao thiết bị hoặc mắt và đổi chế độ máy sang độ khi cần."
+      },
+      {
+        "code": "CĐ11.02",
+        "title": "Định lý Pythagore, tam giác đồng dạng thực tế",
+        "recognition": "Thang, bóng nắng, đường chéo hoặc đo gián tiếp bằng đồng dạng.",
+        "method": "Xác định cạnh huyền nếu dùng Pythagore; nếu đồng dạng phải chỉ ra góc bằng và ghép đúng cạnh tương ứng."
+      },
+      {
+        "code": "CĐ11.03",
+        "title": "Chu vi, độ dài cung, bánh xe",
+        "recognition": "Bánh xe lăn, kim quay hoặc chiều dài cung.",
+        "method": "Chu vi $2\\pi R$; số vòng bằng quãng đường chia chu vi khi bánh lăn không trượt. Độ dài cung tỉ lệ góc ở tâm."
+      },
+      {
+        "code": "CĐ11.04",
+        "title": "Diện tích hình tròn, quạt, viên phân, vành khuyên",
+        "recognition": "Phần tô màu hình tròn, quạt, viên phân hoặc vành khuyên.",
+        "method": "Tách diện tích; viên phân nhỏ bằng quạt trừ tam giác tạo bởi hai bán kính và dây. Đọc đúng góc ở tâm và đơn vị."
+      },
+      {
+        "code": "CĐ11.05",
+        "title": "Đường tròn gắn tam giác thực tế",
+        "recognition": "Hình tròn tiếp xúc hoặc kết hợp với tam giác trong thực tế.",
+        "method": "Dùng bán kính vuông góc tiếp tuyến và quan hệ vuông, đồng dạng; tính từng phần diện tích hoặc độ dài sau khi tìm đủ kích thước.",
+        "variants": [
+          "Tiếp tuyến với bánh xe; dây căng giữa các điểm; hình tròn nội tiếp hoặc ngoại tiếp khi đề xác định rõ."
+        ]
+      }
+    ]
+  },
+  {
+    "code": "CĐ12",
+    "title": "Toán suy luận, quy tắc và lịch",
+    "category": "Suy luận và quy luật",
+    "icon": "number-line",
+    "description": "Năm nhuận, thứ trong tuần; Can Chi và âm lịch theo bảng quy ước của đề; múi giờ, quy luật dãy số, đếm hình/que tính, chia hết và số dư, chữ số, trò chơi tính điểm, thi đấu, tính ngược tiền còn lại. Phối hợp lập hệ hoặc bất phương trình khi cần.",
+    "knowledge": [
+      "Lịch Gregory: năm nhuận nếu chia hết cho $400$, hoặc chia hết cho $4$ nhưng không chia hết cho $100$. Dịch thứ trong tuần dựa vào số ngày chênh lệch lấy dư khi chia $7$.",
+      "Chênh lệch múi giờ tính theo các độ lệch UTC được đề cho; khi cộng/trừ giờ phải xét đổi ngày. Với Can Chi, dùng đúng bảng và mốc quy ước của đề.",
+      "Lập bảng vài trường hợp đầu để tìm quy luật, rồi kiểm chứng bằng quan hệ tổng quát. Bài làm ngược thực hiện các phép toán ngược theo thứ tự đảo lại."
+    ],
+    "steps": [
+      "Ghi rõ quy tắc và dữ kiện mốc.",
+      "Lập bảng, sơ đồ hoặc biểu thức cho một bước.",
+      "Lặp quy tắc, dùng số dư hoặc tính ngược tùy yêu cầu.",
+      "Thử lại từ đáp số và kiểm tra ngày, đơn vị, điều kiện nguyên."
+    ],
+    "caution": "Không coi mọi năm âm lịch là 354 ngày; tháng nhuận và lịch cụ thể phải theo dữ kiện. Một vài số hạng đầu chưa đủ để khẳng định duy nhất một quy luật nếu đề không cho giả thiết.",
+    "examples": [
+      {
+        "title": "Dịch thứ trong tuần",
+        "question": "Hôm nay là thứ Hai. Sau đúng $100$ ngày là thứ mấy?",
+        "solution": "$100=14\\cdot7+2$. Sau $98$ ngày vẫn là thứ Hai; thêm $2$ ngày là thứ Tư."
+      },
+      {
+        "title": "Tính ngược số tiền",
+        "question": "An mua hai lần. Mỗi lần tiêu một nửa số tiền đang có rồi thêm $10\\,000$ đồng. Sau hai lần còn $20\\,000$ đồng. Ban đầu An có bao nhiêu?",
+        "solution": "Tính ngược: trước lần hai có $(20\\,000+10\\,000)\\cdot2=60\\,000$ đồng. Trước lần một có $(60\\,000+10\\,000)\\cdot2=140\\,000$ đồng. Thử: lần một còn $60\\,000$, lần hai còn $20\\,000$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ12.01",
+        "title": "Năm nhuận, thứ trong tuần",
+        "recognition": "Xét năm nhuận hoặc thứ của một ngày.",
+        "method": "Áp quy tắc chia hết 4, 100, 400 của lịch Gregory; đếm số ngày chênh lệch theo mốc và lấy dư khi chia 7."
+      },
+      {
+        "code": "CĐ12.02",
+        "title": "Can Chi, âm lịch, tháng nhuận",
+        "recognition": "Đề có bảng Can Chi, tháng âm hoặc tháng nhuận.",
+        "method": "Dùng đúng bảng quy ước, mốc và số ngày được cho; không coi mọi năm âm lịch đều dài 354 ngày."
+      },
+      {
+        "code": "CĐ12.03",
+        "title": "Múi giờ, đổi giờ",
+        "recognition": "Giờ tại hai thành phố hoặc chuyến bay qua múi giờ.",
+        "method": "Đổi về cùng mốc UTC, cộng thời gian bay rồi đổi sang nơi đến; ghi cả ngày nếu vượt qua nửa đêm."
+      },
+      {
+        "code": "CĐ12.04",
+        "title": "Quy luật, dãy số, đếm",
+        "recognition": "Que tính, số hình, tiết kiệm hoặc dãy theo quy luật.",
+        "method": "Lập bảng các bước, tìm phần tăng hoặc quan hệ truy hồi theo giả thiết; giải thích công thức và kiểm tra vài trường hợp nhỏ."
+      },
+      {
+        "code": "CĐ12.05",
+        "title": "Số học: chia hết, số dư, chữ số",
+        "recognition": "Có điều kiện chia hết, số dư hoặc chữ số.",
+        "method": "Viết số có chữ số bằng tổng theo hàng, dùng phép chia có dư; giữ điều kiện chữ số đầu khác 0 và kiểm tra toàn bộ ràng buộc."
+      },
+      {
+        "code": "CĐ12.06",
+        "title": "Trò chơi tính điểm, thể thức thi đấu",
+        "recognition": "Trò chơi cộng/trừ điểm hoặc thi đấu thắng–hòa–thua.",
+        "method": "Gọi số lần từng kết quả, dùng tổng lượt và tổng điểm; nếu hỏi giới hạn, lập thêm bất phương trình."
+      },
+      {
+        "code": "CĐ12.07",
+        "title": "Mua bán chia tiền theo quy tắc",
+        "recognition": "Tiền thay đổi sau mỗi lần mua theo một quy tắc.",
+        "method": "Tính ngược từ số tiền cuối bằng phép toán ngược theo thứ tự đảo, sau đó thử lại từng lần từ số tiền đầu."
+      }
+    ]
+  },
+  {
+    "code": "CĐ13",
+    "title": "Hình học phẳng tổng hợp và đường tròn",
+    "category": "Hình học và đo lường",
+    "icon": "tangent",
+    "description": "Chứng minh hình học đường tròn: hai tiếp tuyến từ điểm ngoài, tam giác nhọn và đường cao, nửa đường tròn, dây và đường kính. Tứ giác nội tiếp; góc, đồng dạng, hệ thức tích, song song; tính theo R; thẳng hàng, đồng quy, tiếp tuyến mới và cực trị hình học.",
+    "knowledge": [
+      "Tiếp tuyến vuông góc bán kính tại tiếp điểm. Hai tiếp tuyến $MA,MB$ kẻ từ một điểm ngoài đường tròn có $MA=MB$; đường nối $M$ với tâm là trung trực của dây tiếp điểm $AB$.",
+      "Góc nội tiếp bằng nửa số đo cung bị chắn. Hai góc nội tiếp cùng chắn một cung bằng nhau. Tứ giác có tổng hai góc đối bằng $180^\\circ$ thì nội tiếp.",
+      "Hai tam giác đồng dạng cho tỉ lệ cạnh tương ứng. Với tiếp tuyến $MA$ và cát tuyến $MCD$ từ điểm ngoài $M$, ta có $MA^2=MC\\cdot MD$, với $C,D$ là hai giao điểm trên cùng tia cát tuyến."
+    ],
+    "steps": [
+      "Vẽ hình theo giả thiết, ghi góc vuông và các điểm cùng đường tròn.",
+      "Tìm tứ giác nội tiếp hoặc cặp tam giác đồng dạng trung gian.",
+      "Viết chứng minh theo chuỗi lí do, ghép đúng cạnh và góc.",
+      "Ở ý tính toán, đưa về R và kiểm tra độ dài, diện tích có đúng thứ nguyên."
+    ],
+    "caution": "Không suy ra thẳng hàng, vuông góc hay tiếp tuyến chỉ từ hình vẽ. Muốn chứng minh tiếp tuyến, cần chỉ rõ tiếp điểm và tiêu chuẩn áp dụng.",
+    "examples": [
+      {
+        "title": "Tứ giác nội tiếp từ hai tiếp tuyến",
+        "question": "Từ $M$ ngoài $(O)$ kẻ tiếp tuyến $MA,MB$ tại $A,B$. Chứng minh $O,A,M,B$ cùng thuộc một đường tròn.",
+        "solution": "Vì bán kính vuông góc tiếp tuyến, $\\angle OAM=\\angle OBM=90^\\circ$. Do đó $A,B$ cùng nằm trên đường tròn đường kính $OM$. Suy ra bốn điểm $O,A,M,B$ cùng thuộc đường tròn này."
+      },
+      {
+        "title": "Tính tiếp tuyến theo bán kính",
+        "question": "Với cấu hình trên, biết $OM=2R$, $OA=R$. Tính $MA$ và khoảng cách từ $O$ đến dây $AB$.",
+        "solution": "Tam giác $OAM$ vuông tại $A$, nên $MA=\\sqrt{OM^2-OA^2}=R\\sqrt3$. Gọi $H=OM\\cap AB$. Do $OM$ là trung trực $AB$, $AH\\perp OM$. Hệ thức lượng cho $OH\\cdot OM=OA^2$, suy ra $OH=R/2$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ13.01",
+        "title": "Các cấu hình hình học gốc",
+        "recognition": "Cấu hình gốc gồm tiếp tuyến, đường cao, nửa đường tròn hoặc dây–đường kính.",
+        "method": "Đánh dấu bán kính vuông góc tiếp tuyến, góc nội tiếp chắn đường kính và các chân đường cao; nhận ra những đường tròn trung gian trước khi nối thêm điểm.",
+        "variants": [
+          "Hai tiếp tuyến từ điểm ngoài, thường kết hợp cát tuyến, dây tiếp điểm hoặc đường kính.",
+          "Tam giác nhọn nội tiếp có hai hoặc ba đường cao; có thể thêm đường kính và trung điểm cạnh.",
+          "Nửa đường tròn có hai tiếp tuyến ở hai đầu đường kính và một tiếp tuyến thay đổi.",
+          "Đường tròn đường kính một cạnh tam giác cắt hai cạnh còn lại; khai thác góc vuông và trực tâm.",
+          "Tiếp tuyến tại một điểm với độ dài theo R, kết hợp đường nối tâm và chân đường vuông góc.",
+          "Dây vuông góc đường kính; liên hệ trung điểm dây, khoảng cách đến tâm và các cung.",
+          "Nửa đường tròn kết hợp phân giác hoặc điểm chính giữa cung."
+        ]
+      },
+      {
+        "code": "CĐ13.02",
+        "title": "Chứng minh tứ giác nội tiếp",
+        "recognition": "Cần chứng minh bốn điểm cùng thuộc một đường tròn.",
+        "method": "Tìm hai góc đối bù, hai góc vuông cùng nhìn một đoạn hoặc hai góc cùng nhìn một cạnh trong cấu hình thích hợp; chỉ rõ đường kính/tâm nếu xác định được."
+      },
+      {
+        "code": "CĐ13.03",
+        "title": "Hệ thức đoạn thẳng, song song và góc bằng nhau",
+        "recognition": "Cần tích đoạn thẳng, hai góc bằng nhau hoặc hai đường song song.",
+        "method": "Tìm cặp tam giác đồng dạng, dùng góc nội tiếp và góc tạo bởi tiếp tuyến–dây; viết tỉ số đúng thứ tự để suy ra hệ thức."
+      },
+      {
+        "code": "CĐ13.04",
+        "title": "Tính độ dài, diện tích theo bán kính",
+        "recognition": "Độ dài hoặc diện tích cần biểu diễn theo bán kính R.",
+        "method": "Từ dữ kiện góc và khoảng cách, dùng tam giác vuông, đồng dạng, hệ thức lượng; nếu tính viên phân, tách quạt và tam giác."
+      },
+      {
+        "code": "CĐ13.05",
+        "title": "Chứng minh nâng cao và cực trị",
+        "recognition": "Cần thẳng hàng, đồng quy, tiếp tuyến mới hoặc cực trị.",
+        "method": "Chọn mục tiêu trung gian về góc, tỉ số hoặc khoảng cách; chứng minh từng điều kiện, tránh suy luận chỉ dựa trên hình vẽ và kiểm tra trường hợp đạt cực trị.",
+        "variants": [
+          "Chứng minh ba điểm thẳng hàng hoặc các đường đồng quy; xác định trung điểm; dựng tiếp tuyến mới; cực trị diện tích hoặc chu vi."
+        ]
+      }
+    ]
+  },
+  {
+    "code": "CĐ14",
+    "title": "Trắc nghiệm nhanh theo chủ đề",
+    "category": "Củng cố kiến thức",
+    "icon": "playing-cards",
+    "description": "Ôn tập nhanh các kiến thức qua câu hỏi lựa chọn: điều kiện căn bậc hai, rút gọn căn, phương trình và hệ bậc nhất, bất phương trình, bậc hai và Vi-ét, đồ thị, lượng giác, góc đường tròn, hình quạt, hình khối và thống kê.",
+    "knowledge": [
+      "Với căn bậc hai thực $\\sqrt A$, cần $A\\ge0$. Nếu căn ở mẫu, cần thêm mẫu khác $0$. Luôn có $\\sqrt{x^2}=|x|$, không phải luôn bằng $x$.",
+      "Kiểm tra một đáp án bằng thay vào điều kiện hoặc phương trình; có thể loại phương án sai về dấu, miền xác định hoặc đơn vị.",
+      "Khi rút gọn phân thức, chỉ khử nhân tử chung và giữ điều kiện ban đầu. Dùng các công thức đã học trong chuyên đề tương ứng để kiểm chứng lựa chọn."
+    ],
+    "steps": [
+      "Đọc chính xác yêu cầu chọn đúng hay chọn sai.",
+      "Xác định kiến thức và điều kiện cần dùng.",
+      "Giải nhanh, thay đáp án hoặc loại trừ có căn cứ.",
+      "Kiểm tra lại dấu, đơn vị và chỉ chọn số đáp án mà đề yêu cầu."
+    ],
+    "caution": "Các phương án nhiễu thường khai thác lỗi dấu, thiếu điều kiện hoặc nhầm công thức. Hãy giải thích được vì sao đáp án đúng, thay vì chỉ nhớ vị trí một lựa chọn.",
+    "examples": [
+      {
+        "title": "Điều kiện của căn ở mẫu",
+        "question": "Tìm điều kiện để $A=\\dfrac1{\\sqrt{2x-6}}$ xác định trong tập số thực.",
+        "solution": "Căn ở mẫu phải có nghĩa và khác $0$, nên $2x-6>0$. Do đó điều kiện là $x>3$."
+      },
+      {
+        "title": "Rút gọn căn đúng dấu",
+        "question": "Tính $B=\\sqrt{(-3)^2}+\\sqrt[3]{-8}$.",
+        "solution": "$\\sqrt{(-3)^2}=|-3|=3$, còn $\\sqrt[3]{-8}=-2$. Vậy $B=3-2=1$."
+      }
+    ],
+    "types": [
+      {
+        "code": "CĐ14.01",
+        "title": "Điều kiện xác định của căn bậc hai",
+        "recognition": "Biểu thức chứa $\\sqrt A$ hoặc căn ở mẫu.",
+        "method": "Đặt $A\\ge0$; căn ở mẫu cần $A>0$, đồng thời xét các mẫu khác nếu có."
+      },
+      {
+        "code": "CĐ14.02",
+        "title": "Căn bậc hai, căn bậc ba và rút gọn",
+        "recognition": "Tính căn, trục căn hoặc rút gọn biểu thức số.",
+        "method": "Dùng $\\sqrt{x^2}=|x|$, nhận dạng bình phương hoàn chỉnh; căn bậc ba giữ dấu của số trong căn."
+      },
+      {
+        "code": "CĐ14.03",
+        "title": "Phương trình và hệ phương trình bậc nhất",
+        "recognition": "Chọn nghiệm hoặc xác định tính chất nghiệm của phương trình, hệ.",
+        "method": "Thay cặp số vào cả hai phương trình hoặc giải hệ; phân biệt vô nghiệm, một nghiệm, vô số nghiệm."
+      },
+      {
+        "code": "CĐ14.04",
+        "title": "Bất phương trình bậc nhất",
+        "recognition": "Chọn nghiệm hoặc tập nghiệm của bất phương trình.",
+        "method": "Chuyển vế, thu gọn; khi chia số âm đổi chiều và thử một giá trị để kiểm tra."
+      },
+      {
+        "code": "CĐ14.05",
+        "title": "Phương trình bậc hai, biệt thức và Vi-ét",
+        "recognition": "Đề hỏi $\\Delta$, nghiệm hoặc tổng/tích hai nghiệm.",
+        "method": "Xác định $a,b,c$ đúng dấu, xét biệt thức rồi dùng công thức nghiệm hoặc Vi-ét."
+      },
+      {
+        "code": "CĐ14.06",
+        "title": "Hàm số và đồ thị",
+        "recognition": "Chọn điểm thuộc đồ thị, hệ số hoặc vị trí tương đối.",
+        "method": "Thay tọa độ điểm vào công thức; với giao điểm, giải phương trình hoành độ và xét số nghiệm thực."
+      },
+      {
+        "code": "CĐ14.07",
+        "title": "Tam giác vuông và lượng giác",
+        "recognition": "Tìm cạnh, góc hoặc hệ thức trong tam giác vuông.",
+        "method": "Xác định cạnh đối, kề, huyền theo đúng góc đang xét; chọn sin, cos, tan hoặc Pythagore."
+      },
+      {
+        "code": "CĐ14.08",
+        "title": "Góc đường tròn và hình quạt",
+        "recognition": "Tính góc nội tiếp, góc ở tâm hoặc diện tích quạt.",
+        "method": "Góc nội tiếp bằng nửa cung bị chắn; diện tích quạt là phần $n/360$ diện tích hình tròn với góc ở tâm $n^\\circ$."
+      },
+      {
+        "code": "CĐ14.09",
+        "title": "Hình khối",
+        "recognition": "Nhận diện công thức diện tích và thể tích trụ, nón, cầu.",
+        "method": "Phân biệt bán kính và đường kính, chiều cao và đường sinh; kiểm tra đơn vị bình phương hay lập phương."
+      },
+      {
+        "code": "CĐ14.10",
+        "title": "Thống kê",
+        "recognition": "Tìm cỡ mẫu, tần số, tỉ lệ hoặc trung bình.",
+        "method": "Cộng tần số để có cỡ mẫu, dùng trung bình có trọng số nếu dữ liệu theo bảng; đọc nhãn và đơn vị trước khi chọn đáp án."
+      }
+    ]
+  }
+]
