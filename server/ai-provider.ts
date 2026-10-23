@@ -35,8 +35,14 @@ export async function providerRequest(
     response.ok,
     response.status === 429
       ? 'Dịch vụ AI đang hết hạn mức. Hãy thử lại sau.'
-      : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
-    response.status === 429 ? 429 : [401, 403].includes(response.status) ? 503 : 502,
+      : response.status === 402
+        ? 'Tài khoản dịch vụ AI không đủ số dư hoặc chưa bật thanh toán (HTTP 402). Kiểm tra tài khoản của nhà cung cấp.'
+        : response.status === 401 || response.status === 403
+          ? `API key không hợp lệ hoặc không có quyền dùng dịch vụ (HTTP ${response.status}). Kiểm tra lại key và Base URL trong Cấu hình AI.`
+          : response.status === 404
+            ? 'Không tìm thấy model hoặc đường dẫn API (HTTP 404). Kiểm tra & lấy model trong Cấu hình AI để chọn model được tài khoản hỗ trợ.'
+            : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
+    response.status === 429 ? 429 : [401, 402, 403, 404].includes(response.status) ? 503 : 502,
   );
   const reader = response.body?.getReader();
   requireValue(reader, 'Dịch vụ AI trả dữ liệu trống.', 502);

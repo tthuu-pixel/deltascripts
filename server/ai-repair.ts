@@ -31,6 +31,7 @@ export async function repairQuestions(
     'Chế độ lưu không hợp lệ.',
   );
   const ids = new Set<string>();
+  const results = new Map<string, AiSuggestion>();
   const inputs: {
     original: Question;
     q: Question;
@@ -83,9 +84,18 @@ export async function repairQuestions(
     } catch {
       /* Keep incomplete prose for the repair model; drawings remain locked. */
     }
-    const statement = lockTex(q.statementRaw),
-      solution = lockTex(q.solutionRaw);
-    inputs.push({ original, q, stored: !!row, statement, solution });
+    try {
+      const statement = lockTex(q.statementRaw),
+        solution = lockTex(q.solutionRaw);
+      inputs.push({ original, q, stored: !!row, statement, solution });
+    } catch {
+      results.set(q.id, {
+        id: q.id,
+        topicIds: [],
+        pending: true,
+        reason: 'Mã hình hoặc khai báo chưa đầy đủ; giữ nguyên nguồn để xử lý lại.',
+      });
+    }
   }
   const topics = (
     await db
@@ -96,7 +106,6 @@ export async function repairQuestions(
   ).results;
   requireValue(topics.length, 'Bổ sung mô tả chuyên đề trước khi dùng AI.');
   const allowed = new Set(topics.map((t) => String(t.id)));
-  const results = new Map<string, AiSuggestion>();
   let pending = inputs;
   const deadline = Date.now() + 43_000;
   let feedback: Record<string, string> = {};

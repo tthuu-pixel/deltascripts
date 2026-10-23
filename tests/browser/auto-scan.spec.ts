@@ -436,6 +436,9 @@ test('API errors wait for retry instead of requiring manual edits for every ques
     const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
     await expect(summary).toContainText('Chờ xử lý lại 3');
     await expect(review.getByRole('alert')).toContainText('Kiểm tra API key và model');
+    await expect(
+      review.getByRole('button', { name: 'Duyệt và dùng bản này', exact: true }),
+    ).toHaveCount(0);
     expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(0);
     unavailable = false;
     await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();

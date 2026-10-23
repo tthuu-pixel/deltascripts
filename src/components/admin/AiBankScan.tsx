@@ -122,9 +122,7 @@ export default function AiBankScan({
         if (abort.signal.aborted) break;
         // A configuration/network failure leaves this page retryable; never advance past it.
         if (scanned.stopped) {
-          throw new Error(
-            'Có lượt chưa quét được. Bấm tiếp tục để thử lại; các câu đã thành công được giữ nguyên.',
-          );
+          throw new Error(scanned.reason || 'AI đã tạm dừng. Các câu đã xử lý được giữ nguyên.');
         }
         if (!page.nextCursor) {
           checkpoint.current.complete = true;

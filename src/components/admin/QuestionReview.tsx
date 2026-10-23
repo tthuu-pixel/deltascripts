@@ -201,9 +201,10 @@ export default function QuestionReview({
               : `AI đang quét ${value.processed} / ${value.total} câu còn lại…`,
           ),
       });
+      if (result?.stopped) setError(result.reason || 'AI đang tạm dừng. Vui lòng thử lại.');
       setProgress(
         result?.stopped
-          ? 'AI chưa quét xong do lỗi kết nối hoặc cấu hình. Các kết quả đã nhận được giữ nguyên.'
+          ? 'AI đã tạm dừng. Các câu chưa lưu vẫn nằm trong bản nhập; lý do dừng được ghi bên trên.'
           : 'Đã quét hết các câu. Câu phù hợp được tự gắn chuyên đề; bạn có thể duyệt cả đợt hoặc sửa các câu cần kiểm tra.',
       );
     } catch (e) {
@@ -715,23 +716,25 @@ export default function QuestionReview({
             AI xử lý và thêm tất cả
           </button>
         )}
-        <button
-          className={
-            mode === 'import' && savedCount < drafts.length
-              ? 'btn btn-secondary'
-              : 'btn btn-primary'
-          }
-          disabled={busy}
-          onClick={() => (autoComplete ? onClose() : void apply())}
-        >
-          {autoComplete
-            ? 'Hoàn tất'
-            : busy
-              ? 'Đang xử lý…'
-              : mode === 'import'
-                ? 'Duyệt và dùng bản này'
-                : 'Áp dụng các bài đã duyệt'}
-        </button>
+        {(!autoShown || autoComplete) && (
+          <button
+            className={
+              mode === 'import' && savedCount < drafts.length
+                ? 'btn btn-secondary'
+                : 'btn btn-primary'
+            }
+            disabled={busy}
+            onClick={() => (autoComplete ? onClose() : void apply())}
+          >
+            {autoComplete
+              ? 'Hoàn tất'
+              : busy
+                ? 'Đang xử lý…'
+                : mode === 'import'
+                  ? 'Duyệt và dùng bản này'
+                  : 'Áp dụng các bài đã duyệt'}
+          </button>
+        )}
       </div>
     </dialog>
   );

@@ -132,7 +132,7 @@ export async function scanQuestions(
             'failed',
             'Chưa quét được vì cấu hình, phiên đăng nhập hoặc kết nối AI gặp lỗi.',
           );
-        return { stopped: true };
+        return { stopped: true, reason: (e as Error).message };
       }
       continue;
     }

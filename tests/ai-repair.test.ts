@@ -276,3 +276,9 @@ test('valid-looking truncated statements and missing subparts are retried rather
     String.raw`\item Tính $\dfrac{1}{2}$.`,
   );
 });
+
+test('an incomplete drawing stays an essay awaiting repair instead of being silently skipped', () => {
+  const q = parseTexText(String.raw`\begin{bt}Tự luận.\end{bt}`)[0];
+  q.statementRaw = String.raw`Tự luận.\begin{tikzpicture}\draw (0,0)--(1,1);`;
+  assert.equal(canProcessEssay(q), true);
+});

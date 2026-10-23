@@ -24,7 +24,8 @@ export function canProcessEssay(
       !hasAnswerChoices(q.raw || '')
     );
   } catch {
-    return false;
+    // Broken executable syntax is pending repair, never proof that an essay is non-essay.
+    return env === 'bt' || env === 'ex';
   }
 }
 
