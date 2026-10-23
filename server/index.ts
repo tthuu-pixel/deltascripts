@@ -1,3 +1,4 @@
+import { processAutomaticImports } from './automatic-imports';
 import { createApp } from './app.ts';
 import type { Database } from './database.ts';
 export interface Env {
@@ -9,7 +10,15 @@ export interface Env {
   APP_ORIGIN?: string;
 }
 export default {
-  async scheduled(_event: unknown, env: Env): Promise<void> {
+  async scheduled(_event: { cron?: string }, env: Env): Promise<void> {
+    if (_event.cron === '* * * * *') {
+      await processAutomaticImports(env.DB, {
+        aiSettingsKey: env.AI_SETTINGS_KEY,
+        budgetMs: 50000,
+        maxItems: 4, // Keep each scheduled invocation below the D1 Free query limit.
+      });
+      return;
+    }
     const now = Date.now();
     await env.DB.batch([
       env.DB.prepare(
@@ -23,11 +32,25 @@ export default {
       ).bind(now - 30 * 24 * 60 * 60 * 1000),
     ]);
   },
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx?: { waitUntil(p: Promise<unknown>): void },
+  ): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/api' || url.pathname.startsWith('/api/'))
       return createApp(env.DB, {
         aiSettingsKey: env.AI_SETTINGS_KEY,
+        onImportsQueued: ctx
+          ? () =>
+              ctx.waitUntil(
+                processAutomaticImports(env.DB, {
+                  aiSettingsKey: env.AI_SETTINGS_KEY,
+                  budgetMs: 20000,
+                  maxItems: 3,
+                }).catch(() => {}),
+              )
+          : undefined,
         geminiKey: env.GEMINI_API_KEY,
         geminiModel: env.GEMINI_MODEL,
         allowedOrigins: [

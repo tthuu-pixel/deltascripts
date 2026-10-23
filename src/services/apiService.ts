@@ -87,6 +87,21 @@ export async function apiRequest<T = any>(
   return request;
 }
 export const apiService = {
+  async getAutomaticImports(): Promise<
+    import('../../shared/automaticImport').AutomaticImportJob[]
+  > {
+    return (await apiRequest('/admin/imports')).items;
+  },
+  async startAutomaticImport(id: string, files: string[], expected: number) {
+    return apiRequest('/admin/imports/start', { id, files, expected });
+  },
+  async appendAutomaticImport(id: string, items: Question[]) {
+    return apiRequest('/admin/imports/items', { id, items });
+  },
+  async finishAutomaticImport(id: string) {
+    return apiRequest('/admin/imports/finish', { id });
+  },
+
   async getStudentAiModels(settings: StudentAiSettings): Promise<string[]> {
     return (await apiRequest('/ai/models', settings)).models;
   },

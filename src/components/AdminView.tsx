@@ -12,6 +12,7 @@ import type { ReviewMode } from './admin/QuestionReview';
 const ExamSettingsManager = lazy(() => import('./admin/ExamSettingsManager'));
 const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
 const AiBankScan = lazy(() => import('./admin/AiBankScan'));
+const AutomaticImportPanel = lazy(() => import('./admin/AutomaticImportPanel'));
 const QuestionReview = lazy(() => import('./admin/QuestionReview'));
 const TopicManager = lazy(() => import('./admin/TopicManager'));
 const StudentSettingsManager = lazy(() => import('./admin/StudentSettingsManager'));
@@ -429,174 +430,180 @@ export default function AdminView() {
       {tab === 'questions' && (
         <div className="bank-layout">
           <aside className="bank-sidebar">
-            <section className="surface import-panel">
-              <span className="section-kicker">THÊM MỘT NGUỒN TRI THỨC</span>
-              <h2>Thêm câu hỏi mới</h2>
-              <div
-                className="import-dropzone"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  if (!busy) {
-                    automaticFile.current = false;
-                    importFiles(Array.from(event.dataTransfer.files));
-                  }
-                }}
-              >
-                <span className="icon-tile tone-blue">
-                  <Icon name="upload" size={33} />
-                </span>
-                <h3>Đưa bài học lên đây</h3>
-                <p>
-                  Kéo thả file Word hoặc LaTeX.
-                  <br />
-                  Mỗi file tối đa 20 MB.
-                </p>
-                <input
-                  ref={fileInput}
-                  aria-label="Chọn file câu hỏi"
-                  className="visually-hidden"
-                  type="file"
-                  accept=".docx,.tex"
-                  multiple
-                  disabled={busy}
-                  onChange={(event) => {
-                    importFiles(Array.from(event.target.files || []));
-                    event.target.value = '';
-                  }}
-                />
-                <button
-                  className="btn btn-primary"
-                  disabled={busy}
-                  onClick={() => {
-                    automaticFile.current = false;
-                    fileInput.current?.click();
+            <Suspense fallback={<p role="status">Đang mở khu vực tải file…</p>}>
+              <AutomaticImportPanel onChanged={reload} />
+            </Suspense>
+            <details className="manual-import-disclosure">
+              <summary>Biên tập thủ công (tùy chọn)</summary>
+              <section className="surface import-panel">
+                <span className="section-kicker">THÊM MỘT NGUỒN TRI THỨC</span>
+                <h2>Thêm câu hỏi mới</h2>
+                <div
+                  className="import-dropzone"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!busy) {
+                      automaticFile.current = false;
+                      importFiles(Array.from(event.dataTransfer.files));
+                    }
                   }}
                 >
-                  <Icon name="upload" size={18} />
-                  Chọn file câu hỏi
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    automaticFile.current = true;
-                    fileInput.current?.click();
-                  }}
-                >
-                  <Icon name="spark" size={18} />
-                  AI nhập tự động
-                </button>
-                <span className="file-types">
-                  .TEX
-                  <span />
-                  .DOCX
-                </span>
-              </div>
-              <div className="import-instructions">
-                <span>01</span>
-                <p>AI tự sửa bt và chuyển ex tự luận sang bt; giữ nguyên TikZ.</p>
-                <span>02</span>
-                <p>
-                  Dùng <strong>AI nhập tự động</strong> để sửa mã, chọn chuyên đề và thêm vào kho.
-                </p>
-              </div>
-              {!!importFileErrors.length && (
-                <div className="notice notice-error import-file-errors" role="alert">
-                  <strong>Tệp cần xử lý riêng</strong>
-                  <ul>
-                    {importFileErrors.map((message, i) => (
-                      <li key={i}>{message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {pending.length > 0 && (
-                <div className="pending-import">
-                  <h3>
-                    <Icon name="check" size={18} />
-                    {pending.length} câu chờ lưu
-                  </h3>
-                  <TopicPicker
-                    topics={topics}
-                    value={importTopicIds}
-                    onChange={setImportTopicIds}
-                    disabled={busy}
-                    label="Chuyên đề cho bản nhập"
-                  />
-                  <label className="publish-controls">
-                    <input
-                      type="checkbox"
-                      disabled={busy}
-                      checked={importPublished}
-                      onChange={(e) => setImportPublished(e.target.checked)}
-                    />
-                    Xuất bản ngay sau khi lưu
-                  </label>
-                  <p className="field-help">
-                    Bỏ chọn để lưu nháp. Một câu có thể nằm trong nhiều chuyên đề.
+                  <span className="icon-tile tone-blue">
+                    <Icon name="upload" size={33} />
+                  </span>
+                  <h3>Đưa bài học lên đây</h3>
+                  <p>
+                    Kéo thả file Word hoặc LaTeX.
+                    <br />
+                    Mỗi file tối đa 20 MB.
                   </p>
-                  <div className="pending-chips">
-                    {pending.slice(0, 20).map((q) => (
-                      <button
-                        className="soft-badge"
-                        key={q.id}
-                        onClick={() => setPreview({ question: q, solution: false })}
-                      >
-                        {q.label}
-                        <Icon name="eye" size={14} />
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className="btn btn-secondary"
+                  <input
+                    ref={fileInput}
+                    aria-label="Chọn file câu hỏi"
+                    className="visually-hidden"
+                    type="file"
+                    accept=".docx,.tex"
+                    multiple
                     disabled={busy}
-                    onClick={() =>
-                      setReview({
-                        mode: 'import',
-                        questions: pending,
-                        reports: importReports,
-                        fileErrors: importFileErrors,
-                      })
-                    }
-                  >
-                    {importReviewed ? 'Xem lại bản đã duyệt' : 'Chuẩn hóa & kiểm tra bản nhập'}
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    disabled={busy}
-                    onClick={() =>
-                      setReview({
-                        mode: 'import',
-                        questions: pending,
-                        reports: importReports,
-                        autoStart: true,
-                        fileErrors: importFileErrors,
-                      })
-                    }
-                  >
-                    AI xử lý và thêm tất cả
-                  </button>
+                    onChange={(event) => {
+                      importFiles(Array.from(event.target.files || []));
+                      event.target.value = '';
+                    }}
+                  />
                   <button
                     className="btn btn-primary"
-                    disabled={busy || !importReviewed}
-                    onClick={save}
-                  >
-                    Lưu lên hệ thống
-                    <Icon name="arrow" size={18} />
-                  </button>
-                  <button
-                    className="text-button"
                     disabled={busy}
                     onClick={() => {
-                      if (confirm('Bỏ các câu chưa lưu?')) setPending([]);
+                      automaticFile.current = false;
+                      fileInput.current?.click();
                     }}
                   >
-                    Bỏ bản nhập
+                    <Icon name="upload" size={18} />
+                    Chọn file câu hỏi
                   </button>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      automaticFile.current = true;
+                      fileInput.current?.click();
+                    }}
+                  >
+                    <Icon name="spark" size={18} />
+                    AI nhập tự động
+                  </button>
+                  <span className="file-types">
+                    .TEX
+                    <span />
+                    .DOCX
+                  </span>
                 </div>
-              )}
-            </section>
+                <div className="import-instructions">
+                  <span>01</span>
+                  <p>AI tự sửa bt và chuyển ex tự luận sang bt; giữ nguyên TikZ.</p>
+                  <span>02</span>
+                  <p>
+                    Dùng <strong>AI nhập tự động</strong> để sửa mã, chọn chuyên đề và thêm vào kho.
+                  </p>
+                </div>
+                {!!importFileErrors.length && (
+                  <div className="notice notice-error import-file-errors" role="alert">
+                    <strong>Tệp cần xử lý riêng</strong>
+                    <ul>
+                      {importFileErrors.map((message, i) => (
+                        <li key={i}>{message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {pending.length > 0 && (
+                  <div className="pending-import">
+                    <h3>
+                      <Icon name="check" size={18} />
+                      {pending.length} câu chờ lưu
+                    </h3>
+                    <TopicPicker
+                      topics={topics}
+                      value={importTopicIds}
+                      onChange={setImportTopicIds}
+                      disabled={busy}
+                      label="Chuyên đề cho bản nhập"
+                    />
+                    <label className="publish-controls">
+                      <input
+                        type="checkbox"
+                        disabled={busy}
+                        checked={importPublished}
+                        onChange={(e) => setImportPublished(e.target.checked)}
+                      />
+                      Xuất bản ngay sau khi lưu
+                    </label>
+                    <p className="field-help">
+                      Bỏ chọn để lưu nháp. Một câu có thể nằm trong nhiều chuyên đề.
+                    </p>
+                    <div className="pending-chips">
+                      {pending.slice(0, 20).map((q) => (
+                        <button
+                          className="soft-badge"
+                          key={q.id}
+                          onClick={() => setPreview({ question: q, solution: false })}
+                        >
+                          {q.label}
+                          <Icon name="eye" size={14} />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        setReview({
+                          mode: 'import',
+                          questions: pending,
+                          reports: importReports,
+                          fileErrors: importFileErrors,
+                        })
+                      }
+                    >
+                      {importReviewed ? 'Xem lại bản đã duyệt' : 'Chuẩn hóa & kiểm tra bản nhập'}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        setReview({
+                          mode: 'import',
+                          questions: pending,
+                          reports: importReports,
+                          autoStart: true,
+                          fileErrors: importFileErrors,
+                        })
+                      }
+                    >
+                      AI xử lý và thêm tất cả
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      disabled={busy || !importReviewed}
+                      onClick={save}
+                    >
+                      Lưu lên hệ thống
+                      <Icon name="arrow" size={18} />
+                    </button>
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => {
+                        if (confirm('Bỏ các câu chưa lưu?')) setPending([]);
+                      }}
+                    >
+                      Bỏ bản nhập
+                    </button>
+                  </div>
+                )}
+              </section>
+            </details>
           </aside>
           <section className="bank-main">
             <div className="section-heading">

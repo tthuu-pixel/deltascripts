@@ -16,6 +16,8 @@ interface StoredSettings {
 export interface AdminAiOptions {
   aiSettingsKey?: string;
   fetchGemini?: typeof fetch;
+  repairBudgetMs?: number;
+  publishedTopicsOnly?: boolean;
 }
 export function validateAiConfig(body: any) {
   requireValue(body && Object.hasOwn(aiProviders, body.provider), 'Nhà cung cấp AI không hợp lệ.');

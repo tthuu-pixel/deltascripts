@@ -138,6 +138,7 @@ test('teacher imports Word/TeX in worker, confirms persistence, deletes question
   page,
 }) => {
   await teacher(page);
+  await page.getByText('Biên tập thủ công (tùy chọn)', { exact: true }).click();
   await expect(page.getByLabel('Chọn file câu hỏi')).toBeEnabled();
   const tex = String.raw`\begin{ex}[Câu 2]E2E unique import $x<5$.\loigiai{Answer $4$.}\end{ex}`;
   await page

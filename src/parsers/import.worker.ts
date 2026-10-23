@@ -5,13 +5,20 @@ self.onmessage = async (event: MessageEvent<File[]>) => {
   try {
     const questions = [];
     const fileErrors: string[] = [];
+    const acceptedFiles: string[] = [];
     for (const file of event.data) {
       try {
         if (file.size > 20 * 1024 * 1024) throw new Error('File vượt 20 MB.');
-        if (/\.docx$/i.test(file.name)) questions.push(...(await parseWordFile(file)));
-        else if (/\.tex$/i.test(file.name))
-          questions.push(...parseRepairableTex(await file.text()));
-        else throw new Error('Chỉ hỗ trợ file Word .docx hoặc LaTeX .tex.');
+        const parsed = /\.docx$/i.test(file.name)
+          ? await parseWordFile(file)
+          : /\.tex$/i.test(file.name)
+            ? parseRepairableTex(await file.text())
+            : (() => {
+                throw new Error('Chỉ hỗ trợ file Word .docx hoặc LaTeX .tex.');
+              })();
+        if (!parsed.length) throw new Error('Không tìm thấy câu hỏi.');
+        questions.push(...parsed);
+        acceptedFiles.push(file.name);
       } catch (error) {
         fileErrors.push(`${file.name}: ${(error as Error).message}`);
       }
@@ -20,6 +27,7 @@ self.onmessage = async (event: MessageEvent<File[]>) => {
     const reviewed = questions.map(normalizeQuestion);
     self.postMessage({
       fileErrors,
+      acceptedFiles,
       questions: reviewed.map((item) => item.question),
       reports: Object.fromEntries(reviewed.map((item) => [item.question.id, item.report])),
     });

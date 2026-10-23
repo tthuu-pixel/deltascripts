@@ -16,7 +16,11 @@ Danh mục hiện hành có 14 chuyên đề, 112 dạng bài và 28 ví dụ đ
 
 ## Nhập và phân loại câu hỏi
 
-1. Chọn **Ngân hàng câu hỏi**, tải `.tex` hoặc `.docx` lên. Một file có thể chứa nhiều câu; giới hạn file là 20 MB.
+Luồng mặc định: **Ngân hàng câu hỏi → Tải file · AI tự xuất bản → chọn file `.tex`**. Không cần thao tác duyệt, chọn chuyên đề hoặc lưu/xuất bản riêng; xem tiến trình ngay dưới vùng tải. Sau khi máy chủ nhận đủ, có thể đóng trang, tiến trình vẫn chạy nền và tự thử lại nếu dịch vụ gián đoạn.
+
+Nếu cần biên tập riêng, mở **Biên tập thủ công (tùy chọn)**:
+
+1. Tải `.tex` hoặc `.docx` lên. Một file có thể chứa nhiều câu; giới hạn file là 20 MB.
 2. Cửa sổ **Chuẩn hóa & kiểm tra** tự mở. Xem các thay đổi, cảnh báo có số dòng, đề/lời giải và hình. Có thể sửa nguồn đang dùng, mở **Nguồn gốc để đối chiếu** hoặc **Dùng lại nội dung gốc**. Bấm **Duyệt và dùng bản này** rồi mới lưu. Một câu có thể thuộc tối đa 10 chuyên đề, dùng chung một bản ghi.
 3. Chọn chuyên đề thủ công nếu cần. Số thứ tự/nhãn trong nguồn chỉ giúp tham chiếu bài gốc; không phải nhóm phân loại và không bị giới hạn trong 1–7.
 4. Bấm **Lưu lên hệ thống**. Mặc định lưu nháp. Có thể chọn **Xuất bản ngay sau khi lưu**.
@@ -29,7 +33,8 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 ## Nhập tự động bằng một nút
 
-- Bấm **AI nhập tự động**, chọn file `.tex`; AI tự kiểm tra mã, sửa cú pháp/lời giải có sẵn, đối chiếu mô tả chuyên đề và lưu. Không cần sửa từng lỗi trước khi AI nhận bài. Nếu đã mở bản duyệt, bấm **AI xử lý và thêm tất cả**; kết quả AI đã hoàn tất được dùng lại. Mặc định lưu nháp, có thể bật **Xuất bản các câu xử lý được**.
+- Bấm **Tải file · AI tự xuất bản**, chọn file `.tex`. Hệ thống tự sửa, gắn vào chuyên đề đã xuất bản theo mô tả, lưu và xuất bản. Không cần chọn chuyên đề hoặc bấm duyệt. Câu trùng nguồn được nhận diện, không thêm bản sao.
+- Nguồn đang gửi được giữ trên trình duyệt; tiến trình AI lưu trên máy chủ. Khi máy chủ nhận đủ, có thể đóng trang. Hệ thống tự chạy tiếp mỗi phút và tự thử lại phần chưa xong. Nếu key/hạn mức dịch vụ không hoạt động, tiến trình chờ; thay cấu hình AI đánh thức tiến trình ngay. Các công cụ duyệt cũ nằm trong phần biên tập thủ công, chỉ dùng khi muốn sửa riêng.
 - Bài `bt` và bài tự luận ghi nhầm `ex` không có `\choice`, `\choiceTF` hoặc lệnh lựa chọn tương đương đều được xử lý. `ex` tự luận được lưu lại bằng `bt`. Trắc nghiệm có lựa chọn, `vd`, Word và nguồn ngoài phạm vi tự luận được bỏ qua trong tự động; vẫn có thể nhập thủ công.
 - `\immini` được bỏ khung, giữ đủ hai đối số và đặt hình giữa. TikZ, khai báo và comment kỹ thuật được khóa khỏi AI, khôi phục nguyên văn; mã hình không bị chuẩn hóa số thập phân hoặc phân số. File thiếu một lệnh đóng ngoài `bt/ex` có thể được phục hồi để xử lý tiếp, với bản ban đầu được lưu lại.
 - Giao diện báo tiến độ, số đã thêm và số chờ xử lý lại. AI tự thử sửa tối đa ba lượt trong thời gian mỗi yêu cầu; kết quả chưa hợp lệ được giữ nguồn, có thể tiếp tục, không giả thành công hoặc ép chọn chuyên đề không liên quan. Lỗi cấu hình/key/mạng vẫn có thông báo để khắc phục. Không thể bảo đảm AI đúng toán học hay phân loại 100%.

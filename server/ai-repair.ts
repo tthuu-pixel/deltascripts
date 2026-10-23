@@ -20,7 +20,7 @@ export async function repairQuestions(
   db: Database,
   body: any,
   config: ProviderConfig,
-  options: { fetchGemini?: typeof fetch },
+  options: { fetchGemini?: typeof fetch; repairBudgetMs?: number; publishedTopicsOnly?: boolean },
 ) {
   requireValue(
     Array.isArray(body.questions) && body.questions.length > 0 && body.questions.length <= 10,
@@ -100,14 +100,14 @@ export async function repairQuestions(
   const topics = (
     await db
       .prepare(
-        "SELECT id,title,category,description FROM topics WHERE trim(description)!='' ORDER BY position,id LIMIT 500",
+        `SELECT id,title,category,description FROM topics WHERE trim(description)!='' ${options.publishedTopicsOnly ? 'AND published=1' : ''} ORDER BY position,id LIMIT 500`,
       )
       .all()
   ).results;
   requireValue(topics.length, 'Bổ sung mô tả chuyên đề trước khi dùng AI.');
   const allowed = new Set(topics.map((t) => String(t.id)));
   let pending = inputs;
-  const deadline = Date.now() + 43_000;
+  const deadline = Date.now() + Math.max(2000, Math.min(43_000, options.repairBudgetMs || 43_000));
   let feedback: Record<string, string> = {};
   for (let attempt = 0; attempt < 3 && pending.length; attempt++) {
     // Separate long inputs instead of truncating sources or accepting truncated AI replies.

@@ -93,6 +93,7 @@ async function prepare(page: Page, count: number) {
   await page.locator('input[type=password]').fill('auto-scan-test-password');
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Trang quản trị', exact: true })).toBeVisible();
+  await page.getByText('Biên tập thủ công (tùy chọn)', { exact: true }).click();
   return { runtime, topicId, manualTopic, calls, questions };
 }
 

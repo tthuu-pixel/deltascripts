@@ -87,6 +87,7 @@ ${body}
     ).toBeVisible();
     // Import and keep the question as a draft, already attached to the topic.
     await page.getByRole('button', { name: 'Quản lý bài tập vận dụng', exact: true }).click();
+    await page.getByText('Biên tập thủ công (tùy chọn)', { exact: true }).click();
     await page.getByLabel('Chọn file câu hỏi').setInputFiles({
       name: 'cau-hoi.tex',
       mimeType: 'text/plain',

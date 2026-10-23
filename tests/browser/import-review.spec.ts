@@ -82,6 +82,7 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
 \loigiai{Đáp án $\frac{1}{2}$.}\end{bt}
 \begin{bt}[Câu 2]Đề bị thiếu dấu đóng $x+1.
 \loigiai{Đáp án $2$.}\end{bt}`;
+    await page.getByText('Biên tập thủ công (tùy chọn)', { exact: true }).click();
     await page
       .getByLabel('Chọn file câu hỏi')
       .setInputFiles({ name: 'kiem-tra.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) });

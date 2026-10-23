@@ -8,28 +8,23 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": [
-      "/api/*",
-      "/api"
-    ]
+    "run_worker_first": ["/api/*", "/api"],
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "deltascript",
       "database_id": "07e1fdca-c39c-4262-b882-a9f65c9c1049",
-      "migrations_dir": "migrations"
-    }
+      "migrations_dir": "migrations",
+    },
   ],
   "vars": {
-    "GEMINI_MODEL": "gemini-3.8-flash"
+    "GEMINI_MODEL": "gemini-3.8-flash",
   },
   "triggers": {
-    "crons": [
-      "23 20 * * *"
-    ]
+    "crons": ["23 20 * * *", "* * * * *"],
   },
   "observability": {
-    "enabled": false
-  }
+    "enabled": false,
+  },
 }
