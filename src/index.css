@@ -6529,3 +6529,12 @@ label.publish-controls {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Half of the original fitted TikZ width; keep ordinary uploaded images unchanged. */
+.math-content [data-tikz-id] img {
+  display: block;
+  width: min(50%, var(--tikz-half-width, 50%));
+  max-width: 50%;
+  height: auto;
+  margin: 0.75rem auto;
+}

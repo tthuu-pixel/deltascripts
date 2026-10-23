@@ -176,7 +176,13 @@ export function parseTexText(input: string): Question[] {
   const matches = environmentRanges(text, ['bt', 'ex', 'vd', 'bai', 'cau', 'problem', 'question']);
   const labelPattern = /(?:^|\n)\s*(?:\\textbf\{)?\[?(?:Câu|Bài|Ví dụ)\s+(\d+)\]?[^\S\n]*[.:]?/gi;
   let preamble = '';
-  let blocks: { content: string; raw: string; fallback: number; preamble: string }[];
+  let blocks: {
+    content: string;
+    raw: string;
+    fallback: number;
+    preamble: string;
+    environment: string | null;
+  }[];
   if (matches.length) {
     let previous = 0;
     blocks = matches.map((m, i) => {
@@ -188,6 +194,7 @@ export function parseTexText(input: string): Question[] {
         raw: text.slice(m.start, m.end),
         fallback: i + 1,
         preamble,
+        environment: m.name,
       };
     });
   } else {
@@ -199,12 +206,13 @@ export function parseTexText(input: string): Question[] {
           raw: text.slice(m.index!, labels[i + 1]?.index ?? text.length),
           fallback: Number(m[1]),
           preamble,
+          environment: null,
         }))
-      : [{ content: text, raw: input, fallback: 1, preamble: '' }];
+      : [{ content: text, raw: input, fallback: 1, preamble: '', environment: null }];
   }
   return blocks
     .filter((b) => maskTexComments(b.content).trim())
-    .map(({ content, raw, fallback, preamble }) => {
+    .map(({ content, raw, fallback, preamble, environment }) => {
       const { statement, solution } = extractSolution(content);
       const label = maskTexComments(statement).match(
         /^(?:\s*\\textbf\{)?\s*\[?(Câu|Bài|Ví dụ)\s+(\d+)\]?[.:]?\}?/i,
@@ -218,6 +226,7 @@ export function parseTexText(input: string): Question[] {
         statementRaw: label ? statement.slice(label[0].length).trim() : statement,
         solutionRaw: solution,
         sourceType: 'tex' as const,
+        exerciseEnvironment: environment,
         raw,
         latexPreamble: preamble,
         rawTikzBlocks: extractTikz(content, preamble).blocks.map((b) => b.source),

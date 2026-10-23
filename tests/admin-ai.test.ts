@@ -166,6 +166,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
   const question = {
     id: crypto.randomUUID(),
     statementRaw: 'Tính $1+1$.',
+    exerciseEnvironment: 'bt',
     solutionRaw: 'Never send this solution',
   };
   suggestions = {
@@ -191,6 +192,40 @@ test('admin-only encrypted settings and four provider adapters return suggestion
     assert.deepEqual(classified.data.items, suggestions.items);
   }
   assert.equal((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n, 0);
+  // Even a forged client flag cannot send a stored ex question to the provider.
+  const excludedId = crypto.randomUUID();
+  await runtime.db
+    .prepare(
+      'INSERT INTO questions(id,label,number,source_type,statement_raw,raw) VALUES(?,?,1,?,?,?)',
+    )
+    .bind(
+      excludedId,
+      'Trắc nghiệm',
+      'tex',
+      'Không phân loại.',
+      String.raw`\begin{ex}Không phân loại.\end{ex}`,
+    )
+    .run();
+  const callsBeforeExclusion = calls;
+  const excluded = await req(
+    '/admin/ai/classify',
+    { questions: [{ ...question, id: excludedId, exerciseEnvironment: 'bt' }] },
+    admin,
+  );
+  assert.equal(excluded.status, 400);
+  assert.match(excluded.data.error, /môi trường bt/);
+  assert.equal(
+    (
+      await req(
+        '/admin/ai/classify',
+        { questions: [{ ...question, exerciseEnvironment: 'ex' }] },
+        admin,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(calls, callsBeforeExclusion);
+
   assert.equal(
     (
       await req(

@@ -2,6 +2,7 @@ import { generateReply, providerModels } from './ai-provider';
 import type { Database } from './database';
 import { HttpError, requireValue } from './errors';
 import { aiProviders, type AiProvider, type AiSettings, type AiSuggestion } from '../shared/ai';
+import { sourceEnvironment, aiExerciseOnlyMessage } from '../shared/questionEnvironment';
 import { readAiScanPage } from './ai-scan';
 
 interface StoredSettings {
@@ -230,6 +231,25 @@ export async function adminAiRoute(
       };
     });
     requireValue(size <= 80_000, 'Lượt phân loại vượt 80.000 ký tự. Hãy chọn ít câu hơn.');
+    const storedQuestions = (
+      await db
+        .prepare(
+          `SELECT id,source_type,substr(raw,1,2048) AS sourceHeader FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`,
+        )
+        .bind(...ids)
+        .all()
+    ).results;
+    requireValue(
+      body.questions.every((q: any) => {
+        const stored = storedQuestions.find((item) => item.id === q.id);
+        return stored
+          ? stored.source_type === 'tex' &&
+              sourceEnvironment(String(stored.sourceHeader || '')) === 'bt'
+          : q.exerciseEnvironment === 'bt';
+      }),
+      aiExerciseOnlyMessage,
+    );
+
     const topics = (
       await db
         .prepare(

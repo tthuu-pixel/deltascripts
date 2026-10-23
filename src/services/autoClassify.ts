@@ -1,3 +1,4 @@
+import { questionEnvironment, aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
 import type { Question } from '../types';
 import type { AiSuggestion } from '../../shared/ai';
 import { apiService } from './apiService';
@@ -5,7 +6,7 @@ import { apiService } from './apiService';
 export interface ClassificationOutcome {
   id: string;
   label: string;
-  state: 'assigned' | 'unassigned' | 'failed';
+  state: 'assigned' | 'unassigned' | 'failed' | 'skipped';
   reason: string;
 }
 export interface ScanProgress {
@@ -68,6 +69,10 @@ export async function scanQuestions(
     chars = 0;
   for (const q of remaining) {
     if (signal.aborted) throw aborted();
+    if (questionEnvironment(q) !== 'bt') {
+      finish(q, 'skipped', aiExerciseOnlyMessage);
+      continue;
+    }
     if (
       !q.statementRaw.trim() ||
       q.statementRaw.length > 20_000 ||

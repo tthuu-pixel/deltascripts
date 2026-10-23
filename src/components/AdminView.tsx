@@ -381,6 +381,9 @@ export default function AdminView() {
             onAutoQuestion={(q) =>
               setPending((items) => items.map((item) => (item.id === q.id ? q : item)))
             }
+            onAutoSkipped={(ids) => {
+              setPending((items) => items.filter((item) => !ids.includes(item.id)));
+            }}
             onAutoSaved={(items) => {
               const ids = new Set(items.map((q) => q.id));
               setPending((old) => old.filter((q) => !ids.has(q.id)));
@@ -496,7 +499,7 @@ export default function AdminView() {
               </div>
               <div className="import-instructions">
                 <span>01</span>
-                <p>Tự tách câu hỏi, chuẩn hóa và phân vào chuyên đề theo mô tả ngắn.</p>
+                <p>AI chỉ phân loại bài tự luận trong môi trường bt; bỏ qua ex.</p>
                 <span>02</span>
                 <p>
                   Dùng <strong>AI nhập tự động</strong> để thêm thẳng vào kho; chỉ xử lý riêng các
@@ -630,7 +633,7 @@ export default function AdminView() {
                 <Icon name="spark" size={19} /> AI quét và sắp xếp toàn bộ kho
               </button>
               <span className="field-help">
-                Dựa vào mô tả ngắn của chuyên đề để sắp xếp câu hỏi trên mọi trang.
+                Chỉ quét bài trong môi trường bt, dựa vào mô tả ngắn của chuyên đề.
               </span>
             </div>
             <div className="bank-toolbar">

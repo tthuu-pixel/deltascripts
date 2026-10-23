@@ -41,8 +41,8 @@ test('examples and picture-only icon selection persist; topic practice draws onl
       accessCode: 'SECTIONS',
     })
   ).cookie;
-  assert.equal(topicIcons.length, 50);
-  assert.equal(new Set(topicIcons).size, 50);
+  assert.equal(topicIcons.length, 100);
+  assert.equal(new Set(topicIcons).size, 100);
   const source = {
     title: 'Lập phương trình',
     category: 'Đại số',
@@ -51,7 +51,7 @@ test('examples and picture-only icon selection persist; topic practice draws onl
     preamble: '',
     examples: String.raw`Ví dụ $\sqrt{49}=7$. \begin{tikzpicture}\draw (0,0)--(\R,1);\end{tikzpicture}`,
     examplesPreamble: String.raw`\def\R{2.5}`,
-    icon: topicIcons[49],
+    icon: topicIcons[99],
     color: 'red',
     published: true,
   };
@@ -61,7 +61,7 @@ test('examples and picture-only icon selection persist; topic practice draws onl
   const found = (await req('/topic?id=' + saved.id, undefined, student)).data.topic;
   assert.equal(found.examples, source.examples);
   assert.equal(found.examplesPreamble, source.examplesPreamble);
-  assert.equal(found.icon, topicIcons[49]);
+  assert.equal(found.icon, topicIcons[99]);
   const oldEditor = { ...saved };
   delete oldEditor.examples;
   delete oldEditor.examplesPreamble;

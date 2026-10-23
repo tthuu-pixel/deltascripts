@@ -61,7 +61,11 @@ export default function IconPicker({
           </button>
         </div>
         {open && (
-          <div className="math-icon-grid" role="group" aria-label="50 biểu tượng toán học">
+          <div
+            className="math-icon-grid"
+            role="group"
+            aria-label={`${topicIcons.length} biểu tượng toán học`}
+          >
             {topicIcons.map((icon, index) => (
               <button
                 type="button"

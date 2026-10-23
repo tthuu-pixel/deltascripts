@@ -72,7 +72,7 @@ async function prepare(page: Page, count: number) {
           ? 'Không khớp chuyên đề nào.'
           : `Bài thứ ${i + 1}: $x+1=3$.`,
     solutionRaw: 'Lời giải gốc giữ nguyên.',
-    raw: `source-${i}`,
+    raw: String.raw`\begin{bt}source-${i}\loigiai{Lời giải gốc giữ nguyên.}\end{bt}`,
     published: i % 2 === 0,
     topicIds: i === 0 ? [manualTopic] : [],
   }));
@@ -458,6 +458,63 @@ test('API errors wait for retry instead of requiring manual edits for every ques
     await expect(summary).not.toContainText('Chờ thử lại');
     expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(3);
     expect(calls.flat()).toHaveLength(3);
+  } finally {
+    await runtime.close();
+  }
+});
+
+test('mixed imports classify and automatically save only bt; ex stays out of paid requests and saved topics', async ({
+  page,
+}) => {
+  const { runtime, topicId, calls } = await prepare(page, 0);
+  try {
+    const source = String.raw`\begin{ex}Trắc nghiệm không gửi AI.\loigiai{Đáp án riêng.}\end{ex}
+\begin{bt}Tự luận cần phân loại $x+1=3$.\loigiai{$x=2$.}\end{bt}
+\begin{ex}Trắc nghiệm khác không gửi AI.\end{ex}`;
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'AI nhập tự động', exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({ name: 'hon-hop.tex', mimeType: 'text/plain', buffer: Buffer.from(source) });
+    const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
+    const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
+    await expect(summary).toContainText('1 / 3');
+    await expect(summary).toContainText('Bỏ qua 2 câu ngoài môi trường bt');
+    await expect(review.locator('.notice-success[role=status]')).toContainText('Đã xử lý hết');
+    expect(calls.flat()).toHaveLength(1);
+    const stored = (await runtime.db.query('SELECT id,raw FROM questions')).rows;
+    expect(stored).toHaveLength(1);
+    expect(String(stored[0].raw)).toContain(String.raw`\begin{bt}`);
+    expect(
+      (
+        await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
+          topicId,
+        ])
+      ).rows,
+    ).toHaveLength(1);
+    // Existing ex sources are preserved and skipped by a whole-bank scan too.
+    const ex = {
+      id: crypto.randomUUID(),
+      number: 1,
+      sourceType: 'tex',
+      label: 'Bài trắc nghiệm cũ',
+      statementRaw: 'Trắc nghiệm cũ.',
+      raw: String.raw`\begin{ex}Trắc nghiệm cũ.\end{ex}`,
+    };
+    await upsertQuestions(runtime.db, [ex]);
+    await review.getByRole('button', { name: 'Hoàn tất', exact: true }).click();
+    await expect(page.getByText('2 câu chờ lưu', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'AI quét và sắp xếp toàn bộ kho', exact: true }).click();
+    const bank = page.getByRole('dialog', { name: 'AI quét toàn bộ kho', exact: true });
+    await expect(bank.getByRole('status')).toContainText('Đã quét hết kho');
+    await expect(bank.locator('.scan-counts')).toContainText('Bỏ qua ngoài bt 1');
+    expect(calls.flat()).toHaveLength(2);
+    expect(
+      (await runtime.db.query('SELECT * FROM question_topics WHERE question_id=?', [ex.id])).rows,
+    ).toHaveLength(0);
+    expect(
+      (await runtime.db.query('SELECT raw FROM questions WHERE id=?', [ex.id])).rows[0].raw,
+    ).toBe(ex.raw);
   } finally {
     await runtime.close();
   }

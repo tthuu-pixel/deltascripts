@@ -5,9 +5,9 @@ Mở **`/admin`** và đăng nhập bằng tài khoản quản lý hiện có. T
 ## Tạo chuyên đề và bài học
 
 1. Chọn **Chuyên đề → Tạo chuyên đề**.
-2. Nhập tên, nhóm, mô tả ngắn, chọn màu. Mô tả ngắn nêu nội dung, phương pháp và những dạng bài thuộc chuyên đề: đây là tiêu chí chính để AI phân loại. Chuyên đề chưa có mô tả không được gửi cho AI đối chiếu. Bấm nút biểu tượng để mở bảng 50 icon toán cấp 2, chỉ có hình, rồi bấm icon muốn dùng. Nhóm chuyên đề do bạn tự đặt, ví dụ Đại số hoặc Hình học.
+2. Nhập tên, nhóm, mô tả ngắn, chọn màu. Mô tả ngắn nêu nội dung, phương pháp và những dạng bài thuộc chuyên đề: đây là tiêu chí chính để AI phân loại. Chuyên đề chưa có mô tả không được gửi cho AI đối chiếu. Bấm nút biểu tượng để mở bảng 100 icon toán cấp 2, chỉ có hình, rồi bấm icon muốn dùng. Nhóm chuyên đề do bạn tự đặt, ví dụ Đại số hoặc Hình học.
 3. Nhập **Lý thuyết** và **Ví dụ** ở hai vùng riêng; mỗi vùng có nút nhập file TeX và xem trước. Cả hai đều là tùy chọn. Khi mở chuyên đề, học sinh có ba tab **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Bài vận dụng tự hiện danh sách đề bài trong đúng chuyên đề (10 bài mỗi trang), mỗi bài có nút **Đáp án** để mở/ẩn lời giải riêng.
-4. Dùng **Xem trước** để kiểm tra công thức và hình TikZ. File TeX có `document` được tách phần thân và các khai báo hình vẽ; nguồn toán học không bị tự viết lại.
+4. Dùng **Xem trước** để kiểm tra công thức và hình TikZ. Hình TikZ hiển thị bằng một nửa chiều rộng phù hợp ban đầu, căn giữa và giữ tỷ lệ; áp dụng cả ảnh lấy từ cache, không đổi mã vẽ. File TeX có `document` được tách phần thân và các khai báo hình vẽ; nguồn toán học không bị tự viết lại.
 5. Bấm **Lưu chuyên đề**. Mặc định lưu nháp; bật **Xuất bản chuyên đề cho học sinh** khi muốn cho hiện.
 
 Dùng mũi tên để đổi thứ tự chuyên đề. Xóa chuyên đề chỉ bỏ chuyên đề và các liên kết phân loại, không xóa câu hỏi trong kho. Chuyên đề cũ viết trong mã nguồn đã được thay bằng nội dung do người quản trị tự biên soạn; hệ thống không tự xuất bản bài mẫu.
@@ -29,7 +29,7 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 ## Nhập tự động bằng một nút
 
-- Bấm **AI nhập tự động** ở Ngân hàng câu hỏi rồi chọn file `.tex`/`.docx`. AI tự chuẩn hóa, đối chiếu mô tả ngắn để gắn các chuyên đề hiện có và lưu các câu đủ điều kiện. Không cần duyệt từng câu hoặc bấm lưu thêm lần nữa.
+- Bấm **AI nhập tự động** ở Ngân hàng câu hỏi rồi chọn file `.tex`/`.docx`. AI chỉ nhận các bài tự luận trong môi trường `bt`, bỏ qua `ex` và nguồn ngoài `bt`; tự chuẩn hóa, đối chiếu mô tả ngắn để gắn các chuyên đề hiện có và lưu các câu đủ điều kiện. Không cần duyệt từng câu hoặc bấm lưu thêm lần nữa.
 - Nếu đã mở cửa sổ duyệt, bấm **AI xử lý và thêm tất cả**. Kết quả phân loại đã nhận được sẽ được dùng lại. Có thể bật **Xuất bản các câu xử lý được**; mặc định lưu nháp.
 - Bảng **Kết quả AI tự động** ghi số câu đã thêm và các câu cần làm riêng cùng lý do. Câu sai cú pháp, chưa khớp chuyên đề hoặc quá lớn không chặn các câu khác. Tệp đọc lỗi được liệt kê riêng; tệp đọc được vẫn tiếp tục. Lỗi cấu hình AI, API hoặc mạng nằm ở nhóm **Chờ thử lại**, không bị tính là câu cần sửa thủ công; nguyên nhân được hiện ngay để khắc phục rồi tiếp tục.
 - Sửa câu còn lại hoặc chọn chuyên đề thủ công rồi bấm lại nút AI; các câu đã lưu được bỏ qua. Các câu đã sửa đủ thông tin được lưu mà không cần trả phí AI phân loại lại.
@@ -38,6 +38,8 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 - Việc lưu theo đợt dùng lại ID câu hỏi khi thử lại, tránh tạo bản trùng nếu mạng bị ngắt lúc chờ xác nhận. Câu được AI nhận dạng nhưng chưa được lưu vẫn nằm trong bản nhập.
 
 ## Chuẩn hóa và AI phân loại
+
+AI nhập tự động, quét kho và phân loại câu đã chọn chỉ xử lý bài có nguồn TeX trong môi trường `bt`. `ex`, `vd`, Word và nguồn không xác định được môi trường được báo **Bỏ qua**, không gửi đến dịch vụ AI và không tự thêm vào chuyên đề. Các bài đã có vẫn được giữ nguyên; nhập thủ công và nội dung lý thuyết/ví dụ vẫn hỗ trợ các nguồn khác.
 
 - Chuẩn hóa file mới chạy trong Web Worker trên trình duyệt. Các quy tắc tự động hiện gồm: tách điểm số/tùy chọn nguồn đầu bài, bỏ nội dung comment mã nguồn đã nhận diện, chuẩn hóa `frac`, `ne/ge/le`, `quad`, `choiceTFt`, `loigiaiTF` và tùy chọn `enumerate`. Giữ nội dung toán, thứ tự, nguồn từng câu và khai báo hình vẽ. Macro, đường dẫn, comment kỹ thuật và mã TikZ được bảo vệ khỏi phép thay thế rộng.
 - Bộ kiểm tra xét ngoặc, môi trường, dấu phân cách công thức và báo tệp/thư viện ngoài cần kiểm tra. Lỗi cấu trúc phải sửa trước khi duyệt. Các quy tắc cần hiểu ngữ cảnh như `cases`, phép suy ra, đổi dữ kiện hay dựng lại hình cần người biên soạn kiểm tra; hệ thống không tự sửa toán và không khẳng định đã biên dịch toàn bộ tài liệu.

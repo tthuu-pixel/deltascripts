@@ -42,15 +42,15 @@ test('administrator uploads their own topic and questions, publishes them and co
     await page.getByLabel('Mô tả ngắn', { exact: true }).fill('Nội dung do chính thầy biên soạn.');
     await page.getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true }).click();
     const palette = page.getByRole('dialog', { name: 'Chọn biểu tượng', exact: true });
-    await expect(palette.locator('.math-icon-option')).toHaveCount(50);
+    await expect(palette.locator('.math-icon-option')).toHaveCount(100);
     await expect(palette.locator('.math-icon-option').first()).toHaveText('');
-    await palette.getByRole('button', { name: 'Biểu tượng 50', exact: true }).click();
+    await palette.getByRole('button', { name: 'Biểu tượng 100', exact: true }).click();
     await expect(
       page
         .getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true })
         .locator('svg')
         .first(),
-    ).toHaveAttribute('data-icon', 'venn');
+    ).toHaveAttribute('data-icon', 'compound-interest');
     await page.getByRole('button', { name: 'Chọn biểu tượng chuyên đề', exact: true }).click();
     await page.keyboard.press('Escape');
     await expect(

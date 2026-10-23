@@ -18,7 +18,7 @@ const validPng = (base64: unknown): base64 is string =>
   /^iVBORw0KGgo[A-Za-z0-9+/=\s]+$/.test(base64) &&
   base64.length <= 8_000_000;
 const imageHtml = (base64: string) =>
-  `<img src="data:image/png;base64,${base64}" alt="Hình minh họa TikZ" class="max-w-full my-2 rounded" loading="lazy"/>`;
+  `<img src="data:image/png;base64,${base64}" alt="Hình minh họa TikZ" class="tikz-rendered-image rounded" loading="lazy"/>`;
 
 async function compile(source: string): Promise<string> {
   const endpoint = import.meta.env?.VITE_TIKZ_API_URL || 'https://tikz-fly.fly.dev';

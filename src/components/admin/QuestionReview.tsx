@@ -1,3 +1,4 @@
+import { aiExerciseOnlyMessage } from '../../../shared/questionEnvironment';
 import { runAutoImport, type AutoImportOutcome } from '../../services/autoImport';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { Question } from '../../types';
@@ -30,6 +31,7 @@ export default function QuestionReview({
   fileErrors = emptyFileErrors,
   importOptions,
   onAutoSaved,
+  onAutoSkipped,
   onAutoQuestion,
   onClose,
   onApply,
@@ -43,6 +45,7 @@ export default function QuestionReview({
   fileErrors?: string[];
   importOptions?: { topicIds: string[]; published: boolean };
   onAutoSaved?: (questions: Question[]) => void;
+  onAutoSkipped?: (ids: string[]) => void;
   onAutoQuestion?: (question: Question) => void;
   onClose: () => void;
   onApply: (questions: Question[]) => Promise<void>;
@@ -103,6 +106,8 @@ export default function QuestionReview({
   const autoExceptions = Object.values(autoResults).filter(
     (result) => result.state === 'needs-review',
   );
+  const autoSkipped = Object.values(autoResults).filter((result) => result.state === 'skipped');
+  const autoComplete = savedCount + autoSkipped.length === drafts.length;
   const autoRetry = Object.values(autoResults).filter((result) => result.state === 'failed');
   const report = changes[current.id];
   const issues = useMemo(
@@ -143,7 +148,9 @@ export default function QuestionReview({
   function close() {
     if (
       !busy &&
-      (savedIds.current.size === drafts.length ||
+      (savedIds.current.size +
+        Object.values(autoResults).filter((result) => result.state === 'skipped').length ===
+        drafts.length ||
         confirm('Đóng bản duyệt? Các chỉnh sửa trong cửa sổ này chưa được áp dụng.'))
     )
       onClose();
@@ -243,7 +250,10 @@ export default function QuestionReview({
             items.forEach((q) => savedIds.current.add(q.id));
             onAutoSaved(items);
           },
-          onOutcome: (outcome) => setAutoResults((old) => ({ ...old, [outcome.id]: outcome })),
+          onOutcome: (outcome) => {
+            setAutoResults((old) => ({ ...old, [outcome.id]: outcome }));
+            if (outcome.state === 'skipped') onAutoSkipped?.([outcome.id]);
+          },
           onProgress: (value) =>
             setProgress(
               value.waiting
@@ -354,6 +364,7 @@ export default function QuestionReview({
             ? 'Các câu đã thêm được giữ trong kho. Bạn chỉ cần xử lý các câu còn lại bên dưới.'
             : 'Nguồn gốc được giữ nguyên. Kiểm tra tự động chỉ xét cú pháp và quy tắc định dạng; chưa xác minh tính đúng sai của bài toán hay biên dịch toàn bộ tài liệu.'}
         </p>
+        <p className="field-help">{aiExerciseOnlyMessage}</p>
         {error && (
           <p className="notice notice-error" role="alert">
             {error}
@@ -393,6 +404,12 @@ export default function QuestionReview({
                 </>
               )}
             </p>
+            {!!autoSkipped.length && (
+              <p>
+                Bỏ qua <strong>{autoSkipped.length}</strong> câu ngoài môi trường bt; không gửi AI
+                hoặc tự thêm vào kho.
+              </p>
+            )}
             {savedCount === drafts.length && (
               <p>Tất cả câu đọc được đã được thêm vào ngân hàng và gắn chuyên đề.</p>
             )}
@@ -440,8 +457,8 @@ export default function QuestionReview({
           <section className="auto-import-options surface" aria-label="Nhập bằng AI">
             <h3>Để AI xử lý toàn bộ</h3>
             <p>
-              AI chuẩn hóa, phân theo mô tả ngắn của chuyên đề đã có và thêm vào kho. Câu còn lỗi
-              được giữ riêng, không chặn các câu khác.
+              AI xử lý bài trong môi trường bt, chuẩn hóa và phân theo mô tả ngắn của chuyên đề đã
+              có và thêm vào kho. Câu còn lỗi được giữ riêng, không chặn các câu khác.
             </p>
             <label className="publish-controls">
               <input
@@ -467,14 +484,24 @@ export default function QuestionReview({
               </strong>{' '}
               câu · Cần kiểm tra{' '}
               <strong>
-                {Object.values(outcomes).filter((o) => o.state !== 'assigned').length}
+                {
+                  Object.values(outcomes).filter(
+                    (o) => o.state !== 'assigned' && o.state !== 'skipped',
+                  ).length
+                }
               </strong>
             </p>
+            {Object.values(outcomes).some((o) => o.state === 'skipped') && (
+              <p>
+                Bỏ qua {Object.values(outcomes).filter((o) => o.state === 'skipped').length} câu
+                ngoài môi trường bt.
+              </p>
+            )}
             <details>
               <summary>Câu cần kiểm tra</summary>
               <ul>
                 {Object.values(outcomes)
-                  .filter((o) => o.state !== 'assigned')
+                  .filter((o) => o.state !== 'assigned' && o.state !== 'skipped')
                   .map((o) => (
                     <li key={o.id}>
                       <button
@@ -670,7 +697,7 @@ export default function QuestionReview({
         <button className="btn btn-secondary" disabled={busy} onClick={close}>
           Đóng
         </button>
-        {mode === 'import' && onAutoSaved && savedCount < drafts.length && (
+        {mode === 'import' && onAutoSaved && !autoComplete && (
           <button
             className="btn btn-primary"
             disabled={busy}
@@ -687,9 +714,9 @@ export default function QuestionReview({
               : 'btn btn-primary'
           }
           disabled={busy}
-          onClick={() => void apply()}
+          onClick={() => (autoComplete ? onClose() : void apply())}
         >
-          {savedCount === drafts.length
+          {autoComplete
             ? 'Hoàn tất'
             : busy
               ? 'Đang xử lý…'

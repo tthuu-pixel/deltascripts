@@ -4,6 +4,7 @@ export interface Question {
   /** Legacy storage/source order only. Never used to classify questions or build exams. */
   number: number;
   examDescription?: string;
+  exerciseEnvironment?: string | null;
   numberOrigin?: 'explicit' | 'order' | 'ai' | 'manual';
   sourceLength?: number;
   statementRaw: string;

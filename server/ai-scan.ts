@@ -1,3 +1,4 @@
+import { sourceEnvironment } from '../shared/questionEnvironment';
 import type { Database } from './database';
 import { attachQuestionTopics } from './content';
 import { HttpError, requireValue } from './errors';
@@ -37,14 +38,20 @@ export async function readAiScanPage(db: Database, url: URL) {
     .prepare(
       `SELECT q.id,q.label,q.number,q.source_type AS sourceType,
     substr(q.statement_raw,1,20001) AS statementRaw,length(q.statement_raw) AS sourceLength,
-    q.created_at AS createdAt,q.active,q.published
+    q.created_at AS createdAt,q.active,q.published,substr(q.raw,1,2048) AS sourceHeader
     FROM questions q WHERE q.active=1 AND q.created_at<=?
     ${after ? 'AND q.created_at<=? AND (q.created_at<? OR (q.created_at=? AND q.id>?))' : ''}
     ORDER BY q.created_at DESC,q.id LIMIT 51`,
     )
     .bind(cutoff, ...(after ? [after[0], after[0], after[0], after[1]] : []))
     .all();
-  const rows = result.results.slice(0, 50);
+  const rows: Record<string, unknown>[] = result.results
+    .slice(0, 50)
+    .map(({ sourceHeader, ...row }) => ({
+      ...row,
+      exerciseEnvironment:
+        row.sourceType === 'tex' ? sourceEnvironment(String(sourceHeader || '')) : null,
+    }));
   const last = rows.at(-1);
   const total = !cursor
     ? (await db

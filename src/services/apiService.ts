@@ -5,6 +5,7 @@ import {
 } from './studentAiSettings';
 import type { AccessCode, ChatMessage, Question, User } from '../types';
 import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/content';
+import { questionEnvironment } from '../../shared/questionEnvironment';
 import type { ExamSettings } from '../../shared/exam';
 import type { AiSettings, AiSuggestion } from '../../shared/ai';
 
@@ -99,17 +100,21 @@ export const apiService = {
     return (await apiRequest('/admin/ai/test', settings)).models;
   },
   async suggestQuestionTopics(
-    questions: Pick<Question, 'id' | 'statementRaw' | 'label'>[],
+    questions: Pick<
+      Question,
+      'id' | 'statementRaw' | 'label' | 'sourceType' | 'raw' | 'exerciseEnvironment'
+    >[],
     signal?: AbortSignal,
   ): Promise<AiSuggestion[]> {
     return (
       await apiRequest(
         '/admin/ai/classify',
         {
-          questions: questions.map(({ id, statementRaw, label }) => ({
-            id,
-            statementRaw,
-            label,
+          questions: questions.map((q) => ({
+            id: q.id,
+            statementRaw: q.statementRaw,
+            label: q.label,
+            exerciseEnvironment: questionEnvironment(q),
           })),
         },
         0,

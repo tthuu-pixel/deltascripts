@@ -1,3 +1,4 @@
+import { questionEnvironment, aiExerciseOnlyMessage } from '../../shared/questionEnvironment';
 import type { Question } from '../types';
 import type { AiSuggestion } from '../../shared/ai';
 import type { TopicSummary } from '../../shared/content';
@@ -8,13 +9,14 @@ import { applySuggestion, scanQuestions, type ScanProgress } from './autoClassif
 export interface AutoImportOutcome {
   id: string;
   label: string;
-  state: 'saved' | 'needs-review' | 'failed';
+  state: 'saved' | 'needs-review' | 'failed' | 'skipped';
   reason: string;
 }
 export interface AutoImportProgress extends ScanProgress {
   saved: number;
   needsReview: number;
   failed: number;
+  skipped: number;
 }
 const aborted = () => new DOMException('Đã dừng nhập tự động.', 'AbortError');
 const globalFailure = (error: unknown) => {
@@ -84,6 +86,7 @@ export async function runAutoImport(
       saved: [...results.values()].filter((result) => result.state === 'saved').length,
       needsReview: [...results.values()].filter((result) => result.state === 'needs-review').length,
       failed: [...results.values()].filter((result) => result.state === 'failed').length,
+      skipped: [...results.values()].filter((result) => result.state === 'skipped').length,
     });
   function finish(q: Question, state: AutoImportOutcome['state'], reason: string) {
     const outcome = { id: q.id, label: q.label, state, reason };
@@ -143,6 +146,10 @@ export async function runAutoImport(
   try {
     for (const source of input) {
       checkStopped();
+      if (questionEnvironment(source) !== 'bt') {
+        finish(source, 'skipped', aiExerciseOnlyMessage);
+        continue;
+      }
       try {
         const q = normalizeQuestion(source).question;
         q.topicIds = [...new Set([...(q.topicIds || []), ...(options.topicIds || [])])];

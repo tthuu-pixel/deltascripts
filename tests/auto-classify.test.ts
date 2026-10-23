@@ -17,6 +17,7 @@ const questions = (n: number): Question[] =>
     statementRaw: `Bài $${i}+1$.`,
     solutionRaw: 'Giữ lời giải.',
     sourceType: 'tex',
+    exerciseEnvironment: 'bt',
   }));
 const suggestion = (q: Question) => ({
   id: q.id,

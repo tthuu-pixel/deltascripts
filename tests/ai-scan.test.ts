@@ -42,7 +42,7 @@ test('whole-bank AI scan uses a stable cursor, includes all types/drafts and exc
     sourceType: 'tex',
     statementRaw: `Đề $${i}+1$.`,
     solutionRaw: 'Private answer',
-    raw: 'Private original',
+    raw: String.raw`\begin{bt}Private original\loigiai{Private answer}\end{bt}`,
     published: i % 2 === 0,
   }));
   for (let i = 0; i < items.length; i += 100)
@@ -80,6 +80,7 @@ test('whole-bank AI scan uses a stable cursor, includes all types/drafts and exc
       .sort(),
   );
   assert(received.some((q) => !q.published));
+  assert(received.every((q) => q.exerciseEnvironment === 'bt'));
   assert(!JSON.stringify(received).includes('Private answer'));
   assert(!JSON.stringify(received).includes('Private original'));
   assert.equal((await req('/admin/ai/scan?cursor=bad', undefined, admin)).status, 400);

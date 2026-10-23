@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { aiExerciseOnlyMessage } from '../../../shared/questionEnvironment';
 import { apiService } from '../../services/apiService';
 import { scanQuestions, type ClassificationOutcome } from '../../services/autoClassify';
 
@@ -16,8 +17,15 @@ export default function AiBankScan({
   const completed = useRef(new Set<string>());
   const assignedIds = useRef(new Set<string>());
   const failedIds = useRef(new Set<string>());
+  const skippedIds = useRef(new Set<string>());
   const exceptions = useRef(new Map<string, ClassificationOutcome>());
-  const [stats, setStats] = useState({ processed: 0, assigned: 0, needsReview: 0, failed: 0 });
+  const [stats, setStats] = useState({
+    processed: 0,
+    assigned: 0,
+    needsReview: 0,
+    failed: 0,
+    skipped: 0,
+  });
   const running = useRef(false);
   const [busy, setBusy] = useState(true);
   const [total, setTotal] = useState(0);
@@ -82,13 +90,16 @@ export default function AiBankScan({
           onOutcome: (outcome) => {
             results.current.set(outcome.id, outcome);
             if (outcome.state !== 'failed') completed.current.add(outcome.id);
-            if (outcome.state === 'assigned') {
-              assignedIds.current.add(outcome.id);
+            if (outcome.state === 'assigned' || outcome.state === 'skipped') {
+              if (outcome.state === 'assigned') assignedIds.current.add(outcome.id);
+              else assignedIds.current.delete(outcome.id);
               exceptions.current.delete(outcome.id);
             } else {
               assignedIds.current.delete(outcome.id);
               exceptions.current.set(outcome.id, outcome);
             }
+            if (outcome.state === 'skipped') skippedIds.current.add(outcome.id);
+            else skippedIds.current.delete(outcome.id);
             if (outcome.state === 'failed') failedIds.current.add(outcome.id);
             else failedIds.current.delete(outcome.id);
             const visible: ClassificationOutcome[] = [];
@@ -102,6 +113,7 @@ export default function AiBankScan({
               assigned: assignedIds.current.size,
               needsReview: exceptions.current.size,
               failed: failedIds.current.size,
+              skipped: skippedIds.current.size,
             });
           },
           onProgress: (progress) =>
@@ -187,6 +199,7 @@ export default function AiBankScan({
           đã xuất bản. Kết quả phù hợp được tự gắn thêm vào các chuyên đề đã có. Câu chưa khớp được
           liệt kê để kiểm tra.
         </p>
+        <p className="field-help">{aiExerciseOnlyMessage}</p>
         <p className="notice notice-success" role="status">
           {status}
         </p>
@@ -208,6 +221,9 @@ export default function AiBankScan({
           </span>
           <span>
             Cần kiểm tra <strong>{stats.needsReview}</strong>
+          </span>
+          <span>
+            Bỏ qua ngoài bt <strong>{stats.skipped}</strong>
           </span>
         </div>
         <p className="field-help">

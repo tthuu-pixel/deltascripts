@@ -69,7 +69,16 @@ const LatexContent = React.memo(
         const show = () => {
           void compileTikz(block.source)
             .then((result) => {
-              if (active) target.innerHTML = DOMPurify.sanitize(result);
+              if (!active) return;
+              target.innerHTML = DOMPurify.sanitize(result);
+              for (const image of target.querySelectorAll('img')) {
+                const size = () => {
+                  if (active && image.naturalWidth)
+                    image.style.setProperty('--tikz-half-width', `${image.naturalWidth / 2}px`);
+                };
+                if (image.complete) size();
+                else image.addEventListener('load', size, { once: true });
+              }
             })
             .catch((error: Error) => {
               if (!active) return;

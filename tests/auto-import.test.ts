@@ -25,7 +25,7 @@ const questions = (count: number): Question[] =>
     numberOrigin: 'order',
     statementRaw: `Tính $\\frac{${i + 1}}{2}$.`,
     solutionRaw: 'Lời giải ban đầu.',
-    raw: `Nguồn đầy đủ ${i + 1}`,
+    raw: String.raw`\begin{bt}Nguồn đầy đủ ${i + 1}\loigiai{Lời giải ban đầu.}\end{bt}`,
     sourceType: 'tex',
   }));
 const suggestion = (q: Question) => ({
