@@ -15,7 +15,7 @@ export const randomQuestionSql = (single: boolean) => `
 export const topicRandomQuestionSql = `SELECT ${questionSelect} FROM questions q WHERE q.id=(
   SELECT qt.question_id FROM question_topics qt INDEXED BY question_topics_topic
   CROSS JOIN questions candidate ON candidate.id=qt.question_id
-  WHERE qt.topic_id=? AND candidate.active=1 AND candidate.published=1 AND candidate.number=?
+  WHERE qt.topic_id=? AND candidate.active=1 AND candidate.published=1
   ORDER BY random() LIMIT 1)`;
 export async function query(db: Database, sql: string, params: unknown[] = []) {
   const result = await db

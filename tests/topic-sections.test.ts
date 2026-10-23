@@ -8,7 +8,7 @@ import { upsertQuestions } from '../server/app.ts';
 import { topicIcons } from '../shared/content.ts';
 import { topicRandomQuestionSql, query } from '../server/database.ts';
 
-test('examples and picture-only icon selection persist; topic practice draws only published questions of the selected type and topic', async (t) => {
+test('examples and picture-only icon selection persist; topic practice draws only published questions of the selected topic regardless of source order', async (t) => {
   const runtime = await createRuntime();
   t.after(() => runtime.close());
   await createTeacher(runtime.db, 'sections@example.test', 'topic-sections-test-password');
@@ -105,36 +105,18 @@ test('examples and picture-only icon selection persist; topic practice draws onl
     (await req(`/topic-question/random?topicId=${hidden.id}&number=1`, undefined, student)).status,
     404,
   );
-  assert.equal(
-    (await req(`/topic-question/random?topicId=${saved.id}&number=8`, undefined, student)).status,
-    400,
-  );
-  assert.equal(
-    (await req(`/topic-question/random?topicId=${saved.id}&number=3`, undefined, student)).status,
-    404,
-  );
   for (let i = 0; i < 12; i++) {
-    const random = await req(
-      `/topic-question/random?topicId=${saved.id}&number=1`,
-      undefined,
-      student,
-    );
+    const random = await req(`/topic-question/random?topicId=${saved.id}`, undefined, student);
     assert.equal(random.status, 200);
-    assert([first.id, second.id].includes(random.data.question.id));
-    assert.equal(random.data.question.number, 1);
+    assert([first.id, second.id, otherType.id].includes(random.data.question.id));
   }
-  assert.equal(
-    (await req(`/topic-question/random?topicId=${saved.id}&number=2`, undefined, student)).data
-      .question.id,
-    otherType.id,
-  );
   // A large unrelated bank must not be scanned to choose an exercise from a small topic.
   for (let i = 0; i < 1000; i += 100)
     await upsertQuestions(
       runtime.db,
       Array.from({ length: 100 }, () => make(1, true, [])),
     );
-  const measured = await query(runtime.db, topicRandomQuestionSql, [saved.id, 1]);
+  const measured = await query(runtime.db, topicRandomQuestionSql, [saved.id]);
   assert(measured.meta.rows_read < 100, `Scoped draw read ${measured.meta.rows_read} rows`);
   t.diagnostic(`Scoped draw read ${measured.meta.rows_read} rows with 1000 unrelated questions.`);
 });

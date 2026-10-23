@@ -9,6 +9,7 @@ import TopicPicker from './admin/TopicPicker';
 import BulkQuestionActions from './admin/BulkQuestionActions';
 import type { NormalizationReport } from '../../shared/importReview';
 import type { ReviewMode } from './admin/QuestionReview';
+const ExamSettingsManager = lazy(() => import('./admin/ExamSettingsManager'));
 const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
 const AiBankScan = lazy(() => import('./admin/AiBankScan'));
 const QuestionReview = lazy(() => import('./admin/QuestionReview'));
@@ -19,17 +20,16 @@ const LatexContent = lazy(() => import('./LatexContent'));
 const button = 'btn btn-secondary';
 
 export default function AdminView() {
-  const [tab, setTab] = useState<'topics' | 'questions' | 'student' | 'codes' | 'info' | 'ai'>(
-    'questions',
-  );
+  const [tab, setTab] = useState<
+    'topics' | 'questions' | 'student' | 'codes' | 'info' | 'ai' | 'exam'
+  >('questions');
   const [topics, setTopics] = useState<TopicSummary[]>([]);
   const [topicFilter, setTopicFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState(''),
     [searchDraft, setSearchDraft] = useState('');
   const [importTopicIds, setImportTopicIds] = useState<string[]>([]);
-  const [importNumber, setImportNumber] = useState(0),
-    [importPublished, setImportPublished] = useState(false);
+  const [importPublished, setImportPublished] = useState(false);
   const [contentDirty, setContentDirty] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -49,7 +49,6 @@ export default function AdminView() {
   const [selection, setSelection] = useState<string[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [page, setPage] = useState(1),
-    [number, setNumber] = useState(0),
     [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -81,7 +80,7 @@ export default function AdminView() {
     setBusy(true);
     (tab === 'questions'
       ? apiService
-          .getQuestions(page, number, { topicId: topicFilter, status: statusFilter, search })
+          .getQuestions(page, { topicId: topicFilter, status: statusFilter, search })
           .then((data) => {
             if (active) {
               setQuestions(data.items);
@@ -101,7 +100,7 @@ export default function AdminView() {
     return () => {
       active = false;
     };
-  }, [tab, page, number, topicFilter, statusFilter, search, refresh]);
+  }, [tab, page, topicFilter, statusFilter, search, refresh]);
   useEffect(() => {
     if (tab !== 'questions') return;
     let active = true;
@@ -119,7 +118,7 @@ export default function AdminView() {
   }, [tab, refresh]);
   useEffect(() => {
     setSelection([]);
-  }, [tab, number, topicFilter, statusFilter, search]);
+  }, [tab, topicFilter, statusFilter, search]);
   function reload() {
     setSelection([]);
     clearApiCache();
@@ -130,7 +129,7 @@ export default function AdminView() {
     setError('');
     setNotice('');
     try {
-      const ids = await apiService.getQuestionSelection(number, {
+      const ids = await apiService.getQuestionSelection({
         topicId: topicFilter,
         status: statusFilter,
         search,
@@ -235,12 +234,9 @@ export default function AdminView() {
         // Confirm each batch before removing it from the pending list. Retries reuse IDs.
         let remaining = pending.map((question) => ({
           ...question,
-          number: importNumber || question.number,
           topicIds: [...new Set([...importTopicIds, ...(question.topicIds || [])])],
           published: importPublished,
         }));
-        if (remaining.some((q) => q.number < 1 || q.number > 7))
-          throw new Error('File có số câu ngoài 1–7. Hãy chọn dạng câu cho bản nhập.');
         while (remaining.length) {
           const batch: Question[] = [];
           let bytes = 0;
@@ -296,7 +292,8 @@ export default function AdminView() {
               Nguồn Word &amp; LaTeX
             </span>
             <span>
-              <i className="dot dot-red" />7 dạng câu hỏi
+              <i className="dot dot-red" />
+              Câu hỏi theo chuyên đề
             </span>
             <span>
               <i className="dot dot-yellow" />
@@ -313,6 +310,7 @@ export default function AdminView() {
           [
             ['topics', 'Chuyên đề', 'topics'],
             ['questions', 'Ngân hàng câu hỏi', 'practice'],
+            ['exam', 'Cấu hình tạo đề', 'exam'],
             ['student', 'Trang học sinh', 'school'],
             ['ai', 'Cấu hình AI', 'spark'],
             ['codes', 'Quản lý mã ôn tập', 'key'],
@@ -367,6 +365,7 @@ export default function AdminView() {
             }}
           />
         )}
+        {tab === 'exam' && <ExamSettingsManager onDirtyChange={setContentDirty} />}
         {tab === 'student' && <StudentSettingsManager onDirtyChange={setContentDirty} />}
         {tab === 'ai' && <AiSettingsManager onDirtyChange={setContentDirty} />}
         {bankScanning && <AiBankScan onClose={() => setBankScanning(false)} onChanged={reload} />}
@@ -376,7 +375,6 @@ export default function AdminView() {
             {...review}
             topics={topics}
             importOptions={{
-              number: importNumber,
               topicIds: importTopicIds,
               published: importPublished,
             }}
@@ -402,7 +400,6 @@ export default function AdminView() {
               } else if (review.mode === 'classify') {
                 for (const q of items)
                   await apiService.classifyQuestions([q.id], {
-                    number: q.number,
                     topicIds: q.topicIds || [],
                     mode: 'replace',
                   });
@@ -499,7 +496,7 @@ export default function AdminView() {
               </div>
               <div className="import-instructions">
                 <span>01</span>
-                <p>Tự tách Câu 1–7, chuẩn hóa và quét AI toàn bộ file khi đã cấu hình.</p>
+                <p>Tự tách câu hỏi, chuẩn hóa và phân vào chuyên đề theo mô tả ngắn.</p>
                 <span>02</span>
                 <p>
                   Dùng <strong>AI nhập tự động</strong> để thêm thẳng vào kho; chỉ xử lý riêng các
@@ -522,22 +519,6 @@ export default function AdminView() {
                     <Icon name="check" size={18} />
                     {pending.length} câu chờ lưu
                   </h3>
-                  <label className="field">
-                    <span>Dạng câu cho bản nhập</span>
-                    <select
-                      aria-label="Dạng câu cho bản nhập"
-                      value={importNumber}
-                      disabled={busy}
-                      onChange={(e) => setImportNumber(Number(e.target.value))}
-                    >
-                      <option value={0}>Giữ số Câu 1–7 trong file</option>
-                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                        <option key={n} value={n}>
-                          Tất cả là Câu {n}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                   <TopicPicker
                     topics={topics}
                     value={importTopicIds}
@@ -649,30 +630,10 @@ export default function AdminView() {
                 <Icon name="spark" size={19} /> AI quét và sắp xếp toàn bộ kho
               </button>
               <span className="field-help">
-                Quét mọi trang và mọi dạng câu, tự gắn vào các chuyên đề đã tạo.
+                Dựa vào mô tả ngắn của chuyên đề để sắp xếp câu hỏi trên mọi trang.
               </span>
             </div>
             <div className="bank-toolbar">
-              <label htmlFor="question-filter">
-                Dạng câu
-                <select
-                  id="question-filter"
-                  aria-label="Lọc dạng câu"
-                  disabled={busy}
-                  value={number}
-                  onChange={(event) => {
-                    setNumber(Number(event.target.value));
-                    setPage(1);
-                  }}
-                >
-                  <option value={0}>Tất cả dạng câu</option>
-                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <option key={n} value={n}>
-                      Câu {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label>
                 Chuyên đề
                 <select
@@ -867,7 +828,6 @@ export default function AdminView() {
                       >
                         {q.sourceType === 'word' ? 'Word' : 'TeX'}
                       </span>
-                      <span className="question-type-tag">Câu {q.number}</span>
                       <span className={`publication-badge ${q.published ? 'is-published' : ''}`}>
                         {q.published ? 'Đã xuất bản' : 'Bản nháp'}
                       </span>
@@ -1087,7 +1047,7 @@ export default function AdminView() {
             <span className="section-kicker">DÀNH CHO NHỮNG NGƯỜI YÊU VIỆC HỌC</span>
             <h2>Học Toán, theo cách gần gũi hơn.</h2>
             <p>
-              DeltaScript là không gian ôn tập Toán 9: học kiến thức nền tảng, luyện từng dạng câu
+              DeltaScript là không gian ôn tập Toán 9: học kiến thức nền tảng, luyện theo chuyên đề
               và thử sức với đề tham khảo.
             </p>
             <div className="teacher-contact">

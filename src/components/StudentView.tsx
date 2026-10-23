@@ -20,7 +20,6 @@ import {
 const Topics = lazy(() => import('./Topics'));
 const tabDecorations: Record<StudentTabKey, { icon: IconName; color: string }> = {
   topics: { icon: 'topics', color: 'blue' },
-  practice: { icon: 'practice', color: 'red' },
   exam: { icon: 'exam', color: 'yellow' },
   guide: { icon: 'guide', color: 'blue' },
 };
@@ -50,20 +49,17 @@ function ExamTimer({ endAt }: { endAt: number | null }) {
 }
 export default function StudentView({ user }: { user: User }) {
   const tabStorageKey = `deltascript_tab:${user.studentName}:${user.studentClass}`;
-  const [tab, setTab] = useState<'topics' | 'practice' | 'exam' | 'guide'>(() => {
+  const [tab, setTab] = useState<StudentTabKey>(() => {
     const saved = readStorage<unknown>(tabStorageKey, 'topics', sessionStorage);
     return defaultStudentSettings.tabs.find((item) => item.key === saved)?.key || 'topics';
   });
   useEffect(() => {
     writeStorage(tabStorageKey, tab, sessionStorage);
   }, [tab, tabStorageKey]);
-  const [question, setQuestion] = useState<Question | null>(null),
-    [solution, setSolution] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [aiQuestion, setAiQuestion] = useState<Question | null>(null),
     [mobileAI, setMobileAI] = useState(false);
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [aiLoaded, setAiLoaded] = useState(false);
   const assistantDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -96,44 +92,6 @@ export default function StudentView({ user }: { user: User }) {
         'Không lưu được bài thi trong trình duyệt. Đừng tải lại trang khi đang làm bài.',
       );
   }, [exam, storageKey]);
-  async function practice(number: number) {
-    setSelectedNumber(number);
-    const id = ++requestId.current;
-    setBusy(true);
-    setError('');
-    setQuestion(null);
-    setSolution(false);
-    setAiQuestion(null);
-    try {
-      const value = await apiService.getRandomQuestion(number);
-      if (id === requestId.current) {
-        setQuestion(value);
-        setAiQuestion(value);
-      }
-    } catch (error) {
-      if (id === requestId.current) setError((error as Error).message);
-    } finally {
-      if (id === requestId.current) setBusy(false);
-    }
-  }
-  async function similar() {
-    if (!question || busy) return;
-    const id = ++requestId.current;
-    setBusy(true);
-    setError('');
-    setSolution(false);
-    try {
-      const value = await apiService.similarQuestion(question);
-      if (id === requestId.current) {
-        setQuestion(value);
-        setAiQuestion(value);
-      }
-    } catch (error) {
-      if (id === requestId.current) setError((error as Error).message);
-    } finally {
-      if (id === requestId.current) setBusy(false);
-    }
-  }
   async function generate() {
     if (
       exam?.endAt &&
@@ -148,8 +106,7 @@ export default function StudentView({ user }: { user: User }) {
       const questions = await apiService.generateExam();
       if (id !== requestId.current) return;
       const next = { questions, endAt: null, showAnswers: false, createdAt: Date.now() };
-      if (!validExam(next))
-        throw new Error('Đề thi phải đủ 7 dạng câu khác nhau. Vui lòng thử lại.');
+      if (!validExam(next)) throw new Error('Đề thi chưa đủ 7 câu khác nhau. Vui lòng thử lại.');
       setExam(next);
       setAiQuestion(null);
     } catch (error) {
@@ -197,7 +154,7 @@ export default function StudentView({ user }: { user: User }) {
     setError('');
     setTab(value);
     setMobileAI(false);
-    setAiQuestion(value === 'practice' ? question : null);
+    setAiQuestion(null);
   }
   return (
     <div className="study-page page-width">
@@ -309,124 +266,6 @@ export default function StudentView({ user }: { user: User }) {
           {tab === 'topics' && !contentLoading && !contentError && (
             <Topics topics={topics} intro={contentSettings.topicsIntro} />
           )}
-          {tab === 'practice' && (
-            <>
-              <div className="section-heading">
-                <div>
-                  <span className="section-kicker">GIỎI HƠN TỪNG CÂU MỘT</span>
-                  <h2>Luyện tập theo dạng câu</h2>
-                  <p className="muted">
-                    Chọn một dạng, tự tìm lời giải rồi đối chiếu. Không cần vội.
-                  </p>
-                </div>
-                <span className="soft-badge tone-red">
-                  <Icon name="practice" size={18} /> 7 dạng câu hỏi
-                </span>
-              </div>
-              <section className="question-picker surface" aria-label="Chọn câu hỏi để ôn tập">
-                <div className="question-choices">
-                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <button
-                      key={n}
-                      aria-label={`Câu ${n}`}
-                      aria-pressed={selectedNumber === n}
-                      className={`question-choice ${selectedNumber === n ? 'active' : ''}`}
-                      disabled={busy}
-                      onClick={() => practice(n)}
-                    >
-                      <span>{String(n).padStart(2, '0')}</span>
-                      <strong>Câu {n}</strong>
-                      <Icon name="arrow" size={18} />
-                    </button>
-                  ))}
-                </div>
-              </section>
-              {busy ? (
-                <div role="status" className="surface loading-state question-loading">
-                  <span className="loading-dot" />
-                  Đang chuẩn bị câu hỏi cho bạn…
-                </div>
-              ) : question ? (
-                <article className="surface exercise-card">
-                  <div className="exercise-heading">
-                    <span className="exercise-label">
-                      <span className="icon-tile tone-red">
-                        <Icon name="practice" size={24} />
-                      </span>
-                      <span>
-                        <small>CÙNG THỬ SỨC NHÉ</small>
-                        <h2>{question.label}</h2>
-                      </span>
-                    </span>
-                    <button className="btn btn-quiet" onClick={() => practice(question.number)}>
-                      <Icon name="refresh" size={19} />
-                      Lấy câu hỏi khác
-                    </button>
-                  </div>
-                  <div className="exercise-body">
-                    <LatexContent html={question.statementRaw} preamble={question.latexPreamble} />
-                  </div>
-                  <div className="exercise-actions">
-                    <button
-                      className="btn btn-primary"
-                      aria-expanded={solution}
-                      aria-controls="practice-solution"
-                      onClick={() => setSolution((v) => !v)}
-                    >
-                      <Icon name="eye" size={20} />
-                      {solution ? 'Ẩn lời giải' : 'Xem lời giải'}
-                    </button>
-                    <button className={button} disabled={busy} onClick={similar}>
-                      <Icon name="spark" size={19} />
-                      Bài tập tương tự
-                    </button>
-                    <button className="text-button" onClick={() => openAssistant(question)}>
-                      <Icon name="spark" size={19} />
-                      Hỏi AI về câu này
-                    </button>
-                  </div>
-                  {solution && (
-                    <section id="practice-solution" className="solution-panel">
-                      <h3>
-                        <Icon name="check" size={22} />
-                        Lời giải chi tiết
-                      </h3>
-                      <LatexContent
-                        preamble={question.latexPreamble}
-                        context={question.statementRaw}
-                        html={question.solutionRaw || 'Chưa có lời giải.'}
-                      />
-                    </section>
-                  )}
-                </article>
-              ) : (
-                !error && (
-                  <div className="surface empty-state practice-empty">
-                    <div className="empty-illustration">
-                      <Icon name="practice" size={64} />
-                      <i />
-                      <i />
-                    </div>
-                    <h3>Một câu hỏi, thêm một cơ hội hiểu bài.</h3>
-                    <p>
-                      Chọn Câu 1 đến Câu 7 phía trên để bắt đầu.
-                      <br />
-                      Bút, giấy và một chút tò mò là đủ.
-                    </p>
-                  </div>
-                )
-              )}
-              <div className="study-tip">
-                <span className="icon-tile tone-yellow">
-                  <Icon name="guide" size={24} />
-                </span>
-                <p>
-                  <strong>Thử trước, xem lời giải sau.</strong> Dành vài phút tự suy nghĩ sẽ giúp
-                  bạn nhớ cách giải lâu hơn.
-                </p>
-              </div>
-            </>
-          )}
           {tab === 'exam' && (
             <>
               <div className="section-heading">
@@ -457,8 +296,8 @@ export default function StudentView({ user }: { user: User }) {
                   <span className="eyebrow">MỖI ĐỀ, MỘT LẦN TIẾN BỘ</span>
                   <h3>Sẵn sàng thử sức?</h3>
                   <p>
-                    7 câu hỏi, 7 dạng bài. Tạo một đề mới từ kho câu hỏi của giáo viên và bắt đầu
-                    khi bạn sẵn sàng.
+                    7 câu hỏi từ các chuyên đề do quản trị viên cấu hình. Tạo đề và bắt đầu khi bạn
+                    sẵn sàng.
                   </p>
                   <div className="exam-specs">
                     <span>
@@ -522,9 +361,11 @@ export default function StudentView({ user }: { user: User }) {
                             <span className="quiz-number">
                               {String(index + 1).padStart(2, '0')}
                             </span>
-                            {q.label}
+                            Câu {index + 1}
                           </h3>
-                          <span className="small-label">DẠNG {q.number}</span>
+                          {q.examDescription && (
+                            <span className="small-label">{q.examDescription}</span>
+                          )}
                         </div>
                         <div className="exercise-body">
                           <LatexContent html={q.statementRaw} preamble={q.latexPreamble} />

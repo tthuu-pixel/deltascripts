@@ -8,19 +8,21 @@ Nhận diện dùng xanh dương, đỏ san hô và vàng; logo/favicon và bộ
 
 Ảnh nền hình học được tạo riêng cho dự án và phục vụ tại `public/images`: WebP khoảng 27 KB cho máy tính, 9 KB cho điện thoại. Minh họa SVG dùng tam giác vuông, đường tròn và căn thức; không dùng phương trình đường tròn trong hệ tọa độ. Xem [nội dung chuyên đề và cách thêm nguồn](docs/curriculum.md).
 
-Học sinh có bốn chức năng: **Chuyên đề**, **Luyện câu hỏi**, **Tạo đề thi** và **Góc học tập**. Người quản trị đổi tên, mô tả, thứ tự và trạng thái ẩn/hiện của các tab ngay trên web. Nội dung chuyên đề và góc học tập do chủ web tự đưa lên; không còn bài mẫu viết cứng trong giao diện.
+Học sinh có ba tab: **Chuyên đề**, **Tạo đề thi** và **Góc học tập**. Người quản trị đổi tên, mô tả, thứ tự và trạng thái ẩn/hiện của các tab ngay trên web. Nội dung chuyên đề và góc học tập do chủ web tự đưa lên; không còn bài mẫu viết cứng trong giao diện.
 
-Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo viên/quản lý hiện có. Bạn tạo chuyên đề, nhập lý thuyết từ TeX (tùy chọn), nhập Word/TeX vào kho câu hỏi, sửa nguồn/lời giải, phân loại theo chuyên đề và dạng Câu 1–Câu 7, rồi chọn xuất bản. Một câu dùng chung cho nhiều chuyên đề, luyện tập và tạo đề; không cần nhập lặp lại. Bài mới mặc định là bản nháp. Câu hỏi và chuyên đề có trạng thái xuất bản riêng; học sinh chỉ nhận nội dung đã xuất bản.
+Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo viên/quản lý hiện có. Bạn tạo chuyên đề, nhập lý thuyết từ TeX (tùy chọn), nhập Word/TeX vào kho câu hỏi, sửa nguồn/lời giải, phân loại theo chuyên đề, rồi chọn xuất bản. Một câu dùng chung cho nhiều chuyên đề, luyện tập và tạo đề; không cần nhập lặp lại. Bài mới mặc định là bản nháp. Câu hỏi và chuyên đề có trạng thái xuất bản riêng; học sinh chỉ nhận nội dung đã xuất bản.
 
 Mỗi chuyên đề có ba mục **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Lý thuyết/ví dụ nhập TeX riêng; bài vận dụng hiển thị danh sách đề bài trong đúng chuyên đề, mỗi bài có nút **Đáp án** để mở/ẩn lời giải. Danh sách tải 10 bài mỗi trang. Bảng chọn có 50 icon toán cấp 2, chỉ hiện hình.
 
-Trang admin có **Chuẩn hóa & kiểm tra** khi nhập bài và cho các câu đã chọn: đối chiếu nguồn gốc, sửa lỗi cú pháp, xem trước rồi duyệt. Mục **Cấu hình AI** hỗ trợ Gemini, GPT, Claude và DeepSeek: nhập file sẽ tự quét tất cả câu và xếp vào chuyên đề đã có, giữ dạng Câu 1–7 ghi rõ trong nguồn; bạn duyệt cả đợt trước khi lưu. Nút **AI quét và sắp xếp toàn bộ kho** tự xử lý mọi trang và ghi liên kết chuyên đề, có tiến độ/dừng/tiếp tục và báo cáo câu cần kiểm tra. Key mã hóa ở máy chủ.
+Trang admin có **Chuẩn hóa & kiểm tra** khi nhập bài và cho các câu đã chọn: đối chiếu nguồn gốc, sửa lỗi cú pháp, xem trước rồi duyệt. Mục **Cấu hình AI** hỗ trợ Gemini, GPT, Claude và DeepSeek: nhập file sẽ tự quét tất cả câu và xếp vào chuyên đề đã có, dựa vào mô tả ngắn của từng chuyên đề; bạn duyệt cả đợt trước khi lưu. Nút **AI quét và sắp xếp toàn bộ kho** tự xử lý mọi trang và ghi liên kết chuyên đề, có tiến độ/dừng/tiếp tục và báo cáo câu cần kiểm tra. Key mã hóa ở máy chủ.
+
+Mục **Cấu hình tạo đề** có 7 vị trí Câu 1–Câu 7, mỗi vị trí có mô tả và các chuyên đề được chọn. Khi tạo đề, hệ thống lấy một câu ngẫu nhiên cho mỗi vị trí, không trùng nguồn. Số Câu chỉ là vị trí trong đề; ngân hàng không phân loại theo số câu. Cần cấu hình đủ 7 vị trí trước khi học sinh tạo đề.
 
 Xem [hướng dẫn quản trị nội dung](docs/curriculum.md). Chuyên đề, bài học, cấu hình tab và câu hỏi nằm trong D1. GitHub lưu mã nguồn, ảnh, phông chữ và tài liệu. AI chỉ được tải khi người dùng mở; đóng/mở hộp thoại giữ cuộc trò chuyện trong cùng ngữ cảnh. Đồng hồ đề thi và ảnh TikZ giữ cơ chế lưu/cache đã có.
 
 ## Bản đang chạy
 
-Đã triển khai ngày 22/10/2026: **https://deltascript.tthuu-pixel.workers.dev**. Kiểm tra trình duyệt thực tế tải trang thành công, không có lỗi JavaScript; `/api/health` xác nhận kết nối D1. API từ chối người chưa đăng nhập và thông tin đăng nhập không hợp lệ. Chưa kiểm tra luồng giáo viên trên bản thật vì chưa tạo tài khoản.
+Bản chính thức: **https://deltascript.tthuu-pixel.workers.dev**. Kiểm tra trình duyệt thực tế tải trang thành công, không có lỗi JavaScript; `/api/health` xác nhận kết nối D1. API từ chối người chưa đăng nhập và thông tin đăng nhập không hợp lệ. Luồng quản trị và học sinh được kiểm thử bằng D1 và trình duyệt cục bộ.
 
 D1 bắt đầu với kho câu hỏi trống. Người quản lý triển khai có thể cấp một liên kết riêng để chủ web tự tạo tài khoản giáo viên bằng trình duyệt, không cần cài Node.js trên máy cá nhân:
 
@@ -56,7 +58,7 @@ CLI hỏi mật khẩu trong terminal, không hiển thị và không nhận m�
 
 Wrangler giữ log và cấu hình CLI trong `.data`, trừ khi môi trường đã cung cấp đường dẫn XDG/log riêng. Dùng các lệnh npm hoặc `node scripts/wrangler.mjs ...` để dùng thống nhất vị trí đăng nhập. `.data`, `.dev.vars`, `.env`, `.wrangler` và kết quả kiểm thử đều bị loại khỏi Git. Dữ liệu PGlite cũ trong `.data/postgres` được giữ nguyên nhưng ứng dụng mới không dùng nữa.
 
-Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file theo luồng duyệt chưa tự ghi dữ liệu. Nút **AI nhập tự động** xử lý và thêm thẳng các câu đủ điều kiện, gắn chuyên đề và để riêng các câu cần sửa; mặc định lưu nháp. Trong cửa sổ duyệt cũng có nút **AI xử lý và thêm tất cả**. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới không cần Google Sheets; nâng cấp giữ nguyên câu hỏi đã có trong D1. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
+Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file theo luồng duyệt chưa tự ghi dữ liệu. Nút **AI nhập tự động** xử lý và thêm thẳng các câu đủ điều kiện, gắn chuyên đề và để riêng các câu cần sửa; mặc định lưu nháp. Trong cửa sổ duyệt cũng có nút **AI xử lý và thêm tất cả**. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi học theo chuyên đề hoặc tạo đề 7 câu theo cấu hình của quản trị viên. Nguồn mới không cần Google Sheets; nâng cấp giữ nguyên câu hỏi đã có trong D1. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
 
 ## Triển khai Cloudflare
 
@@ -97,25 +99,13 @@ Tài liệu Cloudflare được đối chiếu ngày 22/10/2026:
 
 Ứng dụng phục vụ static assets trực tiếp và chỉ ưu tiên Workers cho `/api`. API dùng Web APIs/Web Crypto; không mang Express, driver PostgreSQL hoặc PGlite vào bundle. Mật khẩu băm bằng PBKDF2-SHA256 có salt, 100.000 vòng; token phiên ngẫu nhiên chỉ lưu hash trong DB. Cookie HttpOnly/SameSite, Secure khi qua HTTPS. Rate limit lưu trong D1 để không mất hiệu lực khi chuyển isolate.
 
-Lấy câu ngẫu nhiên dùng vị trí liên tiếp theo dạng câu và tra chỉ mục, không `ORDER BY random()` trên kho nguồn. Trigger duy trì vị trí và số lượng khi thêm, xóa, chuyển dạng hoặc nhập lại. Tạo đề dùng một truy vấn, lấy đủ 7 dạng trong cùng snapshot; thiếu dạng sẽ báo rõ. Danh sách giáo viên phân trang 20 câu và đọc tổng từ bộ đếm. Xem đề/lời giải và AI giữ các luồng đã có.
+Tạo đề tra liên kết chuyên đề, chọn tối đa 7 ID ứng viên cho mỗi vị trí, ghép thành 7 câu không trùng rồi mới đọc nguồn của 7 câu đã chọn. Không quét nội dung TeX của toàn kho để bốc câu. Lượt đọc nguồn kiểm tra lại trạng thái xuất bản và liên kết; dữ liệu vừa đổi sẽ được báo để tạo lại. Nếu một vị trí chưa chọn chuyên đề, không có câu đã xuất bản hoặc các vị trí không đủ 7 câu khác nhau, API trả lỗi rõ ràng thay vì trả đề thiếu/lặp bài.
 
-Bài đo có thể chạy lại bằng `node --import tsx tests/d1.test.ts`. Với **10.000 nguồn giả lập đúng 2.048 byte/câu**, lưu cả nguồn và phần đề/lời giải, D1 cục bộ có kết quả:
+Danh sách admin phân trang 20 câu; bài tập chuyên đề phân trang 10 câu. Dữ liệu cũ và cột đánh số nội bộ được giữ để tương thích lưu trữ, nhưng không dùng để phân loại hay tạo đề. Migration `0006_exam_settings.sql` chỉ thêm cấu hình đề, không sửa nguồn hoặc liên kết chuyên đề.
 
-| Chỉ số                                  | Kết quả                                        |
-| --------------------------------------- | ---------------------------------------------- |
-| Tổng nguồn                              | 20.480.000 byte                                |
-| DB, gồm dữ liệu và chỉ mục              | Khoảng 49,6 MB; thay đổi nhẹ giữa các lần chạy |
-| Lấy một câu                             | 5 hàng đọc                                     |
-| Lấy đề 7 câu                            | 35 hàng đọc                                    |
-| Cách cũ `ORDER BY random()` lấy một câu | 2.859 hàng đọc                                 |
+Nguồn TeX 1–2 KB/câu có thể lưu trực tiếp trong D1, cùng đề/lời giải và các chỉ mục. Dung lượng DB sẽ lớn hơn tổng tệp gốc; theo dõi dung lượng và quota thực tế trong Cloudflare. Kiểm thử cục bộ có nguồn giả lập để kiểm tra giới hạn và truy vấn; không phải cam kết độ trễ hoặc chi phí trên host thật.
 
-Kết quả được ghi vào `.data/d1-capacity-check.json`. Đây là phép đo trên workerd/D1 cục bộ với nguồn giả lập, không phải số đo độ trễ mạng, mức CPU Cloudflare hay cam kết sức chứa. Kích thước thực tế phụ thuộc macro, số cột, nội dung, lịch sử và câu đã ngừng hoạt động. Kho 10.000–50.000 câu 1–2 KB là mục tiêu khởi đầu hợp lý; theo dõi dung lượng trước khi gần 500 MB. Không dùng tỷ lệ để cam kết 100.000 câu luôn vừa Free.
-
-Nhập được chia theo lô tối đa 100 câu và khoảng 1,5 MB JSON; mỗi câu tối đa 1,5 MB dữ liệu TeX/ảnh. SQL chia nhóm 12 câu để dưới giới hạn 100 tham số D1. D1 batch đảm bảo atomic trong từng lần lưu; ID ổn định giúp thử lại không nhân bản. Các phần đã lưu của file dài được xác nhận riêng, phần còn lại có thể thử lại.
-
-Phép đo bổ sung với 100 câu mới ghi 800 hàng D1 (gồm chỉ mục/trigger). Vì vậy, 10.000 câu tương tự dự trù khoảng 80.000 hàng ghi khi nhập mới, chưa tính các hoạt động khác; nhập lại, chuyển dạng và xóa có chi phí khác. Theo dõi quota và chia kho lớn qua nhiều ngày nếu cần; chia lô không làm quota ngày tăng lên.
-
-Cron hằng ngày dọn tối đa 10.000 hàng mỗi loại: phiên hết hạn, cửa sổ rate limit hết hạn và lịch sử đăng nhập cũ hơn 30 ngày. Lịch sử cũ được dọn dần; mã truy cập và câu hỏi không bị cron xóa. Câu giáo viên xóa được giữ ở trạng thái ngừng hoạt động, vẫn chiếm dung lượng.
+Nhập theo đợt tối đa 100 câu để tuân thủ giới hạn D1; các phần đã lưu được xác nhận riêng và dùng lại ID khi thử lại. Chia lô không làm hạn mức ngày tăng lên. Cron dọn phiên hết hạn, cửa sổ rate limit và lịch sử đăng nhập cũ hơn 30 ngày; mã truy cập và nguồn câu hỏi không bị cron xóa.
 
 ## Công thức, TikZ và AI
 

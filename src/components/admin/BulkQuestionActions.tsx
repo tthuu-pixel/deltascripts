@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { TopicSummary } from '../../../shared/content';
 import TopicPicker from './TopicPicker';
 export interface QuestionChanges {
-  number?: number;
   published?: boolean;
   topicIds?: string[];
   mode?: 'add' | 'replace' | 'remove';
@@ -20,7 +19,6 @@ export default function BulkQuestionActions({
 }) {
   const [mode, setMode] = useState<'keep' | 'add' | 'replace' | 'remove'>('keep'),
     [ids, setIds] = useState<string[]>([]),
-    [number, setNumber] = useState(0),
     [status, setStatus] = useState('keep');
   const hasTopics = mode !== 'keep' && (mode === 'replace' || ids.length > 0);
   return (
@@ -39,22 +37,6 @@ export default function BulkQuestionActions({
             <option value="add">Thêm vào chuyên đề</option>
             <option value="replace">Thay toàn bộ chuyên đề</option>
             <option value="remove">Bỏ khỏi chuyên đề</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Chuyển dạng câu</span>
-          <select
-            aria-label="Chuyển dạng câu"
-            disabled={busy}
-            value={number}
-            onChange={(e) => setNumber(Number(e.target.value))}
-          >
-            <option value={0}>Giữ nguyên dạng câu</option>
-            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-              <option key={n} value={n}>
-                Câu {n}
-              </option>
-            ))}
           </select>
         </label>
         <label className="field">
@@ -83,7 +65,7 @@ export default function BulkQuestionActions({
       <button
         type="button"
         className="btn btn-primary"
-        disabled={busy || (!hasTopics && !number && status === 'keep')}
+        disabled={busy || (!hasTopics && status === 'keep')}
         onClick={() => {
           if (
             mode === 'replace' &&
@@ -92,7 +74,6 @@ export default function BulkQuestionActions({
           )
             return;
           onApply({
-            ...(number ? { number } : {}),
             ...(status !== 'keep' ? { published: status === 'published' } : {}),
             ...(hasTopics ? { topicIds: ids, mode: mode as 'add' | 'replace' | 'remove' } : {}),
           });

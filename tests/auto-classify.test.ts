@@ -20,7 +20,6 @@ const questions = (n: number): Question[] =>
   }));
 const suggestion = (q: Question) => ({
   id: q.id,
-  number: 7,
   topicIds: ['existing-topic'],
   reason: 'Phù hợp.',
 });
@@ -98,17 +97,17 @@ test('AI batches respect character budgets and automatically wait for rate limit
   assert.deepEqual(sizes, [4, 4, 3]);
 });
 
-test('explicit types and manual topics survive; AI can identify an unknown type without rewriting content', () => {
-  const q = { ...questions(1)[0], number: 2, topicIds: ['manual-topic'] };
-  const result = applySuggestion(q, suggestion(q));
-  assert.equal(result.number, 2);
-  assert.deepEqual(result.topicIds, ['manual-topic', 'existing-topic']);
-  assert.equal(result.statementRaw, q.statementRaw);
-  assert.equal(applySuggestion({ ...q, numberOrigin: 'order' }, suggestion(q)).number, 7);
-  assert.equal(
-    applySuggestion({ ...q, numberOrigin: 'order' }, { ...suggestion(q), number: null }).number,
-    0,
-  );
+test('AI assigns only topics and preserves source order, labels, answers and manual memberships', () => {
+  for (const number of [0, 2, 17, 130]) {
+    const q = {
+      ...questions(1)[0],
+      number,
+      numberOrigin: 'order' as const,
+      topicIds: ['manual-topic'],
+    };
+    const result = applySuggestion(q, suggestion(q));
+    assert.deepEqual(result, { ...q, topicIds: ['manual-topic', 'existing-topic'] });
+  }
 });
 
 test('stopping a scan aborts before another result is applied', async () => {

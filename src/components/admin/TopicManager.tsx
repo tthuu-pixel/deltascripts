@@ -209,9 +209,10 @@ export default function TopicManager({
             </label>
           </div>
           <label className="field">
-            <span>Mô tả ngắn</span>
+            <span>Mô tả ngắn · Tiêu chí để AI phân loại</span>
             <textarea
               aria-label="Mô tả ngắn"
+              placeholder="Nêu nội dung, phương pháp và các dạng bài thuộc chuyên đề này để AI đối chiếu."
               rows={2}
               maxLength={500}
               value={draft.description}

@@ -183,8 +183,9 @@ export default function AiBankScan({
       </div>
       <div className="preview-body">
         <p>
-          Quét mọi dạng câu và mọi trang, gồm bản nháp và bài đã xuất bản. Kết quả phù hợp được tự
-          gắn thêm vào các chuyên đề đã có. Câu chưa khớp được liệt kê để kiểm tra.
+          Dựa vào mô tả ngắn của mỗi chuyên đề để quét mọi câu trên mọi trang, gồm bản nháp và bài
+          đã xuất bản. Kết quả phù hợp được tự gắn thêm vào các chuyên đề đã có. Câu chưa khớp được
+          liệt kê để kiểm tra.
         </p>
         <p className="notice notice-success" role="status">
           {status}

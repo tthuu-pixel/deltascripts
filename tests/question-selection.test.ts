@@ -83,7 +83,7 @@ test('select all pages returns only matching IDs, excludes later inserts and pro
   assert.equal(new Set([...first.data.ids, ...next.data.ids]).size, 507);
   const filtered = await req('/questions/selection?topicId=' + topic, undefined, admin);
   assert.deepEqual(filtered.data.ids, [questions[0].id]);
-  assert.equal((await req('/questions/selection?number=1', undefined, admin)).data.ids.length, 0);
+  assert.equal((await req('/questions/selection', undefined, admin)).data.ids.length, 500);
   assert.equal(
     (await req('/questions/selection?status=draft', undefined, admin)).data.ids.length,
     0,

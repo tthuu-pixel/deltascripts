@@ -41,7 +41,7 @@ export default function QuestionReview({
   autoClassify?: boolean;
   autoStart?: boolean;
   fileErrors?: string[];
-  importOptions?: { number: number; topicIds: string[]; published: boolean };
+  importOptions?: { topicIds: string[]; published: boolean };
   onAutoSaved?: (questions: Question[]) => void;
   onAutoQuestion?: (question: Question) => void;
   onClose: () => void;
@@ -124,7 +124,7 @@ export default function QuestionReview({
   function update(patch: Partial<Question>) {
     if (savedIds.current.has(current.id)) return;
     setDrafts((items) => items.map((q) => (q.id === current.id ? { ...q, ...patch } : q)));
-    if (patch.number !== undefined || patch.topicIds !== undefined) {
+    if (patch.topicIds !== undefined) {
       const next = { ...current, ...patch };
       setOutcomes((old) =>
         old[current.id]
@@ -132,11 +132,7 @@ export default function QuestionReview({
               ...old,
               [current.id]: {
                 ...old[current.id],
-                state:
-                  next.number >= 1 && next.number <= 7 && !!next.topicIds?.length
-                    ? 'assigned'
-                    : 'unassigned',
-                number: next.number,
+                state: !!next.topicIds?.length ? 'assigned' : 'unassigned',
                 reason: 'Đã điều chỉnh thủ công trong bản duyệt.',
               },
             }
@@ -180,8 +176,7 @@ export default function QuestionReview({
         completed: completed.current,
         apply: (question, suggestion) => {
           const next = applySuggestion(question, suggestion);
-          if (next.number >= 1 && next.number <= 7 && next.topicIds?.length)
-            resolvedIds.current.add(question.id);
+          if (next.topicIds?.length) resolvedIds.current.add(question.id);
           setReasons((old) => ({ ...old, [question.id]: suggestion.reason }));
           setDrafts((items) =>
             items.map((q) => (q.id === question.id ? applySuggestion(q, suggestion) : q)),
@@ -189,12 +184,6 @@ export default function QuestionReview({
         },
         onOutcome: (outcome) => {
           setOutcomes((old) => ({ ...old, [outcome.id]: outcome }));
-          if (outcome.state === 'failed')
-            setDrafts((items) =>
-              items.map((q) =>
-                q.id === outcome.id && q.numberOrigin === 'order' ? { ...q, number: 0 } : q,
-              ),
-            );
           if (outcome.state !== 'failed') completed.current.add(outcome.id);
         },
         onProgress: (value) =>
@@ -242,14 +231,12 @@ export default function QuestionReview({
         {
           topics: freshTopics,
           signal: controller.signal,
-          number: importOptions?.number,
           topicIds: importOptions?.topicIds,
           published: autoPublished,
           resolvedIds: resolvedIds.current,
           onQuestion: (q) => {
             setDrafts((items) => items.map((item) => (item.id === q.id ? q : item)));
-            if (q.number >= 1 && q.number <= 7 && q.numberOrigin !== 'order' && q.topicIds?.length)
-              resolvedIds.current.add(q.id);
+            if (q.topicIds?.length) resolvedIds.current.add(q.id);
             onAutoQuestion?.(q);
           },
           onSaved: (items) => {
@@ -302,8 +289,6 @@ export default function QuestionReview({
       (q) =>
         !savedIds.current.has(q.id) &&
         (!q.statementRaw.trim() ||
-          q.number < 1 ||
-          q.number > 7 ||
           (q.topicIds?.length || 0) > 10 ||
           (mode !== 'classify' &&
             q.sourceType === 'tex' &&
@@ -314,9 +299,7 @@ export default function QuestionReview({
     if (invalid >= 0) {
       setIndex(invalid);
       setSource(true);
-      setError(
-        'Cần sửa lỗi cú pháp, chọn dạng Câu 1–7 và tối đa 10 chuyên đề cho bài này trước khi áp dụng.',
-      );
+      setError('Cần sửa lỗi cú pháp và chọn tối đa 10 chuyên đề cho bài này trước khi áp dụng.');
       return;
     }
     setBusy(true);
@@ -457,7 +440,7 @@ export default function QuestionReview({
           <section className="auto-import-options surface" aria-label="Nhập bằng AI">
             <h3>Để AI xử lý toàn bộ</h3>
             <p>
-              AI chuẩn hóa, chọn dạng Câu 1–7, gắn vào chuyên đề đã có và thêm vào kho. Câu còn lỗi
+              AI chuẩn hóa, phân theo mô tả ngắn của chuyên đề đã có và thêm vào kho. Câu còn lỗi
               được giữ riêng, không chặn các câu khác.
             </p>
             <label className="publish-controls">
@@ -487,18 +470,6 @@ export default function QuestionReview({
                 {Object.values(outcomes).filter((o) => o.state !== 'assigned').length}
               </strong>
             </p>
-            <div className="scan-counts">
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <button
-                  key={n}
-                  className="soft-badge"
-                  disabled={busy || !drafts.some((q) => q.number === n)}
-                  onClick={() => setIndex(drafts.findIndex((q) => q.number === n))}
-                >
-                  Câu {n}: {drafts.filter((q) => q.number === n).length}
-                </button>
-              ))}
-            </div>
             <details>
               <summary>Câu cần kiểm tra</summary>
               <ul>
@@ -564,22 +535,6 @@ export default function QuestionReview({
           </p>
         )}
         <div className="admin-form-grid">
-          <label className="field">
-            <span>Dạng câu của bài đang duyệt</span>
-            <select
-              aria-label="Dạng câu của bài đang duyệt"
-              disabled={busy || alreadySaved}
-              value={current.number >= 1 && current.number <= 7 ? current.number : 0}
-              onChange={(e) => update({ number: Number(e.target.value), numberOrigin: 'manual' })}
-            >
-              <option value={0}>Chọn dạng câu</option>
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={n}>
-                  Câu {n}
-                </option>
-              ))}
-            </select>
-          </label>
           <TopicPicker
             label="Chuyên đề của bài đang duyệt"
             topics={topics}

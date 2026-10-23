@@ -30,7 +30,6 @@ const questions = (count: number): Question[] =>
   }));
 const suggestion = (q: Question) => ({
   id: q.id,
-  number: 7,
   topicIds: [topic.id],
   reason: 'Khớp với chuyên đề đang có.',
 });
@@ -43,7 +42,7 @@ const base = () => ({
   onOutcome: (_outcome: AutoImportOutcome) => {},
 });
 
-test('one-click import saves all valid questions and separates syntax, uncertain type, unmatched topic and oversize sources', async () => {
+test('one-click import saves all valid questions and separates syntax, unmatched topic and oversize sources', async () => {
   const input = questions(17);
   input[0].numberOrigin = 'explicit';
   input[2].solutionRaw = '';
@@ -58,7 +57,6 @@ test('one-click import saves all valid questions and separates syntax, uncertain
       sent.push(...batch.map((q) => q.id));
       return batch.map((q) => ({
         ...suggestion(q),
-        number: q.id === input[6].id ? null : 7,
         topicIds: q.id === input[5].id ? [] : [topic.id],
       }));
     },
@@ -66,12 +64,12 @@ test('one-click import saves all valid questions and separates syntax, uncertain
       saved.push(...batch);
     },
   });
-  assert.equal(saved.length, 13);
-  assert.equal(result.results.filter((row) => row.state !== 'saved').length, 4);
+  assert.equal(saved.length, 14);
+  assert.equal(result.results.filter((row) => row.state !== 'saved').length, 3);
   assert(!sent.includes(input[7].id));
   assert(!sent.includes(input[8].id));
   assert.equal(saved.find((q) => q.id === input[0].id)!.number, 1);
-  assert(saved.filter((q) => q.id !== input[0].id).every((q) => q.number === 7));
+  assert(saved.every((q) => q.number === original.find((item) => item.id === q.id)!.number));
   assert(saved.every((q) => q.topicIds?.includes(topic.id) && q.published === false));
   assert(saved.every((q) => q.statementRaw.includes('\\dfrac')));
   for (const q of saved) {
@@ -137,7 +135,7 @@ test('lost write acknowledgement can resume with the same IDs without duplicates
     resolvedIds: resolved,
     onQuestion: (q: Question) => {
       latest.set(q.id, q);
-      if (q.numberOrigin === 'ai' && q.topicIds?.length) resolved.add(q.id);
+      if (q.topicIds?.length) resolved.add(q.id);
     },
     suggest: async (batch: Question[]) => {
       calls++;

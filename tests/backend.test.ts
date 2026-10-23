@@ -138,24 +138,47 @@ test('Workers + D1: authenticated application workflow', async (t) => {
     assert.equal((await request('/questions', { questions: [all[0]] }, teacherCookie)).status, 200);
     const partial = await request('/exam', undefined, studentCookie);
     assert.equal(partial.status, 422);
-    assert.match(partial.data.error, /2, 3, 4, 5, 6, 7/);
+    assert.match(partial.data.error, /1, 2, 3, 4, 5, 6, 7/);
     await request('/questions', { questions: all }, teacherCookie);
     await request('/questions', { questions: all }, teacherCookie);
     const list = await request('/questions', undefined, teacherCookie);
     assert.equal(list.data.items.length, 7);
     assert.equal(list.data.total, 7);
   });
-  await t.test('one request returns seven correctly numbered exam questions', async () => {
+  await t.test('exam positions use configured topics and preserve TeX sources', async () => {
+    const topicIds = all.map(() => randomUUID());
+    for (let i = 0; i < 7; i++) {
+      await db
+        .prepare('INSERT INTO topics(id,title,published) VALUES(?,?,1)')
+        .bind(topicIds[i], `Chuyên đề ${i + 1}`)
+        .run();
+      await db
+        .prepare('INSERT INTO question_topics(question_id,topic_id) VALUES(?,?)')
+        .bind(all[i].id, topicIds[i])
+        .run();
+    }
+    const settings = {
+      version: 1,
+      slots: all.map((_, i) => ({
+        position: i + 1,
+        description: `Vị trí ${i + 1}`,
+        topicIds: [topicIds[i]],
+      })),
+    };
+    assert.equal((await request('/admin/exam-settings', { settings }, teacherCookie)).status, 200);
     const exam = await request('/exam', undefined, studentCookie);
     assert.equal(exam.status, 200);
     assert.deepEqual(
-      exam.data.items.map((q: any) => q.number),
-      [1, 2, 3, 4, 5, 6, 7],
+      exam.data.items.map((q: any) => q.id),
+      all.map((q) => q.id),
     );
-    const random = await request('/questions/random?number=3', undefined, studentCookie);
-    assert.equal(random.data.question.number, 3);
-    assert.equal(random.data.question.raw, 'original');
-    assert.equal(random.data.question.latexPreamble, String.raw`\def\R{2.5}`);
+    assert.equal(exam.data.items[2].raw, 'original');
+    assert.equal(exam.data.items[2].latexPreamble, String.raw`\def\R{2.5}`);
+    assert.equal(exam.data.items[2].examDescription, 'Vị trí 3');
+    assert.equal(
+      (await request('/questions/random?number=3', undefined, studentCookie)).status,
+      404,
+    );
   });
   await t.test(
     'AI gateway forwards history and parses similar exercises without exposing keys',
@@ -181,7 +204,7 @@ test('Workers + D1: authenticated application workflow', async (t) => {
         studentCookie,
       );
       assert.equal(similar.status, 200);
-      assert.equal(similar.data.question.number, 3);
+      assert.equal(similar.data.question.label, 'Bài tập tương tự');
       assert.match(similar.data.question.solutionRaw, /complete answer/);
       assert(!JSON.stringify(similar.data).includes('test-fixture-key'));
     },
@@ -189,7 +212,7 @@ test('Workers + D1: authenticated application workflow', async (t) => {
   await t.test('invalid batch fails atomically and SQL text stays data', async () => {
     const result = await request(
       '/questions',
-      { questions: [question(1), question(9)] },
+      { questions: [question(1), { ...question(9), statementRaw: '' }] },
       teacherCookie,
     );
     assert.equal(result.status, 400);
@@ -198,19 +221,21 @@ test('Workers + D1: authenticated application workflow', async (t) => {
     await request('/questions', { questions: [special] }, teacherCookie);
     assert.equal((await request('/questions', undefined, teacherCookie)).data.total, 8);
   });
-  await t.test('teacher list paginates; filter excludes other types', async () => {
-    await request(
-      '/questions',
-      { questions: Array.from({ length: 25 }, () => question(2)) },
-      teacherCookie,
-    );
-    const page = await request('/questions?page=1&pageSize=20', undefined, teacherCookie);
-    assert.equal(page.data.items.length, 20);
-    assert.equal(page.data.total, 33);
-    const filtered = await request('/questions?number=3', undefined, teacherCookie);
-    assert.equal(filtered.data.items.length, 1);
-    assert.equal(filtered.data.items[0].number, 3);
-  });
+  await t.test(
+    'teacher list paginates and retired type filters do not split the bank',
+    async () => {
+      await request(
+        '/questions',
+        { questions: Array.from({ length: 25 }, () => question(2)) },
+        teacherCookie,
+      );
+      const page = await request('/questions?page=1&pageSize=20', undefined, teacherCookie);
+      assert.equal(page.data.items.length, 20);
+      assert.equal(page.data.total, 33);
+      const filtered = await request('/questions?number=3', undefined, teacherCookie);
+      assert.equal(filtered.data.total, 33);
+    },
+  );
   await t.test('question soft deletion affects random/exam reads', async () => {
     await request('/questions/delete', { ids: [all[3].id] }, teacherCookie);
     assert.equal(

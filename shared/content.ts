@@ -70,7 +70,7 @@ export interface ManagedTopic extends TopicSummary {
   examples: string;
   examplesPreamble: string;
 }
-export type StudentTabKey = 'topics' | 'practice' | 'exam' | 'guide';
+export type StudentTabKey = 'topics' | 'exam' | 'guide';
 export interface StudentTab {
   key: StudentTabKey;
   label: string;
@@ -96,8 +96,7 @@ export const defaultStudentSettings: StudentSettings = {
   guideTitle: 'Góc học tập',
   guideContent: '',
   tabs: [
-    { key: 'topics', label: 'Chuyên đề lớp 9', description: 'Học theo chuyên đề', visible: true },
-    { key: 'practice', label: 'Luyện câu hỏi', description: 'Rèn từng dạng bài', visible: true },
+    { key: 'topics', label: 'Chuyên đề', description: 'Học theo chuyên đề', visible: true },
     { key: 'exam', label: 'Tạo đề thi', description: 'Thử sức, bứt phá', visible: true },
     { key: 'guide', label: 'Góc học tập', description: 'Bài học và hướng dẫn', visible: true },
   ],

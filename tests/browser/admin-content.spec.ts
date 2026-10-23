@@ -106,7 +106,7 @@ ${body}
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Chỉnh sửa', exact: true }).click();
     const editor = page.getByRole('dialog', { name: 'Chỉnh sửa câu hỏi' });
-    await editor.getByLabel('Dạng câu', { exact: true }).selectOption('3');
+    await expect(editor.getByLabel('Dạng câu', { exact: true })).toHaveCount(0);
     await editor.getByLabel('Lời giải', { exact: true }).fill('Lời giải do thầy sửa: $x=2$.');
     await editor.getByLabel('Xuất bản câu hỏi cho học sinh').check();
     await editor.getByRole('button', { name: 'Lưu câu hỏi', exact: true }).click();
@@ -156,7 +156,7 @@ ${body}
     await page.getByRole('button', { name: 'Trang học sinh', exact: true }).click();
     await page.getByLabel('Tiêu đề trang học sinh').fill('Không gian Toán của lớp');
     await page
-      .getByRole('group', { name: 'Chuyên đề lớp 9', exact: true })
+      .getByRole('group', { name: 'Chuyên đề', exact: true })
       .getByLabel('Tên tab', { exact: true })
       .fill('Bài học của lớp');
     await page
@@ -166,7 +166,7 @@ ${body}
     await page
       .getByLabel('Nội dung góc học tập', { exact: true })
       .fill('Góc học tập do thầy đưa lên: $2+2=4$.');
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < 2; i++)
       await page.getByRole('button', { name: 'Đưa tab Góc học tập lên', exact: true }).click();
     await page.getByRole('button', { name: 'Lưu trang học sinh', exact: true }).click();
     await expect(page.locator('.notice-success[role=status]')).toContainText(

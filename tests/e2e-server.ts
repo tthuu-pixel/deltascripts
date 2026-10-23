@@ -85,6 +85,25 @@ for (const [index, topic] of fixtureTopics.entries()) {
     .bind(topic.id, topic.number)
     .run();
 }
+// Six non-algebra fixture sources form the second topic; exam positions share this pool.
+await db
+  .prepare(
+    'INSERT OR IGNORE INTO question_topics(question_id,topic_id) SELECT id,? FROM questions WHERE active=1 AND number!=1',
+  )
+  .bind(fixtureTopics[1].id)
+  .run();
+await db
+  .prepare('UPDATE exam_settings SET content=? WHERE id=1')
+  .bind(
+    JSON.stringify(
+      Array.from({ length: 7 }, (_, i) => ({
+        position: i + 1,
+        description: `Nội dung ${i + 1}`,
+        topicIds: [fixtureTopics[i === 0 ? 0 : 1].id],
+      })),
+    ),
+  )
+  .run();
 await db
   .prepare('UPDATE topics SET examples=? WHERE id=?')
   .bind('Ví dụ riêng của lớp: giải $x+1=3$ được $x=2$.', fixtureTopics[0].id)

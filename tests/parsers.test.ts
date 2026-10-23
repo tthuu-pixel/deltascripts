@@ -93,9 +93,10 @@ test('bad DOCX fails clearly rather than creating a fake question', async () => 
   await assert.rejects(() => parseWordFile(new File(['bad'], 'broken.docx')));
   await assert.rejects(() => parseWordFile(word as unknown as File));
 });
-test('exam validates seven unique types and uses a wall-clock deadline', () => {
+test('exam validates seven distinct sources and uses a wall-clock deadline', () => {
   const questions = Array.from({ length: 7 }, (_, i) => ({
-    number: i + 1,
+    id: String(i),
+    number: 1,
     statementRaw: 'q',
     solutionRaw: 'a',
   }));

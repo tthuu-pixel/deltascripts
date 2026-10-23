@@ -7,7 +7,6 @@ export interface ClassificationOutcome {
   label: string;
   state: 'assigned' | 'unassigned' | 'failed';
   reason: string;
-  number: number;
 }
 export interface ScanProgress {
   processed: number;
@@ -30,18 +29,8 @@ export function waitForQuota(ms: number, signal: AbortSignal) {
   });
 }
 export function applySuggestion(question: Question, suggestion: AiSuggestion): Question {
-  const preserveNumber =
-    question.number >= 1 && question.number <= 7 && question.numberOrigin !== 'order';
   return {
     ...question,
-    number: preserveNumber
-      ? question.number
-      : (suggestion.number ?? (question.numberOrigin === 'order' ? 0 : question.number)),
-    numberOrigin: preserveNumber
-      ? question.numberOrigin
-      : suggestion.number
-        ? 'ai'
-        : question.numberOrigin,
     topicIds: [...new Set([...(question.topicIds || []), ...suggestion.topicIds])],
   };
 }
@@ -69,13 +58,8 @@ export async function scanQuestions(
   let processed = 0;
   const progress = (waiting = false) =>
     options.onProgress?.({ processed, total: remaining.length, waiting });
-  const finish = (
-    q: Question,
-    state: ClassificationOutcome['state'],
-    reason: string,
-    number = q.number,
-  ) => {
-    options.onOutcome({ id: q.id, label: q.label, state, reason, number });
+  const finish = (q: Question, state: ClassificationOutcome['state'], reason: string) => {
+    options.onOutcome({ id: q.id, label: q.label, state, reason });
     processed++;
     progress();
   };
@@ -162,14 +146,10 @@ export async function scanQuestions(
       try {
         await options.apply(q, suggestion, signal);
         if (signal.aborted) throw aborted();
-        const uncertainNumber = q.numberOrigin === 'order' && suggestion.number === null;
         finish(
           q,
-          suggestion.topicIds.length && !uncertainNumber ? 'assigned' : 'unassigned',
-          uncertainNumber
-            ? `Chưa rõ dạng Câu 1–7. ${suggestion.reason}`
-            : suggestion.reason || 'Chưa tìm được chuyên đề phù hợp.',
-          next.number,
+          suggestion.topicIds.length ? 'assigned' : 'unassigned',
+          suggestion.reason || 'Chưa tìm được chuyên đề phù hợp.',
         );
       } catch (e) {
         if (signal.aborted) throw aborted();

@@ -38,7 +38,6 @@ export interface AiSettings {
 }
 export interface AiSuggestion {
   id: string;
-  number: number | null;
   topicIds: string[];
   reason: string;
 }

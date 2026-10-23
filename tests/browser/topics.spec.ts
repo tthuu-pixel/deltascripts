@@ -6,7 +6,7 @@ async function enter(page: Page) {
   await page.getByPlaceholder('Ví dụ: 9A1').fill('9A');
   await page.getByPlaceholder('8 KÝ TỰ').fill('E2E00001');
   await page.getByRole('button', { name: 'Vào học tập', exact: true }).click();
-  await expect(page.getByRole('tab', { name: 'Chuyên đề lớp 9' })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Chuyên đề' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -88,7 +88,7 @@ test('topic exercise pages handle retry, separate answers and an empty topic', a
   let topicId = '';
   await page.route('**/api/topic-questions?**', async (route) => {
     const params = new URL(route.request().url()).searchParams;
-    expect(params.get('number')).toBe('0');
+    expect(params.has('number')).toBe(false);
     topicId ||= params.get('topicId')!;
     if (fail) {
       fail = false;
@@ -151,11 +151,11 @@ test('large tabs support keyboard navigation; AI conversation survives closing t
   page,
 }) => {
   await enter(page);
-  const first = page.getByRole('tab', { name: 'Chuyên đề lớp 9' });
+  const first = page.getByRole('tab', { name: 'Chuyên đề' });
   await first.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Luyện câu hỏi' })).toBeFocused();
-  await expect(page.getByRole('tab', { name: 'Luyện câu hỏi' })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Tạo đề thi' })).toBeFocused();
+  await expect(page.getByRole('tab', { name: 'Tạo đề thi' })).toHaveAttribute(
     'aria-selected',
     'true',
   );

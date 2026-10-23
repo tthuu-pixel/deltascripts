@@ -11,13 +11,12 @@ export function validExam(value: any): value is SavedExam {
     !!value &&
     Array.isArray(value.questions) &&
     value.questions.length === 7 &&
-    new Set(value.questions.map((q: any) => q.number)).size === 7 &&
+    new Set(value.questions.map((q: any) => q?.id)).size === 7 &&
     value.questions.every(
       (q: any) =>
         q &&
-        Number.isInteger(q.number) &&
-        q.number >= 1 &&
-        q.number <= 7 &&
+        typeof q.id === 'string' &&
+        !!q.id &&
         typeof q.statementRaw === 'string' &&
         typeof q.solutionRaw === 'string',
     ) &&

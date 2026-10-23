@@ -6487,3 +6487,45 @@ label.publish-controls {
 .import-file-errors p {
   margin-top: 8px;
 }
+
+/* Topic-based navigation and exam blueprint. */
+.study-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.exam-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.exam-slot-card {
+  min-width: 0;
+}
+.exam-slot-card .section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.exam-slot-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exam-question .exercise-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.exam-question .small-label {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .exam-slot-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .study-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

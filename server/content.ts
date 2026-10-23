@@ -91,11 +91,13 @@ async function settings(db: Database): Promise<StudentSettings> {
   const row = await db
     .prepare('SELECT content,version FROM student_settings WHERE id=1')
     .first<{ content: string; version: number }>();
-  return {
-    ...defaultStudentSettings,
-    ...JSON.parse(row?.content || '{}'),
-    version: row?.version || 1,
-  };
+  const saved = JSON.parse(row?.content || '{}');
+  // Remove the retired tab while preserving the administrator's other settings and ordering.
+  const tabs = (saved.tabs || defaultStudentSettings.tabs).filter((tab: any) =>
+    defaultStudentSettings.tabs.some((current) => current.key === tab.key),
+  );
+  if (!tabs.some((tab: any) => tab.visible)) tabs[0].visible = true;
+  return { ...defaultStudentSettings, ...saved, tabs, version: row?.version || 1 };
 }
 function validateSettings(value: any): StudentSettings {
   requireValue(
@@ -105,11 +107,11 @@ function validateSettings(value: any): StudentSettings {
   const keys = defaultStudentSettings.tabs.map((t) => t.key);
   requireValue(
     Array.isArray(value.tabs) &&
-      value.tabs.length === 4 &&
-      new Set(value.tabs.map((t: any) => t?.key)).size === 4 &&
+      value.tabs.length === 3 &&
+      new Set(value.tabs.map((t: any) => t?.key)).size === 3 &&
       value.tabs.every((t: any) => t && keys.includes(t.key) && typeof t.visible === 'boolean') &&
       value.tabs.some((t: any) => t.visible),
-    'Cần đủ bốn tab và ít nhất một tab đang hiển thị.',
+    'Cần đủ ba tab và ít nhất một tab đang hiển thị.',
   );
   return {
     version: value.version,
@@ -296,42 +298,25 @@ export async function contentRoute(
   if (route === '/api/topic-questions' && method === 'GET') {
     const topicId = url.searchParams.get('topicId') || '';
     const topic = await visibleTopic(db, topicId, admin, false);
-    const number = Number(url.searchParams.get('number') || 0);
-    requireValue(
-      Number.isInteger(number) && number >= 0 && number <= 7,
-      'Dạng câu phải từ 1 đến 7.',
-    );
     const page = Math.max(
       1,
       Math.min(100_000, Math.floor(Number(url.searchParams.get('page')) || 1)),
     );
-    const condition = `qt.topic_id=? AND q.active=1 AND q.published=1 ${number ? 'AND q.number=?' : ''}`;
-    const params = [topicId, ...(number ? [number] : [])];
+    const condition = `qt.topic_id=? AND q.active=1 AND q.published=1 `;
+    const params = [topicId];
     const result = await query(
       db,
       `SELECT ${questionSelect} FROM question_topics qt JOIN questions q ON q.id=qt.question_id WHERE ${condition} ORDER BY q.created_at DESC,q.id LIMIT 10 OFFSET ?`,
       [...params, (page - 1) * 10],
     );
-    const total = number
-      ? (await db
-          .prepare(
-            `SELECT count(*) AS n FROM question_topics qt JOIN questions q ON q.id=qt.question_id WHERE ${condition}`,
-          )
-          .bind(...params)
-          .first<{ n: number }>())!.n
-      : topic.questionCount;
+    const total = topic.questionCount;
     return { items: result.rows.map(publicQuestion), total, page, pageSize: 10 };
   }
   if (route === '/api/topic-question/random' && method === 'GET') {
     const topicId = url.searchParams.get('topicId') || '';
     await visibleTopic(db, topicId, admin, false);
-    const number = Number(url.searchParams.get('number'));
-    requireValue(
-      Number.isInteger(number) && number >= 1 && number <= 7,
-      'Dạng câu phải từ 1 đến 7.',
-    );
-    const result = await query(db, topicRandomQuestionSql, [topicId, number]);
-    requireValue(result.rows.length, `Chưa có bài tập Câu ${number} trong chuyên đề này.`, 404);
+    const result = await query(db, topicRandomQuestionSql, [topicId]);
+    requireValue(result.rows.length, 'Chưa có bài tập đã xuất bản trong chuyên đề này.', 404);
     return { question: publicQuestion(result.rows[0]) };
   }
   if (route === '/api/questions/classify' && method === 'POST') {
@@ -342,11 +327,6 @@ export async function contentRoute(
         body.ids.every(uuid) &&
         new Set(body.ids).size === body.ids.length,
       'Chọn từ 1 đến 100 câu hỏi khác nhau.',
-    );
-    requireValue(
-      body.number === undefined ||
-        (Number.isInteger(body.number) && body.number >= 1 && body.number <= 7),
-      'Dạng câu phải từ 1 đến 7.',
     );
     requireValue(
       body.published === undefined || typeof body.published === 'boolean',
@@ -361,7 +341,7 @@ export async function contentRoute(
       await validateTopicsExist(db, body.topicIds);
     }
     requireValue(
-      body.number !== undefined || body.published !== undefined || body.topicIds !== undefined,
+      body.published !== undefined || body.topicIds !== undefined,
       'Chọn nội dung cần cập nhật.',
     );
     for (let i = 0; i < body.ids.length; i += 90) {
@@ -378,10 +358,7 @@ export async function contentRoute(
       );
     }
     const updates: Statement[] = [];
-    const columns = [
-      body.number !== undefined ? 'slot=CASE WHEN number!=? THEN NULL ELSE slot END,number=?' : '',
-      body.published !== undefined ? 'published=?' : '',
-    ].filter(Boolean);
+    const columns = [body.published !== undefined ? 'published=?' : ''].filter(Boolean);
     if (columns.length)
       for (let i = 0; i < body.ids.length; i += 90) {
         const ids = body.ids.slice(i, i + 90);
@@ -390,11 +367,7 @@ export async function contentRoute(
             .prepare(
               `UPDATE questions SET ${columns.join(',')} WHERE active=1 AND id IN (${marks(ids.length)})`,
             )
-            .bind(
-              ...(body.number !== undefined ? [body.number, body.number] : []),
-              ...(body.published !== undefined ? [body.published ? 1 : 0] : []),
-              ...ids,
-            ),
+            .bind(...(body.published !== undefined ? [body.published ? 1 : 0] : []), ...ids),
         );
       }
     if (body.topicIds !== undefined)

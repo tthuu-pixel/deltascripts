@@ -3,11 +3,12 @@ import {
   readQuestionSelection,
   readSelectedQuestions,
 } from './question-selection';
+import { generateExam, examSettingsRoute } from './exam';
 import { generateReply, providerModels } from './ai-provider';
 import { aiProviders, type AiProvider } from '../shared/ai';
 import { validateAiConfig } from './admin-ai';
 import type { Database, Statement } from './database.ts';
-import { publicQuestion, query, questionSelect, randomQuestionSql } from './database.ts';
+import { publicQuestion, query, questionSelect } from './database.ts';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './auth.ts';
 import { parseTexText } from '../shared/texParser.ts';
 import { HttpError, requireValue } from './errors.ts';
@@ -32,10 +33,6 @@ export function validateQuestion(q: any): unknown[] {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(q.id || ''),
     'ID câu hỏi không hợp lệ.',
   );
-  requireValue(
-    Number.isInteger(q.number) && q.number >= 1 && q.number <= 7,
-    'Dạng câu phải từ 1 đến 7.',
-  );
   requireValue(['word', 'tex'].includes(q.sourceType), 'Nguồn câu hỏi phải là Word hoặc TeX.');
   requireValue(
     q.published === undefined || typeof q.published === 'boolean',
@@ -55,8 +52,9 @@ export function validateQuestion(q: any): unknown[] {
   );
   return [
     q.id,
-    text(q.label) || `Câu ${q.number}`,
-    q.number,
+    text(q.label) || 'Bài tập',
+    // Compatibility column for old storage; no classification or exam logic uses it.
+    Number.isInteger(q.number) && q.number >= 1 && q.number <= 7 ? q.number : 1,
     q.sourceType,
     q.statementRaw,
     q.solutionRaw || '',
@@ -435,27 +433,13 @@ export function createApp(db: Database, options: Options = {}) {
             pageSize: size,
           });
         }
-        if ((route === '/api/questions/random' || route === '/api/exam') && method === 'GET') {
+        if (route === '/api/admin/exam-settings') {
+          await session(req, true);
+          return json({ success: true, ...(await examSettingsRoute(db, method, body)) });
+        }
+        if (route === '/api/exam' && method === 'GET') {
           await session(req);
-          const single = route.endsWith('/random'),
-            number = Number(url.searchParams.get('number'));
-          if (single)
-            requireValue(
-              Number.isInteger(number) && number >= 1 && number <= 7,
-              'Dạng câu phải từ 1 đến 7.',
-            );
-          const { rows } = await query(db, randomQuestionSql(single), single ? [number] : []);
-          if (single) {
-            requireValue(rows.length, `Chưa có câu hỏi cho Câu ${number}.`, 404);
-            return json({ success: true, question: publicQuestion(rows[0]) });
-          }
-          const missing = [1, 2, 3, 4, 5, 6, 7].filter((n) => !rows.some((q) => q.number === n));
-          requireValue(
-            !missing.length,
-            `Chưa đủ dữ liệu tạo đề. Thiếu Câu ${missing.join(', ')}.`,
-            422,
-          );
-          return json({ success: true, items: rows.map(publicQuestion) });
+          return json({ success: true, items: await generateExam(db) });
         }
         if (route === '/api/questions' && method === 'POST') {
           await session(req, true);
@@ -564,11 +548,7 @@ export function createApp(db: Database, options: Options = {}) {
           const message = similar
             ? 'Tạo một bài Toán 9 tương tự với số liệu khác, độ khó tương đương. Trả duy nhất LaTeX trong môi trường bt, phải có lời giải đầy đủ trong \\loigiai{...}. Kiểm chứng số liệu và đáp án. Không dùng Markdown.'
             : text(body.message, 5000);
-          if (similar)
-            requireValue(
-              context && Number.isInteger(body.number) && body.number >= 1 && body.number <= 7,
-              'Cần chọn câu hỏi gốc để tạo bài tương tự.',
-            );
+          if (similar) requireValue(!!context, 'Cần chọn câu hỏi gốc để tạo bài tương tự.');
           requireValue(message, 'Vui lòng nhập câu hỏi.');
           const history =
             !similar && Array.isArray(body.history)
@@ -608,7 +588,7 @@ export function createApp(db: Database, options: Options = {}) {
           );
           return json({
             success: true,
-            question: { ...parsed[0], number: body.number, label: `Câu ${body.number} (tương tự)` },
+            question: { ...parsed[0], label: 'Bài tập tương tự' },
           });
         }
         throw new HttpError(404, 'API không tồn tại.');

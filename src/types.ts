@@ -1,7 +1,9 @@
 export interface Question {
   id: string;
   label: string;
+  /** Legacy storage/source order only. Never used to classify questions or build exams. */
   number: number;
+  examDescription?: string;
   numberOrigin?: 'explicit' | 'order' | 'ai' | 'manual';
   sourceLength?: number;
   statementRaw: string;

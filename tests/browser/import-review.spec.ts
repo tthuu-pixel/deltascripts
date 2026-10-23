@@ -25,7 +25,6 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
               content: JSON.stringify({
                 items: input.questions.map((q: any) => ({
                   id: q.id,
-                  number: 3,
                   topicIds: [topicId],
                   reason: 'Cùng nội dung căn thức trong chuyên đề đã tạo.',
                 })),
@@ -41,7 +40,9 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
   try {
     await createTeacher(runtime.db, 'review@example.test', 'review-browser-test-password');
     await runtime.db
-      .prepare('INSERT INTO topics(id,title,category,icon,color,published) VALUES(?,?,?,?,?,0)')
+      .prepare(
+        "INSERT INTO topics(id,title,category,icon,color,published,description) VALUES(?,?,?,?,?,0,'Các bài tính toán căn thức và phân số.')",
+      )
       .bind(topicId, 'Căn thức do thầy tạo', 'Đại số', 'radical', 'blue')
       .run();
     await page.route('**/api/**', async (route) => {
@@ -87,6 +88,7 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     await expect(review).toContainText('Điểm số trong nguồn: 1,0 điểm');
     await expect(review).toContainText('Mã trong nguồn: 9H4V1-4');
     await expect(review.locator('.editor-preview .katex').first()).toBeVisible();
+    await review.getByAltText('Hình minh họa TikZ').scrollIntoViewIfNeeded();
     await expect(review.getByAltText('Hình minh họa TikZ')).toBeVisible();
     await review.getByText('Nguồn gốc để đối chiếu', { exact: true }).click();
     await expect(review.getByLabel('Nguồn gốc', { exact: true })).toHaveValue(
@@ -126,7 +128,7 @@ test('admin configures AI, reviews normalization and source, corrects syntax, ac
     ).rows;
     expect(saved).toHaveLength(2);
     expect(saved.every((q) => q.published === 0)).toBeTruthy();
-    expect(saved.map((q) => q.number).sort()).toEqual([2, 3]);
+    expect(saved.map((q) => q.number).sort()).toEqual([1, 2]);
     expect(
       saved.some(
         (q) =>

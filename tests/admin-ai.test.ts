@@ -37,16 +37,17 @@ test('AI configuration validates destinations and strictly validates advisory re
       ['real'],
     ),
   );
-  assert.throws(() =>
-    validateSuggestions({ items: [{ id: 'q', number: 8, topicIds: [], reason: '' }] }, ['q'], []),
+  assert.deepEqual(
+    validateSuggestions({ items: [{ id: 'q', topicIds: [], reason: '' }] }, ['q'], []),
+    [{ id: 'q', topicIds: [], reason: '' }],
   );
   assert.throws(() => validateSuggestions({ items: [] }, ['q'], []));
   assert.throws(() =>
     validateSuggestions(
       {
         items: [
-          { id: 'q', number: null, topicIds: [], reason: '' },
-          { id: 'q', number: null, topicIds: [], reason: '' },
+          { id: 'q', topicIds: [], reason: '' },
+          { id: 'q', topicIds: [], reason: '' },
         ],
       },
       ['q', 'other'],
@@ -91,6 +92,14 @@ test('admin-only encrypted settings and four provider adapters return suggestion
       const prompt =
         provider === 'gemini' ? body.contents[0].parts[0].text : body.messages.at(-1).content;
       assert(prompt.includes('Chuyên đề thử'));
+      const sent = JSON.parse(prompt);
+      assert.equal(sent.topics[0].description, 'Các bài thực hiện phép tính số học.');
+      assert(!Object.hasOwn(sent, 'typeExamples'));
+      assert(
+        sent.questions.every(
+          (q: any) => !Object.hasOwn(q, 'currentNumber') && !Object.hasOwn(q, 'numberOrigin'),
+        ),
+      );
       assert(!prompt.includes('Never send this solution'));
       const output = JSON.stringify(suggestions);
       return Response.json(
@@ -143,7 +152,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
         topic: {
           title: 'Chuyên đề thử',
           category: 'Đại số',
-          description: '',
+          description: 'Các bài thực hiện phép tính số học.',
           theory: '',
           preamble: '',
           icon: 'radical',
@@ -160,7 +169,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
     solutionRaw: 'Never send this solution',
   };
   suggestions = {
-    items: [{ id: question.id, number: null, topicIds: [topic.id], reason: 'Phù hợp nội dung.' }],
+    items: [{ id: question.id, topicIds: [topic.id], reason: 'Phù hợp nội dung.' }],
   };
   let version = 0;
   for (const [key, defaults] of Object.entries(aiProviders)) {
@@ -199,7 +208,7 @@ test('admin-only encrypted settings and four provider adapters return suggestion
     400,
   );
   suggestions = {
-    items: [{ id: question.id, number: 2, topicIds: [crypto.randomUUID()], reason: 'Invented' }],
+    items: [{ id: question.id, topicIds: [crypto.randomUUID()], reason: 'Invented' }],
   };
   assert.equal((await req('/admin/ai/classify', { questions: [question] }, admin)).status, 502);
   refused = true;

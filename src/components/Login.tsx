@@ -281,7 +281,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <Icon name="practice" size={28} />
           </span>
           <span>
-            <h2>Luyện câu hỏi</h2>
+            <h2>Bài tập chuyên đề</h2>
             <p>Tự giải, đối chiếu, rồi tiến bộ.</p>
           </span>
           <span className="feature-no">02</span>

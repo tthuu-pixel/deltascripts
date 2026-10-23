@@ -24,7 +24,6 @@ async function prepare(page: Page, count: number) {
               content: JSON.stringify({
                 items: input.questions.map((q: any) => ({
                   id: q.id,
-                  number: 7,
                   topicIds: q.statement.includes('Không khớp') ? [] : [topicId],
                   reason: q.statement.includes('Không khớp')
                     ? 'Chưa có chuyên đề phù hợp.'
@@ -43,7 +42,9 @@ async function prepare(page: Page, count: number) {
     [manualTopic, 'Chuyên đề đã gán thủ công'],
   ])
     await runtime.db
-      .prepare('INSERT INTO topics(id,title,icon,color,published) VALUES(?,?,?,?,1)')
+      .prepare(
+        "INSERT INTO topics(id,title,icon,color,published,description) VALUES(?,?,?,?,1,'Bài toán giải phương trình và tính toán.')",
+      )
       .bind(id, title, 'equation', 'blue')
       .run();
   await adminAiRoute(
@@ -90,7 +91,7 @@ async function prepare(page: Page, count: number) {
   return { runtime, topicId, manualTopic, calls, questions };
 }
 
-test('upload automatically classifies every question, keeps explicit types and accepts the whole import once', async ({
+test('upload automatically classifies every question, keeps source labels and accepts the whole import once', async ({
   page,
 }) => {
   const { runtime, topicId, calls } = await prepare(page, 0);
@@ -366,9 +367,7 @@ test('automatic file import saves good questions, isolates bad files and questio
     ).rows;
     expect(rows).toHaveLength(15);
     expect(
-      rows.every(
-        (row) => row.number === 7 && row.published === 0 && row.solution_raw === 'Lời giải gốc.',
-      ),
+      rows.every((row) => row.published === 0 && row.solution_raw === 'Lời giải gốc.'),
     ).toBeTruthy();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: testInfo.outputPath('auto-import-exceptions-mobile.png') });
@@ -390,7 +389,6 @@ test('automatic file import saves good questions, isolates bad files and questio
     await expect(summary).toContainText('16 / 17');
     await expect(review.getByLabel('Đề bài đang dùng')).toHaveValue('Công thức lỗi $x+1.');
     await review.getByLabel('Đề bài đang dùng').fill('Công thức đã sửa $x+1$.');
-    await review.getByLabel('Dạng câu của bài đang duyệt').selectOption('7');
     await review
       .getByRole('group', { name: /Chuyên đề của bài đang duyệt/ })
       .getByRole('checkbox', { name: 'Chuyên đề AI nhận dạng', exact: true })

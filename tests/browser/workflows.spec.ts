@@ -14,7 +14,11 @@ async function student(page: Page) {
   await page.getByPlaceholder('8 KÝ TỰ').fill('E2E00001');
   await page.getByRole('button', { name: 'Vào học tập' }).click();
   await expect(page.getByRole('heading', { name: /^Không gian học tập/ })).toBeVisible();
-  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
+}
+async function openTopic(page: Page, title: string) {
+  await page.getByRole('tab', { name: 'Chuyên đề', exact: true }).click();
+  await page.locator('.topic-card').filter({ hasText: title }).click();
+  await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
 }
 async function teacher(page: Page) {
   await page.goto('/');
@@ -38,14 +42,14 @@ test('login validation, role forgery rejected, student rendering sanitized and l
   await page.getByRole('button', { name: 'Vào học tập' }).click();
   await expect(page.getByText('Vui lòng nhập đầy đủ thông tin.')).toBeVisible();
   await student(page);
-  await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
+  await openTopic(page, 'Căn thức của lớp');
   await expect(page.locator('.math-content .katex').first()).toBeVisible();
   expect(await page.evaluate(() => (window as any).__xss)).toBeUndefined();
   await expect(page.locator('.math-content [onerror]')).toHaveCount(0);
   await expect(page.locator('.math-content a[href^="javascript:"]')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Xem lời giải', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Lời giải chi tiết' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đáp án', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Đáp án', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Đáp án', exact: true })).toBeVisible();
   expect(exceptions).toEqual([]);
 });
 test('exam and clock survive reload; mobile AI preserves conversation and correct context', async ({
@@ -91,7 +95,7 @@ test('exam and clock survive reload; mobile AI preserves conversation and correc
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   ).toBeTruthy();
 });
-test('TikZ errors do not block the question; retry and similar exercise preserve the selected type', async ({
+test('TikZ errors do not block topic exercises and compilation can be retried', async ({
   page,
 }) => {
   let attempts = 0;
@@ -102,31 +106,12 @@ test('TikZ errors do not block the question; retry and similar exercise preserve
       : route.fulfill({ json: { base64: png } });
   });
   await student(page);
-  await page.getByRole('button', { name: 'Câu 2', exact: true }).click();
+  await openTopic(page, 'Đường tròn của lớp');
   await expect(page.locator('article .katex').first()).toBeVisible();
   await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
-  await expect(page.getByAltText('Hình minh họa TikZ')).toBeVisible();
-  let original: any;
-  await page.route('**/api/ai/similar', (route) => {
-    original = route.request().postDataJSON();
-    return route.fulfill({
-      json: {
-        success: true,
-        question: {
-          id: 'similar-test',
-          label: 'Câu 2 (tương tự)',
-          number: 2,
-          sourceType: 'tex',
-          statementRaw: 'Bài tương tự $x+2$.',
-          solutionRaw: 'Answer',
-        },
-      },
-    });
-  });
-  await page.getByRole('button', { name: 'Bài tập tương tự', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Câu 2 (tương tự)', exact: true })).toBeVisible();
-  expect(original.number).toBe(2);
-  expect(original.context).toContain('Tính $2+1$');
+  await expect(page.getByAltText('Hình minh họa TikZ')).toHaveCount(3);
+  await expect(page.getByAltText('Hình minh họa TikZ').first()).toBeVisible();
+  expect(attempts).toBe(4);
 });
 test('drawing declarations survive the database and browser cache avoids recompilation after reload', async ({
   page,
@@ -137,18 +122,17 @@ test('drawing declarations survive the database and browser cache avoids recompi
     return route.fulfill({ json: { image_base64: png } });
   });
   await student(page);
-  await page.getByRole('button', { name: 'Câu 3', exact: true }).click();
-  await expect(page.getByAltText('Hình minh họa TikZ')).toBeVisible();
-  expect(documents).toHaveLength(1);
-  expect(documents[0]).toContain(String.raw`\def\R{3}`);
-  expect(documents[0]).toContain(String.raw`\tikzset{netchinh`);
-  expect(documents[0]).toContain(String.raw`\begin {tikzpicture}`);
-  expect(documents[0]).not.toContain('tkz-euclide');
+  await openTopic(page, 'Đường tròn của lớp');
+  await expect(page.getByAltText('Hình minh họa TikZ')).toHaveCount(3);
+  expect(documents).toHaveLength(3);
+  expect(documents.join('\n')).toContain(String.raw`\def\R{3}`);
+  expect(documents.join('\n')).toContain(String.raw`\tikzset{netchinh`);
+  expect(documents.join('\n')).toContain(String.raw`\begin {tikzpicture}`);
+  expect(documents.join('\n')).not.toContain('tkz-euclide');
   await page.reload();
-  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
-  await page.getByRole('button', { name: 'Câu 3', exact: true }).click();
-  await expect(page.getByAltText('Hình minh họa TikZ')).toBeVisible();
-  expect(documents).toHaveLength(1);
+  await openTopic(page, 'Đường tròn của lớp');
+  await expect(page.getByAltText('Hình minh họa TikZ')).toHaveCount(3);
+  expect(documents).toHaveLength(3);
 });
 test('teacher imports Word/TeX in worker, confirms persistence, deletes questions, creates/revokes code', async ({
   page,
@@ -272,14 +256,15 @@ test('student selects four AI providers with model dropdowns, session profiles a
     'my-new-model',
   );
   await settings.getByRole('button', { name: 'Đóng', exact: true }).click();
-  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
-  await page.getByRole('button', { name: 'Câu 1', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tạo đề thi', exact: true }).click();
+  await page.getByRole('button', { name: 'Tạo đề tham khảo', exact: true }).click();
+  await page.getByRole('button', { name: 'Bắt đầu làm bài', exact: true }).click();
   let sent: any;
   await page.route('**/api/ai', (route) => {
     sent = route.request().postDataJSON();
     return route.fulfill({ json: { success: true, reply: 'Gợi ý của AI đã chọn.' } });
   });
-  await page.getByRole('button', { name: 'Hỏi AI về câu này', exact: true }).click();
+  await page.getByRole('button', { name: 'Hỏi AI về câu này', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Tin nhắn cho trợ lý AI' }).fill('Gợi ý');
   await page.getByRole('button', { name: 'Gửi', exact: true }).click();
   await expect.poll(() => sent?.provider).toBe('openai');

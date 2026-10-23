@@ -204,7 +204,7 @@ export default function StudentSettingsManager({
                     type="button"
                     className="icon-button"
                     aria-label={`Đưa tab ${tab.label} xuống`}
-                    disabled={index === 3}
+                    disabled={index === settings.tabs.length - 1}
                     onClick={() => {
                       const tabs = [...settings.tabs];
                       [tabs[index + 1], tabs[index]] = [tabs[index], tabs[index + 1]];

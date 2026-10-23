@@ -33,33 +33,25 @@ test('live TikZ: real compiler response decodes and displays in the application'
   await page.getByPlaceholder('Ví dụ: 9A1').fill('9A1');
   await page.getByPlaceholder('8 KÝ TỰ').fill('E2E00001');
   await page.getByRole('button', { name: 'Vào học tập' }).click();
-  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
-  for (const number of [2, 3, 4]) {
-    await page.getByRole('button', { name: `Câu ${number}`, exact: true }).click();
-    await expect(page.locator('article .katex').first()).toBeVisible();
-    const image = page.getByAltText('Hình minh họa TikZ');
-    await expect(image).toBeVisible({ timeout: 25_000 });
+  await page.locator('.topic-card').filter({ hasText: 'Đường tròn của lớp' }).click();
+  await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
+  await expect(page.getByAltText('Hình minh họa TikZ')).toHaveCount(3, { timeout: 60_000 });
+  for (const [index, image] of (await page.getByAltText('Hình minh họa TikZ').all()).entries()) {
     const dimensions = await image.evaluate(async (element: HTMLImageElement) => {
       await element.decode();
       return { width: element.naturalWidth, height: element.naturalHeight };
     });
     expect(dimensions.width).toBeGreaterThan(100);
     expect(dimensions.height).toBeGreaterThan(100);
-    await testInfo.attach(`compiler-result-${number}`, {
+    await testInfo.attach(`compiler-result-${index}`, {
       body: JSON.stringify({ calls, dimensions }),
       contentType: 'application/json',
-    });
-    const screenshot = testInfo.outputPath(`rendered-tikz-${number}.png`);
-    await page.locator('article').screenshot({ path: screenshot });
-    await testInfo.attach(`rendered-tikz-${number}`, {
-      path: screenshot,
-      contentType: 'image/png',
     });
   }
   expect(calls.filter((call) => call.status === 200)).toHaveLength(3);
   await page.reload();
-  await page.getByRole('tab', { name: 'Luyện câu hỏi', exact: true }).click();
-  await page.getByRole('button', { name: 'Câu 3', exact: true }).click();
-  await expect(page.getByAltText('Hình minh họa TikZ')).toBeVisible();
+  await page.locator('.topic-card').filter({ hasText: 'Đường tròn của lớp' }).click();
+  await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
+  await expect(page.getByAltText('Hình minh họa TikZ')).toHaveCount(3);
   expect(calls).toHaveLength(3); // Browser cache survives a full reload.
 });

@@ -5,6 +5,7 @@ import {
 } from './studentAiSettings';
 import type { AccessCode, ChatMessage, Question, User } from '../types';
 import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/content';
+import type { ExamSettings } from '../../shared/exam';
 import type { AiSettings, AiSuggestion } from '../../shared/ai';
 
 export class ApiError extends Error {
@@ -98,19 +99,17 @@ export const apiService = {
     return (await apiRequest('/admin/ai/test', settings)).models;
   },
   async suggestQuestionTopics(
-    questions: Pick<Question, 'id' | 'statementRaw' | 'number' | 'label' | 'numberOrigin'>[],
+    questions: Pick<Question, 'id' | 'statementRaw' | 'label'>[],
     signal?: AbortSignal,
   ): Promise<AiSuggestion[]> {
     return (
       await apiRequest(
         '/admin/ai/classify',
         {
-          questions: questions.map(({ id, statementRaw, number, label, numberOrigin }) => ({
+          questions: questions.map(({ id, statementRaw, label }) => ({
             id,
             statementRaw,
-            number,
             label,
-            numberOrigin,
           })),
         },
         0,
@@ -150,16 +149,17 @@ export const apiService = {
     clearApiCache();
     clearStudentAiSettings();
   },
-  async getQuestionSelection(
-    number: number,
-    filters: { topicId: string; status: string; search: string },
-  ): Promise<string[]> {
+  async getQuestionSelection(filters: {
+    topicId: string;
+    status: string;
+    search: string;
+  }): Promise<string[]> {
     let cutoff = '',
       cursor = '';
     const ids = new Set<string>();
     do {
       const data = await apiRequest<{ ids: string[]; cutoff: string; nextCursor: string | null }>(
-        `/questions/selection?${new URLSearchParams({ number: String(number), ...filters, cutoff, cursor })}`,
+        `/questions/selection?${new URLSearchParams({ ...filters, cutoff, cursor })}`,
       );
       data.ids.forEach((id) => ids.add(id));
       cutoff = data.cutoff;
@@ -177,13 +177,11 @@ export const apiService = {
   },
   async getQuestions(
     page = 1,
-    number = 0,
     filters: { topicId?: string; status?: string; search?: string } = {},
   ): Promise<{ items: Question[]; total: number; page: number; pageSize: number }> {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: '20',
-      number: String(number),
       ...filters,
     });
     return apiRequest(`/questions?${params}`, undefined, 30_000);
@@ -215,16 +213,12 @@ export const apiService = {
   async getTopicQuestions(
     topicId: string,
     page = 1,
-    number = 0,
   ): Promise<{ items: Question[]; total: number; page: number; pageSize: number }> {
-    return apiRequest(
-      `/topic-questions?${new URLSearchParams({ topicId, page: String(page), number: String(number) })}`,
-    );
+    return apiRequest(`/topic-questions?${new URLSearchParams({ topicId, page: String(page) })}`);
   },
   async classifyQuestions(
     ids: string[],
     changes: {
-      number?: number;
       published?: boolean;
       topicIds?: string[];
       mode?: 'add' | 'replace' | 'remove';
@@ -233,11 +227,13 @@ export const apiService = {
   ) {
     return apiRequest('/questions/classify', { ids, ...changes }, 0, signal);
   },
-  async getRandomQuestion(number: number, topicId?: string): Promise<Question> {
-    const route = topicId
-      ? `/topic-question/random?${new URLSearchParams({ number: String(number), topicId })}`
-      : `/questions/random?number=${number}`;
-    return (await apiRequest(route)).question;
+  async getExamSettings(): Promise<{ settings: ExamSettings; counts: number[] }> {
+    return apiRequest('/admin/exam-settings');
+  },
+  async saveExamSettings(
+    settings: ExamSettings,
+  ): Promise<{ settings: ExamSettings; counts: number[] }> {
+    return apiRequest('/admin/exam-settings', { settings });
   },
   async generateExam(): Promise<Question[]> {
     return (await apiRequest('/exam')).items;
@@ -278,7 +274,6 @@ export const apiService = {
       await apiRequest('/ai/similar', {
         ...getStudentAiSettings(),
         context: question.statementRaw,
-        number: question.number,
         ...(apiKey ? { apiKey } : {}),
       })
     ).question;

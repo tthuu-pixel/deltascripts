@@ -60,7 +60,7 @@ test('managed content: drafts, publication, classification and settings are cont
   ).cookie;
   const empty = await req('/student-content', undefined, student);
   assert.deepEqual(empty.data.topics, []);
-  assert.equal(empty.data.settings.tabs.length, 4);
+  assert.equal(empty.data.settings.tabs.length, 3);
   assert.equal((await req('/topics')).status, 401);
   assert.equal((await req('/student-settings', undefined, student)).status, 403);
   assert.equal((await req('/topics/save', { topic: topic('Không được') }, student)).status, 403);
@@ -132,7 +132,7 @@ test('managed content: drafts, publication, classification and settings are cont
     ).status,
     409,
   );
-  assert.equal((await req('/questions?number=4', undefined, admin)).data.total, 0);
+  assert.equal((await req('/questions', undefined, admin)).data.total, 2);
   assert.equal(
     (
       await req(

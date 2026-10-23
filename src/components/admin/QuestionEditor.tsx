@@ -95,21 +95,6 @@ export default function QuestionEditor({
                 onChange={(e) => update({ label: e.target.value })}
               />
             </label>
-            <label className="field">
-              <span>Dạng câu</span>
-              <select
-                aria-label="Dạng câu"
-                value={draft.number}
-                disabled={busy}
-                onChange={(e) => update({ number: Number(e.target.value) })}
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                  <option key={n} value={n}>
-                    Câu {n}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
           <TopicPicker
             topics={topics}

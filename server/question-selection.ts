@@ -4,18 +4,12 @@ import { attachQuestionTopics } from './content';
 import { questionSelect } from './database';
 
 export function questionFilters(url: URL) {
-  const number = Number(url.searchParams.get('number') || 0);
-  requireValue(Number.isInteger(number) && number >= 0 && number <= 7, 'Dạng câu phải từ 1 đến 7.');
   const topicId = url.searchParams.get('topicId') || '';
   const status = url.searchParams.get('status') || 'all';
   const search = (url.searchParams.get('search') || '').trim().slice(0, 160);
   requireValue(['all', 'draft', 'published'].includes(status), 'Bộ lọc trạng thái không hợp lệ.');
   const conditions = ['q.active=1'];
   const params: unknown[] = [];
-  if (number) {
-    conditions.push('q.number=?');
-    params.push(number);
-  }
   if (status !== 'all') {
     conditions.push('q.published=?');
     params.push(status === 'published' ? 1 : 0);

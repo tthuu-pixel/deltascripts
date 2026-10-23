@@ -10,7 +10,6 @@ export interface AutoImportOutcome {
   label: string;
   state: 'saved' | 'needs-review' | 'failed';
   reason: string;
-  number: number;
 }
 export interface AutoImportProgress extends ScanProgress {
   saved: number;
@@ -47,8 +46,6 @@ export function autoImportIssue(
   if (new TextEncoder().encode(JSON.stringify(question)).length > 1_400_000)
     return 'Nguồn hoặc ảnh của câu này quá lớn; cần giảm kích thước trước khi thêm.';
   if (!checkClassification) return '';
-  if (!Number.isInteger(question.number) || question.number < 1 || question.number > 7)
-    return 'AI chưa xác định được dạng Câu 1–7; cần chọn dạng cho câu này.';
   if (!question.topicIds?.length) return 'Chưa tìm được chuyên đề phù hợp trong danh sách hiện có.';
   if (question.topicIds.length > 10 || question.topicIds.some((id) => !topics.has(id)))
     return 'Chuyên đề không còn tồn tại hoặc vượt giới hạn 10 chuyên đề.';
@@ -62,7 +59,6 @@ export async function runAutoImport(
   options: {
     topics: TopicSummary[];
     signal: AbortSignal;
-    number?: number;
     topicIds?: string[];
     published: boolean;
     resolvedIds?: ReadonlySet<string>;
@@ -90,7 +86,7 @@ export async function runAutoImport(
       failed: [...results.values()].filter((result) => result.state === 'failed').length,
     });
   function finish(q: Question, state: AutoImportOutcome['state'], reason: string) {
-    const outcome = { id: q.id, label: q.label, number: q.number, state, reason };
+    const outcome = { id: q.id, label: q.label, state, reason };
     results.set(q.id, outcome);
     options.onOutcome(outcome);
     progress();
@@ -149,10 +145,6 @@ export async function runAutoImport(
       checkStopped();
       try {
         const q = normalizeQuestion(source).question;
-        if (options.number) {
-          q.number = options.number;
-          q.numberOrigin = 'manual';
-        } else if (q.numberOrigin === 'order') q.number = 0;
         q.topicIds = [...new Set([...(q.topicIds || []), ...(options.topicIds || [])])];
         q.published = options.published;
         options.onQuestion(q);
@@ -163,7 +155,7 @@ export async function runAutoImport(
         }
         if (
           !autoImportIssue(q, allowed) &&
-          (options.resolvedIds?.has(q.id) || (options.number && options.topicIds?.length))
+          (options.resolvedIds?.has(q.id) || options.topicIds?.length)
         )
           known.push(q);
         else prepared.push(q);
