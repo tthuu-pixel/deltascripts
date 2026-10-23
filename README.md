@@ -56,7 +56,7 @@ CLI hỏi mật khẩu trong terminal, không hiển thị và không nhận m�
 
 Wrangler giữ log và cấu hình CLI trong `.data`, trừ khi môi trường đã cung cấp đường dẫn XDG/log riêng. Dùng các lệnh npm hoặc `node scripts/wrangler.mjs ...` để dùng thống nhất vị trí đăng nhập. `.data`, `.dev.vars`, `.env`, `.wrangler` và kết quả kiểm thử đều bị loại khỏi Git. Dữ liệu PGlite cũ trong `.data/postgres` được giữ nguyên nhưng ứng dụng mới không dùng nữa.
 
-Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file chưa tự ghi dữ liệu. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới không cần Google Sheets; nâng cấp giữ nguyên câu hỏi đã có trong D1. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
+Giáo viên đăng nhập, tạo mã 8 chữ/số, nhập `.tex`/`.docx` và xem trước, sau đó bấm **Lưu lên hệ thống** để thêm vào kho. Chọn file theo luồng duyệt chưa tự ghi dữ liệu. Nút **AI nhập tự động** xử lý và thêm thẳng các câu đủ điều kiện, gắn chuyên đề và để riêng các câu cần sửa; mặc định lưu nháp. Trong cửa sổ duyệt cũng có nút **AI xử lý và thêm tất cả**. Mỗi câu là một bản ghi; một file có thể chứa nhiều câu. Học sinh nhập tên, lớp, mã rồi chọn dạng câu hoặc đề 7 câu. Nguồn mới không cần Google Sheets; nâng cấp giữ nguyên câu hỏi đã có trong D1. Đã bỏ chức năng xuất nguồn cũ trong trình duyệt.
 
 ## Triển khai Cloudflare
 

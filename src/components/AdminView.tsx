@@ -43,6 +43,8 @@ export default function AdminView() {
     questions: Question[];
     reports?: Record<string, NormalizationReport>;
     autoClassify?: boolean;
+    autoStart?: boolean;
+    fileErrors?: string[];
   } | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
@@ -57,6 +59,9 @@ export default function AdminView() {
   const [preview, setPreview] = useState<{ question: Question; solution: boolean } | null>(null);
   const worker = useRef<Worker | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const automaticFile = useRef(false);
+  const automaticSaved = useRef(0);
+  const [importFileErrors, setImportFileErrors] = useState<string[]>([]);
   const previewDialog = useRef<HTMLDialogElement>(null);
   const previewOpen = !!preview;
   useEffect(() => {
@@ -181,6 +186,9 @@ export default function AdminView() {
   }
   function importFiles(files: File[]) {
     if (!files.length) return;
+    automaticSaved.current = 0;
+    const automatic = automaticFile.current;
+    automaticFile.current = false;
     setBusy(true);
     setError('');
     setNotice('Đang đọc file…');
@@ -196,13 +204,16 @@ export default function AdminView() {
         setNotice('');
       } else {
         setPending(event.data.questions);
+        setImportFileErrors(event.data.fileErrors || []);
         setImportReports(event.data.reports);
         setImportReviewed(false);
         setReview({
           mode: 'import',
           questions: event.data.questions,
           reports: event.data.reports,
-          autoClassify: true,
+          autoClassify: !automatic,
+          autoStart: automatic,
+          fileErrors: event.data.fileErrors || [],
         });
         setNotice(`Đã đọc ${event.data.questions.length} câu. Kiểm tra trước khi lưu.`);
       }
@@ -364,6 +375,24 @@ export default function AdminView() {
             key={review.questions.map((q) => q.id).join(',') + review.mode}
             {...review}
             topics={topics}
+            importOptions={{
+              number: importNumber,
+              topicIds: importTopicIds,
+              published: importPublished,
+            }}
+            onAutoQuestion={(q) =>
+              setPending((items) => items.map((item) => (item.id === q.id ? q : item)))
+            }
+            onAutoSaved={(items) => {
+              const ids = new Set(items.map((q) => q.id));
+              setPending((old) => old.filter((q) => !ids.has(q.id)));
+              setImportReviewed(false);
+              automaticSaved.current += items.length;
+              setNotice(
+                `AI đã thêm ${automaticSaved.current} câu vào kho và gắn chuyên đề. Các câu cần làm riêng còn trong bản nhập.`,
+              );
+              reload();
+            }}
             onClose={() => setReview(null)}
             onApply={async (items) => {
               if (review.mode === 'import') {
@@ -412,7 +441,10 @@ export default function AdminView() {
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
-                  if (!busy) importFiles(Array.from(event.dataTransfer.files));
+                  if (!busy) {
+                    automaticFile.current = false;
+                    importFiles(Array.from(event.dataTransfer.files));
+                  }
                 }}
               >
                 <span className="icon-tile tone-blue">
@@ -440,10 +472,24 @@ export default function AdminView() {
                 <button
                   className="btn btn-primary"
                   disabled={busy}
-                  onClick={() => fileInput.current?.click()}
+                  onClick={() => {
+                    automaticFile.current = false;
+                    fileInput.current?.click();
+                  }}
                 >
                   <Icon name="upload" size={18} />
                   Chọn file câu hỏi
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    automaticFile.current = true;
+                    fileInput.current?.click();
+                  }}
+                >
+                  <Icon name="spark" size={18} />
+                  AI nhập tự động
                 </button>
                 <span className="file-types">
                   .TEX
@@ -456,9 +502,20 @@ export default function AdminView() {
                 <p>Tự tách Câu 1–7, chuẩn hóa và quét AI toàn bộ file khi đã cấu hình.</p>
                 <span>02</span>
                 <p>
-                  Chọn chuyên đề, kiểm tra trạng thái rồi <strong>Lưu lên hệ thống</strong>.
+                  Dùng <strong>AI nhập tự động</strong> để thêm thẳng vào kho; chỉ xử lý riêng các
+                  câu còn lỗi.
                 </p>
               </div>
+              {!!importFileErrors.length && (
+                <div className="notice notice-error import-file-errors" role="alert">
+                  <strong>Tệp cần xử lý riêng</strong>
+                  <ul>
+                    {importFileErrors.map((message, i) => (
+                      <li key={i}>{message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {pending.length > 0 && (
                 <div className="pending-import">
                   <h3>
@@ -516,10 +573,30 @@ export default function AdminView() {
                     className="btn btn-secondary"
                     disabled={busy}
                     onClick={() =>
-                      setReview({ mode: 'import', questions: pending, reports: importReports })
+                      setReview({
+                        mode: 'import',
+                        questions: pending,
+                        reports: importReports,
+                        fileErrors: importFileErrors,
+                      })
                     }
                   >
                     {importReviewed ? 'Xem lại bản đã duyệt' : 'Chuẩn hóa & kiểm tra bản nhập'}
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      setReview({
+                        mode: 'import',
+                        questions: pending,
+                        reports: importReports,
+                        autoStart: true,
+                        fileErrors: importFileErrors,
+                      })
+                    }
+                  >
+                    AI xử lý và thêm tất cả
                   </button>
                   <button
                     className="btn btn-primary"
@@ -755,7 +832,13 @@ export default function AdminView() {
                   <br />
                   Những bài học hay sẽ sớm có mặt ở đây.
                 </p>
-                <button className="btn btn-primary" onClick={() => fileInput.current?.click()}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    automaticFile.current = false;
+                    fileInput.current?.click();
+                  }}
+                >
                   Nhập file đầu tiên
                   <Icon name="arrow" size={18} />
                 </button>

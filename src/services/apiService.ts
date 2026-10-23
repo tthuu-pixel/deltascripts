@@ -101,7 +101,22 @@ export const apiService = {
     questions: Pick<Question, 'id' | 'statementRaw' | 'number' | 'label' | 'numberOrigin'>[],
     signal?: AbortSignal,
   ): Promise<AiSuggestion[]> {
-    return (await apiRequest('/admin/ai/classify', { questions }, 0, signal)).items;
+    return (
+      await apiRequest(
+        '/admin/ai/classify',
+        {
+          questions: questions.map(({ id, statementRaw, number, label, numberOrigin }) => ({
+            id,
+            statementRaw,
+            number,
+            label,
+            numberOrigin,
+          })),
+        },
+        0,
+        signal,
+      )
+    ).items;
   },
   async getAiScanPage(
     cutoff = '',

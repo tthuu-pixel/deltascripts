@@ -265,3 +265,202 @@ test('select all covers every page, loads every selected source and batches chan
     await runtime.close();
   }
 });
+
+test('one click saves the already scanned import, reuses AI results and publishes only when selected', async ({
+  page,
+}) => {
+  const { runtime, calls, topicId } = await prepare(page, 0);
+  try {
+    const payloads: any[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/admin/ai/classify')
+        payloads.push(request.postDataJSON());
+    });
+    const tex = Array.from(
+      { length: 25 },
+      (_, i) =>
+        String.raw`\begin{bt}[Câu ${(i % 7) + 1}]Bài ${i + 1}: $\frac{2}{3}$.\loigiai{Lời giải gốc.}\end{bt}`,
+    ).join('\n');
+    await page
+      .getByLabel('Chọn file câu hỏi')
+      .setInputFiles({ name: '25-cau.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) });
+    const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
+    await expect(review.locator('.notice-success[role=status]')).toContainText('Đã quét hết');
+    expect(calls).toHaveLength(3);
+    expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(0);
+    await review.getByLabel('Xuất bản các câu xử lý được').check();
+    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
+    await expect(review.getByRole('region', { name: 'Kết quả AI tự động' })).toContainText(
+      '25 / 25',
+    );
+    await expect(review.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeEnabled();
+    expect(calls).toHaveLength(3);
+    expect(
+      payloads.every((body) =>
+        body.questions.every((q: any) => !('solutionRaw' in q) && !('raw' in q)),
+      ),
+    ).toBeTruthy();
+    const rows = (
+      await runtime.db.query(
+        'SELECT number,published,statement_raw,solution_raw,raw FROM questions',
+      )
+    ).rows;
+    expect(rows).toHaveLength(25);
+    expect(
+      rows.every(
+        (row) =>
+          row.published === 1 &&
+          String(row.statement_raw).includes('\\dfrac') &&
+          row.solution_raw === 'Lời giải gốc.' &&
+          String(row.raw).includes('\\frac'),
+      ),
+    ).toBeTruthy();
+    expect(rows.filter((row) => row.number === 1)).toHaveLength(4);
+    expect(
+      (
+        await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
+          topicId,
+        ])
+      ).rows,
+    ).toHaveLength(25);
+    await review.getByRole('button', { name: 'Hoàn tất', exact: true }).click();
+    await expect(review).toHaveCount(0);
+    await expect(page.getByText('25 câu chờ lưu', { exact: true })).toHaveCount(0);
+  } finally {
+    await runtime.close();
+  }
+});
+
+test('automatic file import saves good questions, isolates bad files and questions, then adds only manually fixed exceptions', async ({
+  page,
+}, testInfo) => {
+  const { runtime, calls, topicId } = await prepare(page, 0);
+  try {
+    const tex = Array.from({ length: 17 }, (_, i) =>
+      i === 16
+        ? String.raw`\begin{bt}Công thức lỗi $x+1.\loigiai{Lời giải gốc.}\end{bt}`
+        : String.raw`\begin{bt}${i === 15 ? 'Không khớp chuyên đề nào.' : `Tính $${i + 1}+1$.`}\loigiai{Lời giải gốc.}\end{bt}`,
+    ).join('\n');
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'AI nhập tự động', exact: true }).click();
+    await (
+      await chooser
+    ).setFiles([
+      { name: '17-cau.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) },
+      {
+        name: 'loi-file.tex',
+        mimeType: 'text/plain',
+        buffer: Buffer.from(String.raw`\begin{bt}Thiếu lệnh đóng.`),
+      },
+    ]);
+    const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
+    const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
+    await expect(summary).toContainText('15 / 17');
+    await expect(review.locator('.notice-success[role=status]')).toContainText('Đã xử lý hết');
+    await expect(review.getByRole('region', { name: 'Tệp cần xử lý riêng' })).toContainText(
+      'loi-file.tex',
+    );
+    expect(calls.flat()).toHaveLength(16);
+    const rows = (
+      await runtime.db.query('SELECT id,number,published,raw,solution_raw FROM questions')
+    ).rows;
+    expect(rows).toHaveLength(15);
+    expect(
+      rows.every(
+        (row) => row.number === 7 && row.published === 0 && row.solution_raw === 'Lời giải gốc.',
+      ),
+    ).toBeTruthy();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: testInfo.outputPath('auto-import-exceptions-mobile.png') });
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      ).toBeTruthy();
+      expect(
+        await review.evaluate((element) => element.scrollWidth <= element.clientWidth),
+      ).toBeTruthy();
+    }
+    // The unmatched question is first. Assign it manually without re-running AI for the other 15.
+    await review
+      .getByRole('group', { name: /Chuyên đề của bài đang duyệt/ })
+      .getByRole('checkbox', { name: 'Chuyên đề AI nhận dạng', exact: true })
+      .check();
+    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
+    await expect(summary).toContainText('16 / 17');
+    await expect(review.getByLabel('Đề bài đang dùng')).toHaveValue('Công thức lỗi $x+1.');
+    await review.getByLabel('Đề bài đang dùng').fill('Công thức đã sửa $x+1$.');
+    await review.getByLabel('Dạng câu của bài đang duyệt').selectOption('7');
+    await review
+      .getByRole('group', { name: /Chuyên đề của bài đang duyệt/ })
+      .getByRole('checkbox', { name: 'Chuyên đề AI nhận dạng', exact: true })
+      .check();
+    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
+    await expect(summary).toContainText('17 / 17');
+    await expect(review.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeEnabled();
+    expect(calls.flat()).toHaveLength(16);
+    const stored = (await runtime.db.query('SELECT * FROM questions')).rows;
+    expect(stored).toHaveLength(17);
+    expect(
+      stored.some(
+        (row) =>
+          String(row.raw).includes('Công thức lỗi $x+1.') &&
+          row.statement_raw === 'Công thức đã sửa $x+1$.',
+      ),
+    ).toBeTruthy();
+    expect(
+      (
+        await runtime.db.query('SELECT question_id FROM question_topics WHERE topic_id=?', [
+          topicId,
+        ])
+      ).rows,
+    ).toHaveLength(17);
+  } finally {
+    await runtime.close();
+  }
+});
+
+test('API errors wait for retry instead of requiring manual edits for every question', async ({
+  page,
+}) => {
+  const { runtime, calls } = await prepare(page, 0);
+  let unavailable = true;
+  try {
+    await page.route('**/api/admin/ai/classify', (route) =>
+      unavailable
+        ? route.fulfill({
+            status: 503,
+            json: { success: false, error: 'Kiểm tra API key và model trước khi tiếp tục.' },
+          })
+        : route.fallback(),
+    );
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'AI nhập tự động', exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: '3-cau.tex',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        Array.from(
+          { length: 3 },
+          () => String.raw`\begin{bt}Tính $1+1$.\loigiai{$2$.}\end{bt}`,
+        ).join('\n'),
+      ),
+    });
+    const review = page.getByRole('dialog', { name: 'Chuẩn hóa & kiểm tra', exact: true });
+    const summary = review.getByRole('region', { name: 'Kết quả AI tự động' });
+    await expect(summary).toContainText('Cần làm riêng 0');
+    await expect(summary).toContainText('Chờ thử lại 3');
+    await expect(review.getByRole('alert')).toContainText('Kiểm tra API key và model');
+    expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(0);
+    unavailable = false;
+    await review.getByRole('button', { name: 'AI xử lý và thêm tất cả', exact: true }).click();
+    await expect(summary).toContainText('3 / 3');
+    await expect(summary).not.toContainText('Chờ thử lại');
+    expect((await runtime.db.prepare('SELECT count(*) AS n FROM questions').first())!.n).toBe(3);
+    expect(calls.flat()).toHaveLength(3);
+  } finally {
+    await runtime.close();
+  }
+});

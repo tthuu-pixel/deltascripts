@@ -27,6 +27,16 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 **Hai trạng thái xuất bản độc lập:** câu hỏi đã xuất bản được dùng trong luyện Câu 1–Câu 7 và tạo đề. Để hiện trong một chuyên đề, cả chuyên đề và câu hỏi phải được xuất bản, đồng thời câu hỏi phải được gắn vào chuyên đề đó. Bài nháp không được API trả về cho học sinh, kể cả khi biết ID.
 
+## Nhập tự động bằng một nút
+
+- Bấm **AI nhập tự động** ở Ngân hàng câu hỏi rồi chọn file `.tex`/`.docx`. AI tự chuẩn hóa, nhận dạng Câu 1–7 theo ví dụ đang có, gắn các chuyên đề hiện có và lưu các câu đủ điều kiện. Không cần duyệt từng câu hoặc bấm lưu thêm lần nữa.
+- Nếu đã mở cửa sổ duyệt, bấm **AI xử lý và thêm tất cả**. Kết quả phân loại đã nhận được sẽ được dùng lại. Có thể bật **Xuất bản các câu xử lý được**; mặc định lưu nháp.
+- Bảng **Kết quả AI tự động** ghi số câu đã thêm và các câu cần làm riêng cùng lý do. Câu sai cú pháp, chưa xác định được dạng, chưa khớp chuyên đề hoặc quá lớn không chặn các câu khác. Tệp đọc lỗi được liệt kê riêng; tệp đọc được vẫn tiếp tục. Lỗi cấu hình AI, API hoặc mạng nằm ở nhóm **Chờ thử lại**, không bị tính là câu cần sửa thủ công; nguyên nhân được hiện ngay để khắc phục rồi tiếp tục.
+- Sửa câu còn lại hoặc chọn dạng/chuyên đề thủ công rồi bấm lại nút AI; các câu đã lưu được bỏ qua. Các câu đã sửa đủ thông tin được lưu mà không cần trả phí AI phân loại lại.
+- Có nút dừng; yêu cầu ghi đang chạy được đợi xác nhận trước khi dừng. Có thể tiếp tục trong cửa sổ hiện tại. Giữ tab mở tới khi hoàn tất; bản nhập chờ xử lý chưa được phục hồi sau khi đóng hoặc tải lại trang.
+- Nguồn TeX, lời giải và khai báo TikZ gốc được giữ để đối chiếu. Hệ thống chỉ áp dụng các quy tắc chuẩn hóa đã hỗ trợ, không tự dựng lại hình, thay số liệu, thêm đáp án hoặc tạo chuyên đề mới. Những trường hợp chưa chắc chắn được giữ cho người quản trị xử lý riêng.
+- Việc lưu theo đợt dùng lại ID câu hỏi khi thử lại, tránh tạo bản trùng nếu mạng bị ngắt lúc chờ xác nhận. Câu được AI nhận dạng nhưng chưa được lưu vẫn nằm trong bản nhập.
+
 ## Chuẩn hóa và AI phân loại
 
 - Chuẩn hóa file mới chạy trong Web Worker trên trình duyệt. Các quy tắc tự động hiện gồm: tách điểm số/tùy chọn nguồn đầu bài, bỏ nội dung comment mã nguồn đã nhận diện, chuẩn hóa `frac`, `ne/ge/le`, `quad`, `choiceTFt`, `loigiaiTF` và tùy chọn `enumerate`. Giữ nội dung toán, thứ tự, nguồn từng câu và khai báo hình vẽ. Macro, đường dẫn, comment kỹ thuật và mã TikZ được bảo vệ khỏi phép thay thế rộng.

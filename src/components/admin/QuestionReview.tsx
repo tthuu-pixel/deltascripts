@@ -1,3 +1,4 @@
+import { runAutoImport, type AutoImportOutcome } from '../../services/autoImport';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { Question } from '../../types';
 import type { TopicSummary } from '../../../shared/content';
@@ -16,6 +17,7 @@ import {
 } from '../../services/autoClassify';
 
 const LatexContent = lazy(() => import('../LatexContent'));
+const emptyFileErrors: string[] = [];
 const emptyReports: Record<string, NormalizationReport> = {};
 export type ReviewMode = 'import' | 'normalize' | 'classify';
 export default function QuestionReview({
@@ -24,6 +26,11 @@ export default function QuestionReview({
   reports = emptyReports,
   mode,
   autoClassify = false,
+  autoStart = false,
+  fileErrors = emptyFileErrors,
+  importOptions,
+  onAutoSaved,
+  onAutoQuestion,
   onClose,
   onApply,
 }: {
@@ -32,6 +39,11 @@ export default function QuestionReview({
   reports?: Record<string, NormalizationReport>;
   mode: ReviewMode;
   autoClassify?: boolean;
+  autoStart?: boolean;
+  fileErrors?: string[];
+  importOptions?: { number: number; topicIds: string[]; published: boolean };
+  onAutoSaved?: (questions: Question[]) => void;
+  onAutoQuestion?: (question: Question) => void;
   onClose: () => void;
   onApply: (questions: Question[]) => Promise<void>;
 }) {
@@ -51,7 +63,13 @@ export default function QuestionReview({
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [index, setIndex] = useState(0);
   const [source, setSource] = useState(false);
-  const [busy, setBusy] = useState(autoClassify);
+  const [busy, setBusy] = useState(autoClassify || autoStart);
+  const running = useRef(false);
+  const savedIds = useRef(new Set<string>());
+  const resolvedIds = useRef(new Set<string>());
+  const [autoResults, setAutoResults] = useState<Record<string, AutoImportOutcome>>({});
+  const [autoShown, setAutoShown] = useState(autoStart);
+  const [autoPublished, setAutoPublished] = useState(importOptions?.published || false);
   const [outcomes, setOutcomes] = useState<Record<string, ClassificationOutcome>>({});
   const scanController = useRef<AbortController | null>(null);
   const completed = useRef(new Set<string>());
@@ -69,17 +87,23 @@ export default function QuestionReview({
     };
   }, []);
   useEffect(() => {
-    if (!autoClassify) return;
-    const timer = setTimeout(() => void classify(true), 0);
+    if (!autoClassify && !autoStart) return;
+    const timer = setTimeout(() => void (autoStart ? automaticImport() : classify(true)), 0);
     return () => {
       clearTimeout(timer);
       scanController.current?.abort();
     };
-  }, [autoClassify]);
+  }, [autoClassify, autoStart]);
   useEffect(() => {
     dialog.current?.querySelector('.review-body')?.scrollTo({ top: 0 });
   }, [index, error]);
   const current = drafts[index];
+  const alreadySaved = savedIds.current.has(current.id);
+  const savedCount = savedIds.current.size;
+  const autoExceptions = Object.values(autoResults).filter(
+    (result) => result.state === 'needs-review',
+  );
+  const autoRetry = Object.values(autoResults).filter((result) => result.state === 'failed');
   const report = changes[current.id];
   const issues = useMemo(
     () =>
@@ -98,6 +122,7 @@ export default function QuestionReview({
     [current],
   );
   function update(patch: Partial<Question>) {
+    if (savedIds.current.has(current.id)) return;
     setDrafts((items) => items.map((q) => (q.id === current.id ? { ...q, ...patch } : q)));
     if (patch.number !== undefined || patch.topicIds !== undefined) {
       const next = { ...current, ...patch };
@@ -120,10 +145,16 @@ export default function QuestionReview({
     }
   }
   function close() {
-    if (!busy && confirm('Đóng bản duyệt? Các chỉnh sửa trong cửa sổ này chưa được áp dụng.'))
+    if (
+      !busy &&
+      (savedIds.current.size === drafts.length ||
+        confirm('Đóng bản duyệt? Các chỉnh sửa trong cửa sổ này chưa được áp dụng.'))
+    )
       onClose();
   }
   async function classify(automatic = false) {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError('');
     const controller = new AbortController();
@@ -148,6 +179,9 @@ export default function QuestionReview({
         signal: controller.signal,
         completed: completed.current,
         apply: (question, suggestion) => {
+          const next = applySuggestion(question, suggestion);
+          if (next.number >= 1 && next.number <= 7 && next.topicIds?.length)
+            resolvedIds.current.add(question.id);
           setReasons((old) => ({ ...old, [question.id]: suggestion.reason }));
           setDrafts((items) =>
             items.map((q) => (q.id === question.id ? applySuggestion(q, suggestion) : q)),
@@ -181,22 +215,101 @@ export default function QuestionReview({
         setProgress('Đã dừng quét. Kết quả đã nhận được giữ nguyên; có thể tiếp tục phần còn lại.');
     } finally {
       scanController.current = null;
+      running.current = false;
+      setBusy(false);
+    }
+  }
+  async function automaticImport() {
+    if (running.current || !onAutoSaved) return;
+    running.current = true;
+    const controller = new AbortController();
+    scanController.current = controller;
+    setBusy(true);
+    setAutoShown(true);
+    setError('');
+    setProgress('Đang chuẩn bị nhận dạng, chuẩn hóa và thêm câu hỏi…');
+    try {
+      const [settings, freshTopics] = await Promise.all([
+        apiService.getAiSettings(),
+        apiService.getTopics(),
+      ]);
+      if (controller.signal.aborted) return;
+      if (!settings.hasKey)
+        throw new Error('Hãy lưu API key và mô hình trong Cấu hình AI trước khi nhập tự động.');
+      if (!freshTopics.length) throw new Error('Hãy tạo chuyên đề trước khi nhập tự động.');
+      const result = await runAutoImport(
+        drafts.filter((q) => !savedIds.current.has(q.id)),
+        {
+          topics: freshTopics,
+          signal: controller.signal,
+          number: importOptions?.number,
+          topicIds: importOptions?.topicIds,
+          published: autoPublished,
+          resolvedIds: resolvedIds.current,
+          onQuestion: (q) => {
+            setDrafts((items) => items.map((item) => (item.id === q.id ? q : item)));
+            if (q.number >= 1 && q.number <= 7 && q.numberOrigin !== 'order' && q.topicIds?.length)
+              resolvedIds.current.add(q.id);
+            onAutoQuestion?.(q);
+          },
+          onSaved: (items) => {
+            items.forEach((q) => savedIds.current.add(q.id));
+            onAutoSaved(items);
+          },
+          onOutcome: (outcome) => setAutoResults((old) => ({ ...old, [outcome.id]: outcome })),
+          onProgress: (value) =>
+            setProgress(
+              value.waiting
+                ? 'Đang chờ hạn mức AI; sẽ tự tiếp tục…'
+                : `AI tự xử lý ${value.processed} / ${value.total} câu · Đã thêm ${value.saved} · Cần làm riêng ${value.needsReview} · Chờ thử lại ${value.failed}`,
+            ),
+        },
+      );
+      setProgress(
+        result.stopped
+          ? 'Đã dừng. Các câu đã thêm được giữ nguyên; có thể tiếp tục phần còn lại.'
+          : 'Đã xử lý hết. Các câu đủ điều kiện đã được thêm; chỉ các câu cần làm riêng còn chờ xử lý.',
+      );
+      if (result.stopped && !controller.signal.aborted) {
+        setError(
+          result.results.find((item) => item.state === 'failed')?.reason ||
+            'AI chưa xử lý xong. Kiểm tra cấu hình hoặc kết nối rồi tiếp tục.',
+        );
+      }
+      const first = drafts.findIndex((q) => !savedIds.current.has(q.id));
+      if (first >= 0) {
+        setIndex(first);
+        setSource(true);
+      }
+    } catch (e) {
+      if (!controller.signal.aborted) setError((e as Error).message);
+    } finally {
+      if (controller.signal.aborted)
+        setProgress('Đã dừng. Các câu đã thêm được giữ nguyên; có thể tiếp tục phần còn lại.');
+      scanController.current = null;
+      running.current = false;
       setBusy(false);
     }
   }
   async function apply() {
     setError('');
+    const remaining = drafts.filter((q) => !savedIds.current.has(q.id));
+    if (!remaining.length) {
+      onClose();
+      return;
+    }
     const invalid = drafts.findIndex(
       (q) =>
-        !q.statementRaw.trim() ||
-        q.number < 1 ||
-        q.number > 7 ||
-        (q.topicIds?.length || 0) > 10 ||
-        (mode !== 'classify' &&
-          q.sourceType === 'tex' &&
-          [...inspectTex(q.statementRaw), ...inspectTex(q.solutionRaw)].some(
-            (i) => i.severity === 'error',
-          )),
+        !savedIds.current.has(q.id) &&
+        (!q.statementRaw.trim() ||
+          q.number < 1 ||
+          q.number > 7 ||
+          (q.topicIds?.length || 0) > 10 ||
+          (mode !== 'classify' &&
+            q.sourceType === 'tex' &&
+            [...inspectTex(q.statementRaw), ...inspectTex(q.solutionRaw)].some(
+              (i) => i.severity === 'error',
+            ))),
     );
     if (invalid >= 0) {
       setIndex(invalid);
@@ -208,7 +321,7 @@ export default function QuestionReview({
     }
     setBusy(true);
     try {
-      await onApply(drafts);
+      await onApply(remaining);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -254,20 +367,115 @@ export default function QuestionReview({
           </button>
         </div>
         <p className="field-help">
-          Nguồn gốc được giữ nguyên. Kiểm tra tự động chỉ xét cú pháp và quy tắc định dạng; chưa xác
-          minh tính đúng sai của bài toán hay biên dịch toàn bộ tài liệu.
+          {autoShown
+            ? 'Các câu đã thêm được giữ trong kho. Bạn chỉ cần xử lý các câu còn lại bên dưới.'
+            : 'Nguồn gốc được giữ nguyên. Kiểm tra tự động chỉ xét cú pháp và quy tắc định dạng; chưa xác minh tính đúng sai của bài toán hay biên dịch toàn bộ tài liệu.'}
         </p>
         {error && (
           <p className="notice notice-error" role="alert">
             {error}
           </p>
         )}
+        {!!fileErrors.length && (
+          <section
+            className="notice notice-error import-file-errors"
+            aria-label="Tệp cần xử lý riêng"
+          >
+            <h3>Tệp cần xử lý riêng</h3>
+            <ul>
+              {fileErrors.map((message, i) => (
+                <li key={i}>{message}</li>
+              ))}
+            </ul>
+            <p>Các tệp đọc được vẫn tiếp tục được xử lý.</p>
+          </section>
+        )}
         {progress && (
           <p className="notice notice-success" role="status">
             {progress}
           </p>
         )}
-        {!!Object.keys(outcomes).length && (
+        {autoShown && (
+          <section className="scan-summary auto-import-summary" aria-label="Kết quả AI tự động">
+            <p>
+              Đã thêm{' '}
+              <strong>
+                {savedCount} / {drafts.length}
+              </strong>{' '}
+              câu · Cần làm riêng <strong>{autoExceptions.length}</strong>
+              {!!autoRetry.length && (
+                <>
+                  {' '}
+                  · Chờ thử lại <strong>{autoRetry.length}</strong>
+                </>
+              )}
+            </p>
+            {savedCount === drafts.length && (
+              <p>Tất cả câu đọc được đã được thêm vào ngân hàng và gắn chuyên đề.</p>
+            )}
+            {!!autoRetry.length && (
+              <details open>
+                <summary>Câu chờ thử lại</summary>
+                <p>
+                  Kiểm tra kết nối hoặc Cấu hình AI, sau đó bấm lại nút AI để tiếp tục các câu chưa
+                  thêm.
+                </p>
+                <ul>
+                  {autoRetry.map((result) => (
+                    <li key={result.id}>
+                      {result.label} — {result.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {!!autoExceptions.length && (
+              <details open>
+                <summary>Các câu cần làm riêng</summary>
+                <ul>
+                  {autoExceptions.map((result) => (
+                    <li key={result.id}>
+                      <button
+                        className="text-button"
+                        disabled={busy}
+                        onClick={() => {
+                          setIndex(drafts.findIndex((q) => q.id === result.id));
+                          setSource(true);
+                        }}
+                      >
+                        {result.label}
+                      </button>{' '}
+                      — {result.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
+        )}
+        {mode === 'import' && onAutoSaved && (
+          <section className="auto-import-options surface" aria-label="Nhập bằng AI">
+            <h3>Để AI xử lý toàn bộ</h3>
+            <p>
+              AI chuẩn hóa, chọn dạng Câu 1–7, gắn vào chuyên đề đã có và thêm vào kho. Câu còn lỗi
+              được giữ riêng, không chặn các câu khác.
+            </p>
+            <label className="publish-controls">
+              <input
+                type="checkbox"
+                disabled={busy || savedCount === drafts.length}
+                checked={autoPublished}
+                onChange={(e) => setAutoPublished(e.target.checked)}
+              />
+              Xuất bản các câu xử lý được
+            </label>
+            <p className="field-help">
+              Bỏ chọn để lưu nháp. Nội dung và lời giải gốc được giữ; không tự bổ sung đáp án còn
+              thiếu.
+            </p>
+          </section>
+        )}
+        {!autoShown && !!Object.keys(outcomes).length && (
           <section className="scan-summary" aria-label="Tổng hợp phân loại">
             <p>
               Đã quét{' '}
@@ -315,7 +523,9 @@ export default function QuestionReview({
         <div className="review-actions">
           <button
             className="btn btn-secondary"
-            disabled={busy || !topics.length || completed.current.size === drafts.length}
+            disabled={
+              busy || savedCount > 0 || !topics.length || completed.current.size === drafts.length
+            }
             onClick={() => void classify()}
           >
             {completed.current.size === drafts.length
@@ -332,7 +542,7 @@ export default function QuestionReview({
           {mode !== 'classify' && (
             <button
               className="btn btn-quiet"
-              disabled={busy}
+              disabled={busy || alreadySaved}
               onClick={() => {
                 const next = normalizeQuestion(current);
                 update(next.question);
@@ -343,6 +553,11 @@ export default function QuestionReview({
             </button>
           )}
         </div>
+        {alreadySaved && (
+          <p className="notice notice-success">
+            Câu này đã được thêm vào kho. Có thể chỉnh sửa sau trong ngân hàng câu hỏi.
+          </p>
+        )}
         {reasons[current.id] && (
           <p className="ai-reason">
             <strong>AI gợi ý:</strong> {reasons[current.id]}
@@ -353,7 +568,7 @@ export default function QuestionReview({
             <span>Dạng câu của bài đang duyệt</span>
             <select
               aria-label="Dạng câu của bài đang duyệt"
-              disabled={busy}
+              disabled={busy || alreadySaved}
               value={current.number >= 1 && current.number <= 7 ? current.number : 0}
               onChange={(e) => update({ number: Number(e.target.value), numberOrigin: 'manual' })}
             >
@@ -369,7 +584,7 @@ export default function QuestionReview({
             label="Chuyên đề của bài đang duyệt"
             topics={topics}
             value={current.topicIds || []}
-            disabled={busy}
+            disabled={busy || alreadySaved}
             onChange={(topicIds) => update({ topicIds })}
           />
         </div>
@@ -420,7 +635,7 @@ export default function QuestionReview({
           {mode !== 'classify' && current.raw && (
             <button
               className="text-button"
-              disabled={busy}
+              disabled={busy || alreadySaved}
               onClick={() => {
                 try {
                   update(restoreQuestionSource(current));
@@ -444,7 +659,7 @@ export default function QuestionReview({
         {mode !== 'classify' && (
           <button
             className="text-button"
-            disabled={busy}
+            disabled={busy || alreadySaved}
             aria-pressed={source}
             onClick={() => setSource((v) => !v)}
           >
@@ -457,7 +672,7 @@ export default function QuestionReview({
               <span>Đề bài đang dùng</span>
               <textarea
                 aria-label="Đề bài đang dùng"
-                disabled={busy}
+                disabled={busy || alreadySaved}
                 rows={8}
                 value={current.statementRaw}
                 maxLength={1_000_000}
@@ -468,7 +683,7 @@ export default function QuestionReview({
               <span>Lời giải đang dùng</span>
               <textarea
                 aria-label="Lời giải đang dùng"
-                disabled={busy}
+                disabled={busy || alreadySaved}
                 rows={8}
                 value={current.solutionRaw}
                 maxLength={1_000_000}
@@ -500,12 +715,32 @@ export default function QuestionReview({
         <button className="btn btn-secondary" disabled={busy} onClick={close}>
           Đóng
         </button>
-        <button className="btn btn-primary" disabled={busy} onClick={() => void apply()}>
-          {busy
-            ? 'Đang xử lý…'
-            : mode === 'import'
-              ? 'Duyệt và dùng bản này'
-              : 'Áp dụng các bài đã duyệt'}
+        {mode === 'import' && onAutoSaved && savedCount < drafts.length && (
+          <button
+            className="btn btn-primary"
+            disabled={busy}
+            aria-label="AI xử lý và thêm tất cả"
+            onClick={() => void automaticImport()}
+          >
+            AI xử lý và thêm tất cả
+          </button>
+        )}
+        <button
+          className={
+            mode === 'import' && savedCount < drafts.length
+              ? 'btn btn-secondary'
+              : 'btn btn-primary'
+          }
+          disabled={busy}
+          onClick={() => void apply()}
+        >
+          {savedCount === drafts.length
+            ? 'Hoàn tất'
+            : busy
+              ? 'Đang xử lý…'
+              : mode === 'import'
+                ? 'Duyệt và dùng bản này'
+                : 'Áp dụng các bài đã duyệt'}
         </button>
       </div>
     </dialog>

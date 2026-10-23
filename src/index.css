@@ -6435,3 +6435,55 @@ label.publish-controls {
 .settings-description {
   color: #657592;
 }
+
+.auto-import-options {
+  padding: 20px;
+  margin-block: 18px;
+  display: grid;
+  gap: 12px;
+  background: #f4f7ff;
+  border-color: #d9e3ff;
+}
+.auto-import-options h3 {
+  font-weight: 800;
+  color: #173561;
+}
+.auto-import-options p {
+  line-height: 1.7;
+}
+.auto-import-summary {
+  margin-block: 18px;
+}
+.auto-import-summary li {
+  margin-block: 10px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .question-review-dialog .preview-footer > .btn-primary {
+    flex-basis: 100%;
+    order: -1;
+  }
+  .auto-import-options {
+    padding: 15px;
+  }
+}
+
+.import-file-errors {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.import-file-errors h3,
+.import-file-errors > strong {
+  display: block;
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.import-file-errors ul {
+  padding-left: 20px;
+}
+.import-file-errors li {
+  line-height: 1.65;
+}
+.import-file-errors p {
+  margin-top: 8px;
+}
