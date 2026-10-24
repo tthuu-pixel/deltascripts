@@ -5,6 +5,7 @@ import { canProcessEssay } from '../shared/essayNormalization';
 import { uploadedQuestion } from '../shared/uploadedQuestion';
 import { validateQuestion } from './question-storage';
 import { adminAiRoute, classificationText, type AdminAiOptions } from './admin-ai';
+import { AiServiceError } from './ai-provider';
 import { HttpError, requireValue } from './errors';
 
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9-]{36}$/i.test(v);
@@ -28,15 +29,16 @@ export async function automaticImportJobs(db: Database): Promise<AutomaticImport
         `SELECT j.id,j.files,j.expected,j.submitted,j.created_at,
    count(m.input_id) received,
    coalesce(sum(s.state='published'),0) published,coalesce(sum(s.state='skipped'),0) skipped,
-   coalesce(sum(s.state='pending'),0) waiting,coalesce(sum(s.state='working'),0) working,
+   coalesce(sum(s.state='pending' OR (s.state='working' AND s.lease_until<=?1)),0) waiting,coalesce(sum(s.state='working' AND s.lease_until>?1),0) working,
    count(DISTINCT CASE WHEN s.state='published' THEN s.question_id END) publishedQuestions,
-   min(CASE WHEN s.state='pending' THEN s.next_attempt END) nextAttempt,
+   min(CASE WHEN s.state='pending' THEN s.next_attempt WHEN s.state='working' THEN s.lease_until END) nextAttempt,
    coalesce((SELECT s2.reason FROM automatic_import_members m2 JOIN automatic_import_sources s2 ON s2.hash=m2.source_hash WHERE m2.job_id=j.id AND s2.state='pending' AND s2.reason!='' ORDER BY s2.updated_at DESC LIMIT 1),'') reason
    FROM automatic_import_jobs j LEFT JOIN automatic_import_members m ON m.job_id=j.id
    LEFT JOIN automatic_import_sources s ON s.hash=m.source_hash
    WHERE j.id IN (SELECT id FROM automatic_import_jobs ORDER BY created_at DESC,id LIMIT 20)
    GROUP BY j.id ORDER BY j.created_at DESC,j.id`,
       )
+      .bind(Date.now())
       .all()
   ).results;
   return rows.map((r) => ({
@@ -180,6 +182,7 @@ export async function claimAutomaticImports(
   db: Database,
   now = Date.now(),
   limit = 6,
+  leaseMs = 120000,
 ): Promise<Lease[]> {
   const token = crypto.randomUUID();
   const result = await db
@@ -188,7 +191,7 @@ export async function claimAutomaticImports(
    WHERE hash IN (SELECT hash FROM automatic_import_sources WHERE (state='pending' AND next_attempt<=?) OR (state='working' AND lease_until<=?) ORDER BY attempts,updated_at,hash LIMIT min(?,max(0,6-(SELECT count(*) FROM automatic_import_sources WHERE state='working' AND lease_until>?))))
    RETURNING hash,question_id,payload,attempts,lease_token`,
     )
-    .bind(token, now + 120000, now, now, now, limit, now)
+    .bind(token, now + leaseMs, now, now, now, limit, now)
     .all();
   return result.results as unknown as Lease[];
 }
@@ -238,10 +241,8 @@ export async function publishAutomaticImport(db: Database, lease: Lease, q: Ques
   ]);
   return results[4].meta.changes === 1;
 }
-async function retryAutomaticImport(db: Database, lease: Lease, reason: string, service = false) {
-  const delay = service
-    ? 15 * 60_000
-    : Math.min(60 * 60_000, 30_000 * 2 ** Math.min(lease.attempts - 1, 7));
+async function retryAutomaticImport(db: Database, lease: Lease, reason: string, delay?: number) {
+  delay ??= Math.min(5 * 60_000, 30_000 * 2 ** Math.min(lease.attempts - 1, 4));
   await db
     .prepare(
       `UPDATE automatic_import_sources SET state='pending',lease_token=NULL,lease_until=0,next_attempt=?,reason=?,updated_at=? WHERE hash=? AND lease_token=? AND state='working'`,
@@ -260,13 +261,15 @@ export async function processAutomaticImports(
   db: Database,
   options: AdminAiOptions & { budgetMs?: number; maxItems?: number } = {},
 ) {
-  const deadline = Date.now() + (options.budgetMs || 50000);
+  const budgetMs = options.budgetMs || 180000;
+  const deadline = Date.now() + budgetMs;
   let processed = 0;
   while (Date.now() < deadline - 3000 && processed < (options.maxItems || 6)) {
     const leases = await claimAutomaticImports(
       db,
       Date.now(),
       Math.min(6, (options.maxItems || 6) - processed),
+      Math.max(120000, budgetMs + 30000),
     );
     if (!leases.length) break;
     const pending: Lease[] = [];
@@ -311,7 +314,7 @@ export async function processAutomaticImports(
         {
           ...options,
           publishedTopicsOnly: true,
-          requestTimeoutMs: Math.max(2000, Math.min(43000, deadline - Date.now() - 1000)),
+          requestTimeoutMs: Math.max(2000, Math.min(150000, deadline - Date.now() - 1000)),
         },
       )) as { items: import('../shared/ai').AiSuggestion[] };
       const topicIds = [...new Set(reply.items.flatMap((item) => item.topicIds))];
@@ -340,6 +343,7 @@ export async function processAutomaticImports(
           // Recheck publication of topics; a topic unpublished during AI processing must not hide a freshly published question.
           if (next.topicIds.some((id: string) => !publishedTopics.has(id))) {
             await retryAutomaticImport(db, lease, 'Đang tự chọn lại chuyên đề được xuất bản.');
+            processed++;
             continue;
           }
           await publishAutomaticImport(db, lease, next);
@@ -354,7 +358,7 @@ export async function processAutomaticImports(
           db,
           lease,
           (error as Error).message || 'Dịch vụ AI đang tạm gián đoạn.',
-          service,
+          error instanceof AiServiceError ? error.retryAfterMs : service ? 60000 : undefined,
         );
       processed += pending.length;
       if (service) break;

@@ -14,7 +14,7 @@ export default {
     if (_event.cron === '* * * * *') {
       await processAutomaticImports(env.DB, {
         aiSettingsKey: env.AI_SETTINGS_KEY,
-        budgetMs: 50000,
+        budgetMs: 180000,
         maxItems: 6, // Keep each scheduled invocation below the D1 Free query limit.
       });
       return;
@@ -41,16 +41,6 @@ export default {
     if (url.pathname === '/api' || url.pathname.startsWith('/api/'))
       return createApp(env.DB, {
         aiSettingsKey: env.AI_SETTINGS_KEY,
-        onImportsQueued: ctx
-          ? () =>
-              ctx.waitUntil(
-                processAutomaticImports(env.DB, {
-                  aiSettingsKey: env.AI_SETTINGS_KEY,
-                  budgetMs: 20000,
-                  maxItems: 6,
-                }).catch(() => {}),
-              )
-          : undefined,
         geminiKey: env.GEMINI_API_KEY,
         geminiModel: env.GEMINI_MODEL,
         allowedOrigins: [

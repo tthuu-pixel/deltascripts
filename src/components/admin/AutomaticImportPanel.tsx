@@ -20,16 +20,21 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     );
   const [progress, setProgress] = useState({ received: 0, total: 0 }),
     [jobs, setJobs] = useState<AutomaticImportJob[]>([]),
-    [notice, setNotice] = useState('');
+    [notice, setNotice] = useState(''),
+    [now, setNow] = useState(Date.now());
+  const mounted = useRef(true);
   const changed = useRef(onChanged);
   changed.current = onChanged;
   const signature = useRef('');
   async function refresh() {
     try {
       const items = await apiService.getAutomaticImports();
+      if (!mounted.current) return;
+      setNow(Date.now());
       setJobs(items);
       const next = items.map((j) => j.id + ':' + j.published + ':' + j.skipped).join('|');
-      if (signature.current && signature.current !== next) changed.current();
+      if (signature.current !== next && (signature.current || items.some((j) => j.published > 0)))
+        changed.current();
       signature.current = next;
     } catch {
       /* A later poll resumes automatically; HTTP auth handling remains centralized. */
@@ -49,6 +54,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   }
   useEffect(() => {
     let live = true;
+    mounted.current = true;
     const timer = setTimeout(async () => {
       await refresh();
       if (!live || running.current) return;
@@ -71,11 +77,25 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         if (live) setUploading(false);
       }
     }, 0);
-    const polling = setInterval(() => {
-      if (live) void refresh();
-    }, 5000);
+    const resume = () => {
+      if (live && document.visibilityState !== 'hidden') void refresh();
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('focus', resume);
+    window.addEventListener('online', resume);
+    window.addEventListener('pageshow', resume);
+    const polling = setInterval(resume, 5000);
+    const clock = setInterval(() => {
+      if (live && document.visibilityState !== 'hidden') setNow(Date.now());
+    }, 1000);
     return () => {
       live = false;
+      mounted.current = false;
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('focus', resume);
+      window.removeEventListener('online', resume);
+      window.removeEventListener('pageshow', resume);
+      clearInterval(clock);
       clearTimeout(timer);
       clearInterval(polling);
       controller.current?.abort();
@@ -198,6 +218,10 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           {jobs.map((job) => {
             const finished = job.published + job.skipped,
               done = job.submitted && job.received === job.expected && finished === job.expected;
+            const retryTime =
+              job.nextAttempt && job.nextAttempt > now
+                ? new Date(job.nextAttempt).toLocaleTimeString('vi-VN')
+                : '';
             return (
               <article className={`automatic-job ${done ? 'is-complete' : ''}`} key={job.id}>
                 <strong>{job.files.join(', ')}</strong>
@@ -209,8 +233,10 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
                       : job.working
                         ? 'AI đang xử lý'
                         : job.reason
-                          ? 'Đang chờ tự thử lại'
-                          : 'Đang tự xuất bản'}
+                          ? retryTime
+                            ? `Tự thử lại lúc ${retryTime}`
+                            : 'Đang chờ máy chủ thử lại'
+                          : 'Đã xếp hàng trên máy chủ'}
                 </span>
                 <progress
                   max={Math.max(job.expected, 1)}
@@ -230,8 +256,8 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
                 {!done && (
                   <p className="field-help">
                     {job.reason
-                      ? `${job.reason} Hệ thống sẽ tự thử lại.`
-                      : 'Tiến trình được lưu trên máy chủ và tự tiếp tục khi bạn đóng trang.'}
+                      ? `${job.reason} ${retryTime ? `Lượt tiếp theo lúc ${retryTime}.` : 'Máy chủ sẽ nhận lại trong lượt xử lý nền tiếp theo.'}`
+                      : 'Máy chủ tự xử lý nền, kể cả khi bạn chuyển tab hoặc đóng trang. Lượt mới bắt đầu trong khoảng một phút.'}
                   </p>
                 )}
               </article>

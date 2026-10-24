@@ -505,3 +505,60 @@ test('older normalized upload drafts are restored from their retained original b
   assert.equal(restored.statementRaw, original.statementRaw);
   assert.equal(restored.solutionRaw, original.solutionRaw);
 });
+
+test('slow background AI owns a long lease and connection failures retry in a minute even after many failures', async (t) => {
+  const runtime = await createRuntime();
+  t.after(() => runtime.close());
+  const db = runtime.db;
+  const topic = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO topics(id,title,description,published) VALUES(?,'Đại số','Phương trình',1)",
+    )
+    .bind(topic)
+    .run();
+  await adminAiRoute(
+    db,
+    '/api/admin/ai/settings',
+    'POST',
+    {
+      provider: 'deepseek',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'fixture',
+      apiKey: 'fixture',
+      version: 0,
+    },
+    { aiSettingsKey: secret },
+  );
+  await upload(db, parseTexText(String.raw`\begin{bt}Giải $x+1=2$.\end{bt}`));
+  await db.prepare('UPDATE automatic_import_sources SET attempts=8').run();
+  const began = Date.now();
+  await processAutomaticImports(db, {
+    aiSettingsKey: secret,
+    fetchGemini: async (_url, init) => {
+      const row = await db
+        .prepare("SELECT lease_until FROM automatic_import_sources WHERE state='working'")
+        .first();
+      assert(Number(row!.lease_until) > began + 180000);
+      // Expiry of the old 120s lease must not steal a slow active task.
+      assert.equal((await claimAutomaticImports(db, began + 120001)).length, 0);
+      throw new TypeError('temporary network error');
+    },
+  });
+  const job = (await automaticImportJobs(db))[0];
+  assert.equal(job.waiting, 1);
+  assert.equal(job.published, 0);
+  assert(job.nextAttempt! >= began + 60000 && job.nextAttempt! < Date.now() + 61000);
+  assert.match(job.reason, /tạm gián đoạn/);
+});
+
+test('expired work is reported as waiting, never as permanently active', async (t) => {
+  const runtime = await createRuntime();
+  t.after(() => runtime.close());
+  await upload(runtime.db, parseTexText(String.raw`\begin{bt}Tính $2+2$.\end{bt}`));
+  await claimAutomaticImports(runtime.db, Date.now() - 130000);
+  const job = (await automaticImportJobs(runtime.db))[0];
+  assert.equal(job.waiting, 1);
+  assert.equal(job.working, 0);
+  assert(job.nextAttempt! < Date.now());
+});

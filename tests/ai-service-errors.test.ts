@@ -52,3 +52,87 @@ test('provider failures explain credentials, credit and missing models instead o
   assert.equal(result.reason, reason);
   assert.equal(result.stopped, true);
 });
+
+test('AI timeouts, connection errors and quota responses have distinct safe retry policies', async () => {
+  const { providerRequest, AiServiceError } = await import('../server/ai-provider');
+  const config = {
+    provider: 'deepseek' as const,
+    baseUrl: 'https://api.deepseek.com',
+    model: 'fixture',
+    apiKey: 'secret-do-not-expose',
+  };
+  await assert.rejects(
+    () =>
+      providerRequest(config, 'models', {
+        fetchGemini: async () => {
+          throw new TypeError('private network details');
+        },
+      }),
+    (e) =>
+      e instanceof AiServiceError &&
+      e.kind === 'connection' &&
+      e.retryAfterMs === 60000 &&
+      !e.message.includes('private'),
+  );
+  await assert.rejects(
+    () =>
+      providerRequest(config, 'models', {
+        requestTimeoutMs: 5,
+        fetchGemini: async (_url, init) =>
+          new Promise((_resolve, reject) => {
+            setTimeout(() => reject(new Error('timed out')), 20);
+          }),
+      }),
+    (e) =>
+      e instanceof AiServiceError &&
+      e.kind === 'timeout' &&
+      e.retryAfterMs === 60000 &&
+      !e.message.includes('Base URL'),
+  );
+  await assert.rejects(
+    () =>
+      providerRequest(config, 'models', {
+        fetchGemini: async () =>
+          new Response('', { status: 429, headers: { 'Retry-After': '120' } }),
+      }),
+    (e) => e instanceof AiServiceError && e.kind === 'quota' && e.retryAfterMs === 120000,
+  );
+  await assert.rejects(
+    () =>
+      providerRequest(config, 'models', {
+        fetchGemini: async () => new Response('', { status: 401 }),
+      }),
+    (e) => e instanceof AiServiceError && e.kind === 'configuration' && e.retryAfterMs === 900000,
+  );
+});
+
+test('a broken AI response stream is retried without exposing private network diagnostics', async () => {
+  const { providerRequest, AiServiceError } = await import('../server/ai-provider');
+  await assert.rejects(
+    () =>
+      providerRequest(
+        {
+          provider: 'deepseek',
+          baseUrl: 'https://api.deepseek.com',
+          model: 'fixture',
+          apiKey: 'private-key',
+        },
+        'models',
+        {
+          fetchGemini: async () =>
+            new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.error(new Error('secret network diagnostics'));
+                },
+              }),
+            ),
+        },
+      ),
+    (e) =>
+      e instanceof AiServiceError &&
+      e.kind === 'connection' &&
+      e.retryAfterMs === 60000 &&
+      !e.message.includes('secret'),
+  );
+});

@@ -31,7 +31,6 @@ const placeholders = (length: number) => Array.from({ length }, () => '?').join(
 export { validateQuestion, questionStatements, upsertQuestions } from './question-storage';
 import { validateQuestion, upsertQuestions } from './question-storage';
 interface Options {
-  onImportsQueued?: () => void;
   aiSettingsKey?: string;
   geminiKey?: string;
   geminiModel?: string;
@@ -206,12 +205,6 @@ export function createApp(db: Database, options: Options = {}) {
           if (method === 'POST')
             await limit(`automatic-upload:${await tokenHash(cookieToken(req))}`, 180);
           const result = await automaticImportsRoute(db, route, method, body);
-          // GET polling accelerates an already-authorized upload; cron also works with the page closed.
-          if (
-            (method === 'GET' && (result as any).items?.some((job: any) => job.waiting > 0)) ||
-            route.endsWith('/finish')
-          )
-            options.onImportsQueued?.();
           return json({ success: true, ...result });
         }
         if (route.startsWith('/api/admin/ai/')) {
@@ -220,7 +213,6 @@ export function createApp(db: Database, options: Options = {}) {
           const result = await adminAiRoute(db, route, method, body, options, url);
           if (route === '/api/admin/ai/settings' && method === 'POST') {
             await wakeAutomaticImports(db);
-            options.onImportsQueued?.();
           }
           return json({ success: true, ...result });
         }

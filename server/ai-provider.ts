@@ -1,6 +1,17 @@
 import { type AiProvider } from '../shared/ai';
 import { HttpError, requireValue } from './errors';
 
+export class AiServiceError extends HttpError {
+  constructor(
+    message: string,
+    public kind: 'timeout' | 'connection' | 'quota' | 'configuration' | 'unavailable',
+    public retryAfterMs: number,
+    status = 502,
+  ) {
+    super(status, message);
+  }
+}
+
 export interface ProviderConfig {
   provider: AiProvider;
   baseUrl: string;
@@ -20,43 +31,82 @@ export async function providerRequest(
     headers['anthropic-version'] = '2023-06-01';
   } else headers.Authorization = `Bearer ${config.apiKey}`;
   let response: Response;
+  const signal = AbortSignal.timeout(options.requestTimeoutMs || 45_000);
   try {
     response = await (options.fetchGemini || fetch)(`${config.baseUrl}/${path}`, {
       method: body ? 'POST' : 'GET',
       headers,
       body: body ? JSON.stringify(body) : undefined,
       redirect: 'manual',
-      signal: AbortSignal.timeout(options.requestTimeoutMs || 45_000),
+      signal,
     });
   } catch {
-    throw new HttpError(502, 'Không kết nối được dịch vụ AI. Kiểm tra Base URL hoặc thử lại.');
+    if (signal.aborted)
+      throw new AiServiceError(
+        'AI phản hồi quá thời gian chờ. Vui lòng thử lại.',
+        'timeout',
+        60000,
+      );
+    throw new AiServiceError('Kết nối đến dịch vụ AI tạm gián đoạn.', 'connection', 60000);
   }
-  requireValue(
-    response.ok,
-    response.status === 429
-      ? 'Dịch vụ AI đang hết hạn mức. Hãy thử lại sau.'
-      : response.status === 402
-        ? 'Tài khoản dịch vụ AI không đủ số dư hoặc chưa bật thanh toán (HTTP 402). Kiểm tra tài khoản của nhà cung cấp.'
-        : response.status === 401 || response.status === 403
-          ? `API key không hợp lệ hoặc không có quyền dùng dịch vụ (HTTP ${response.status}). Kiểm tra lại key và Base URL trong Cấu hình AI.`
-          : response.status === 404
-            ? 'Không tìm thấy model hoặc đường dẫn API (HTTP 404). Kiểm tra & lấy model trong Cấu hình AI để chọn model được tài khoản hỗ trợ.'
-            : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
-    response.status === 429 ? 429 : [401, 402, 403, 404].includes(response.status) ? 503 : 502,
-  );
+  if (!response.ok) {
+    const configuration = [401, 402, 403, 404].includes(response.status);
+    const retry = response.headers.get('Retry-After');
+    const retryAfterMs =
+      response.status === 429 && retry
+        ? Math.max(
+            1000,
+            Math.min(
+              15 * 60000,
+              /^\d+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - Date.now() || 60000,
+            ),
+          )
+        : configuration
+          ? 15 * 60000
+          : 60000;
+    throw new AiServiceError(
+      response.status === 429
+        ? 'Dịch vụ AI đang hết hạn mức. Hãy thử lại sau.'
+        : response.status === 402
+          ? 'Tài khoản dịch vụ AI không đủ số dư hoặc chưa bật thanh toán (HTTP 402). Kiểm tra tài khoản của nhà cung cấp.'
+          : response.status === 401 || response.status === 403
+            ? `API key không hợp lệ hoặc không có quyền dùng dịch vụ (HTTP ${response.status}). Kiểm tra lại key và Base URL trong Cấu hình AI.`
+            : response.status === 404
+              ? 'Không tìm thấy model hoặc đường dẫn API (HTTP 404). Kiểm tra & lấy model trong Cấu hình AI để chọn model được tài khoản hỗ trợ.'
+              : `Dịch vụ AI từ chối yêu cầu (HTTP ${response.status}). Kiểm tra key, model và Base URL.`,
+      configuration ? 'configuration' : response.status === 429 ? 'quota' : 'unavailable',
+      retryAfterMs,
+      response.status === 429 ? 429 : configuration ? 503 : 502,
+    );
+  }
   const reader = response.body?.getReader();
   requireValue(reader, 'Dịch vụ AI trả dữ liệu trống.', 502);
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > 1_000_000) {
-      await reader.cancel();
-      throw new HttpError(502, 'Kết quả AI vượt giới hạn, hãy chọn ít câu hơn.');
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 1_000_000) {
+        await reader.cancel();
+        throw new HttpError(502, 'Kết quả AI vượt giới hạn, hãy chọn ít câu hơn.');
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    if (signal.aborted)
+      throw new AiServiceError(
+        'AI phản hồi quá thời gian chờ. Vui lòng thử lại.',
+        'timeout',
+        60000,
+      );
+    throw new AiServiceError(
+      'Kết nối đến dịch vụ AI bị gián đoạn khi nhận kết quả.',
+      'connection',
+      60000,
+    );
   }
   const bytes = new Uint8Array(size);
   let cursor = 0;

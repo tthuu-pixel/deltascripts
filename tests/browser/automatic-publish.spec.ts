@@ -2,11 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createRuntime } from '../runtime';
 import { createTeacher } from '../../server/auth';
 import { adminAiRoute } from '../../server/admin-ai';
-import {
-  automaticImportJobs,
-  processAutomaticImports,
-  wakeAutomaticImports,
-} from '../../server/automatic-imports';
+import { automaticImportJobs } from '../../server/automatic-imports';
 const secret = 'automatic-publish-browser-fixture-key-32-characters';
 test('only uploading a file is required; server resumes after closing the page and publishes with selected topics', async ({
   page,
@@ -14,7 +10,9 @@ test('only uploading a file is required; server resumes after closing the page a
   test.setTimeout(60000);
   const topic = crypto.randomUUID();
   let unavailable = true;
+  let providerCalls = 0;
   const fetchMock: typeof fetch = async (_url, init) => {
+    providerCalls++;
     if (unavailable) return new Response('fixture unavailable', { status: 429 });
     const data = JSON.parse(JSON.parse(String(init?.body)).messages.at(-1).content);
     return Response.json({
@@ -86,24 +84,42 @@ test('only uploading a file is required; server resumes after closing the page a
     await expect(panel.getByRole('status').first()).toContainText('Máy chủ đã nhận đủ');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect((await automaticImportJobs(runtime.db))[0].received).toBe(26);
-    await page.goto('about:blank');
-    // No browser is driving classification, approval or publication.
+    expect(providerCalls).toBe(0); // Upload and progress requests must never own paid AI work.
+    const worker = await runtime.mf.getWorker();
+    // A temporary provider outage is visible with a retry time, not a frozen spinner.
+    for (let tick = 0; tick < 5; tick++) await worker.scheduled({ cron: '* * * * *' });
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(panel).toContainText('Tự thử lại lúc');
+    await expect(panel).toContainText('Lượt tiếp theo lúc');
     unavailable = false;
-    await expect
-      .poll(async () =>
-        Number(
-          (await runtime.db
-            .prepare("SELECT count(*) n FROM automatic_import_sources WHERE state='working'")
-            .first())!.n,
-        ),
-      )
-      .toBe(0);
-    await wakeAutomaticImports(runtime.db);
-    await processAutomaticImports(runtime.db, {
-      aiSettingsKey: secret,
-      fetchGemini: fetchMock,
-      maxItems: 30,
+    await runtime.db
+      .prepare("UPDATE automatic_import_sources SET next_attempt=0 WHERE state='pending'")
+      .run();
+    // Switching sections unmounts the upload panel; scheduled work still completes.
+    await page.getByRole('button', { name: 'Chuyên đề', exact: true }).click();
+    await worker.scheduled({ cron: '* * * * *' });
+    await page.getByRole('button', { name: 'Ngân hàng câu hỏi', exact: true }).click();
+    await expect(panel).toContainText('6 / 26');
+    // A background browser tab throttles timers. Returning must fetch progress immediately.
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
     });
+    await worker.scheduled({ cron: '* * * * *' });
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect(panel).toContainText('12 / 26');
+    await page.goto('about:blank');
+    // The actual Worker scheduled handler runs with no open app page or progress polling.
+    for (let tick = 0; tick < 3; tick++) await worker.scheduled({ cron: '* * * * *' });
     expect((await automaticImportJobs(runtime.db))[0].published).toBe(26);
     expect(
       (await runtime.db.query('SELECT id FROM questions WHERE active=1 AND published=1')).rows,
@@ -116,7 +132,7 @@ test('only uploading a file is required; server resumes after closing the page a
       .map((q) => String(q.raw))
       .sort();
     expect(storedSources).toEqual(tex.split('\n').sort());
-    await page.goto('/admin');
+    await page.goBack();
     await expect(panel.getByText('Đã hoàn tất', { exact: true })).toBeVisible();
     await expect(panel).toContainText('26 / 26');
     await panel
