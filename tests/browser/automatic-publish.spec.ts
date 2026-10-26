@@ -78,9 +78,11 @@ test('only uploading a file is required; server resumes after closing the page a
       { length: 26 },
       (_, i) => `\\begin{ex}Bài ${i + 1}: Giải $x+1=${i + 2}$.\\loigiai{$x=${i + 1}$.}\\end{ex}`,
     ).join('\n');
-    await panel
-      .getByLabel('Tải file để AI tự xuất bản', { exact: true })
-      .setInputFiles({ name: 'tu-xuat-ban.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) });
+    const choosingFile = page.waitForEvent('filechooser');
+    await panel.getByRole('button', { name: 'Nhập file TeX (.tex)', exact: true }).click();
+    await (
+      await choosingFile
+    ).setFiles({ name: 'tu-xuat-ban.tex', mimeType: 'text/plain', buffer: Buffer.from(tex) });
     await expect(panel.getByRole('status').first()).toContainText('Máy chủ đã nhận đủ');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect((await automaticImportJobs(runtime.db))[0].received).toBe(26);

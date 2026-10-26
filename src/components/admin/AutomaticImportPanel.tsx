@@ -170,8 +170,8 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         <span className="icon-tile tone-blue">
           <Icon name="spark" size={32} />
         </span>
-        <h3>Kéo thả nguồn câu hỏi vào đây</h3>
-        <p>File LaTeX (.tex). Không cần chọn chuyên đề hay bấm duyệt.</p>
+        <h3>Nhập nguồn câu hỏi từ file TeX</h3>
+        <p>Nhấn nút bên dưới để chọn file .tex, hoặc kéo thả file vào đây.</p>
         <input
           ref={fileInput}
           className="visually-hidden"
@@ -190,8 +190,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           disabled={uploading}
           onClick={() => fileInput.current?.click()}
         >
-          <Icon name="upload" size={18} />{' '}
-          {uploading ? 'Đang nhận file…' : 'Tải file · AI tự xuất bản'}
+          <Icon name="upload" size={18} /> {uploading ? 'Đang nhập file…' : 'Nhập file TeX (.tex)'}
         </button>
       </div>
       <p className="notice automatic-upload-status" role="status">

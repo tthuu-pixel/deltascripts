@@ -33,7 +33,7 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 
 ## Nhập tự động bằng một nút
 
-- Bấm **Tải file · AI tự xuất bản**, chọn file `.tex`. Hệ thống chỉ nhận dạng, gắn vào chuyên đề đã xuất bản theo mô tả, lưu và xuất bản; giữ nguyên nguồn. Không cần chọn chuyên đề hoặc bấm duyệt. Câu trùng nguồn được nhận diện, không thêm bản sao.
+- Bấm **Nhập file TeX (.tex)**, chọn file `.tex`. Hệ thống chỉ nhận dạng, gắn vào chuyên đề đã xuất bản theo mô tả, lưu và xuất bản; giữ nguyên nguồn. Không cần chọn chuyên đề hoặc bấm duyệt. Câu trùng nguồn được nhận diện, không thêm bản sao.
 - Nguồn đang gửi được giữ trên trình duyệt; tiến trình AI lưu trên máy chủ. Khi máy chủ nhận đủ, có thể đóng trang. Máy chủ tự nhận việc mỗi phút, độc lập với tab/trình duyệt, và tự thử lại phần chưa xong. Khi quay về tab, tiến độ được tải ngay; lỗi tạm thời hiện giờ thử lại, thường khoảng một phút. Nếu key/hạn mức dịch vụ không hoạt động, tiến trình chờ; thay cấu hình AI đánh thức tiến trình ngay. Các công cụ duyệt cũ nằm trong phần biên tập thủ công, chỉ dùng khi muốn sửa riêng.
 - Bài `bt` và bài tự luận ghi nhầm `ex` không có `\choice`, `\choiceTF` hoặc lệnh lựa chọn tương đương đều được xử lý. `ex` tự luận giữ nguyên môi trường. Trắc nghiệm có lựa chọn, `vd`, Word và nguồn ngoài phạm vi tự luận được bỏ qua trong tự động; vẫn có thể nhập thủ công.
 - Giữ nguyên `immini`, môi trường, mã TeX, lời giải và TikZ. Mã vẽ và comment chỉ được bỏ khỏi bản đề gửi AI để giảm dữ liệu; không đổi nguồn lưu.
