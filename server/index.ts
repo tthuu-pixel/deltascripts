@@ -1,4 +1,4 @@
-import { processAutomaticImports } from './automatic-imports';
+import { processScheduledAi } from './scheduled-ai';
 import { createApp } from './app.ts';
 import type { Database } from './database.ts';
 export interface Env {
@@ -12,11 +12,7 @@ export interface Env {
 export default {
   async scheduled(_event: { cron?: string }, env: Env): Promise<void> {
     if (_event.cron === '* * * * *') {
-      await processAutomaticImports(env.DB, {
-        aiSettingsKey: env.AI_SETTINGS_KEY,
-        budgetMs: 180000,
-        maxItems: 6, // Keep each scheduled invocation below the D1 Free query limit.
-      });
+      await processScheduledAi(env.DB, { aiSettingsKey: env.AI_SETTINGS_KEY });
       return;
     }
     const now = Date.now();

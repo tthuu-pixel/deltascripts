@@ -12,6 +12,7 @@ import type { ReviewMode } from './admin/QuestionReview';
 const ExamSettingsManager = lazy(() => import('./admin/ExamSettingsManager'));
 const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
 const AiBankScan = lazy(() => import('./admin/AiBankScan'));
+const LatexNormalizationPanel = lazy(() => import('./admin/LatexNormalizationPanel'));
 const AutomaticImportPanel = lazy(() => import('./admin/AutomaticImportPanel'));
 const QuestionReview = lazy(() => import('./admin/QuestionReview'));
 const TopicManager = lazy(() => import('./admin/TopicManager'));
@@ -706,6 +707,17 @@ export default function AdminView() {
             <p className="field-help">
               “Chọn hết” áp dụng cho các câu theo bộ lọc trên tất cả các trang.
             </p>
+            <Suspense fallback={<p role="status">Đang mở chuẩn hóa LaTeX…</p>}>
+              <LatexNormalizationPanel
+                selection={selection}
+                topicId={topicFilter}
+                onChanged={() => {
+                  clearApiCache();
+                  setRefresh((v) => v + 1);
+                }}
+                onQueued={() => setSelection([])}
+              />
+            </Suspense>
             <form
               className="bank-search"
               onSubmit={(e) => {

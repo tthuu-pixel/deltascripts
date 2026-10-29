@@ -87,19 +87,34 @@ export async function apiRequest<T = any>(
   return request;
 }
 export const apiService = {
+  async getNormalizations(): Promise<import('../../shared/normalization').NormalizationJob[]> {
+    return (await apiRequest('/admin/normalizations')).items;
+  },
+  async startNormalization(id: string, ids: string[], topicId = '') {
+    return apiRequest('/admin/normalizations/start', { id, ids, topicId });
+  },
+  async getAutomaticImportState(): Promise<{
+    items: import('../../shared/automaticImport').AutomaticImportJob[];
+    generation: number;
+  }> {
+    return apiRequest('/admin/imports');
+  },
+  async clearAutomaticImports(): Promise<{ generation: number }> {
+    return apiRequest('/admin/imports/clear', {});
+  },
   async getAutomaticImports(): Promise<
     import('../../shared/automaticImport').AutomaticImportJob[]
   > {
     return (await apiRequest('/admin/imports')).items;
   },
-  async startAutomaticImport(id: string, files: string[], expected: number) {
-    return apiRequest('/admin/imports/start', { id, files, expected });
+  async startAutomaticImport(id: string, files: string[], expected: number, generation = 0) {
+    return apiRequest('/admin/imports/start', { id, files, expected, generation });
   },
-  async appendAutomaticImport(id: string, items: Question[]) {
-    return apiRequest('/admin/imports/items', { id, items });
+  async appendAutomaticImport(id: string, items: Question[], generation = 0) {
+    return apiRequest('/admin/imports/items', { id, items, generation });
   },
-  async finishAutomaticImport(id: string) {
-    return apiRequest('/admin/imports/finish', { id });
+  async finishAutomaticImport(id: string, generation = 0) {
+    return apiRequest('/admin/imports/finish', { id, generation });
   },
 
   async getStudentAiModels(settings: StudentAiSettings): Promise<string[]> {

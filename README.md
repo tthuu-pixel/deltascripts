@@ -16,7 +16,7 @@ Mở **`/admin`** để vào **Trang quản trị** bằng tài khoản giáo vi
 
 Mỗi chuyên đề có ba mục **Lý thuyết**, **Ví dụ** và **Bài tập vận dụng**. Lý thuyết/ví dụ nhập TeX riêng; bài vận dụng hiển thị danh sách đề bài trong đúng chuyên đề, mỗi bài có nút **Đáp án** để mở/ẩn lời giải. Danh sách tải 10 bài mỗi trang. Bảng chọn có 100 icon toán cấp 2, chỉ hiện hình.
 
-Trang admin mặc định có **Nhập file TeX (.tex)**. AI chỉ nhận dạng và gắn chuyên đề theo mô tả, không sửa mã, lời giải hay chuẩn hóa. Nguồn TeX, `ex/bt`, `immini` và TikZ được giữ nguyên. Chỉ xử lý `bt` và `ex` tự luận không có lựa chọn; trắc nghiệm có lựa chọn vẫn bỏ qua. Cấu hình hỗ trợ Gemini, GPT, Claude và DeepSeek; key mã hóa ở máy chủ. Biên tập và chuẩn hóa thủ công vẫn là tùy chọn riêng.
+Trang admin mặc định có **Nhập file TeX (.tex)**. AI chỉ nhận dạng và gắn chuyên đề theo mô tả, không sửa mã, lời giải hay chuẩn hóa. Nguồn TeX, `ex/bt`, `immini` và TikZ được giữ nguyên. Chỉ xử lý `bt` và `ex` tự luận không có lựa chọn; trắc nghiệm có lựa chọn vẫn bỏ qua. Cấu hình hỗ trợ Gemini, GPT, Claude và DeepSeek; key mã hóa ở máy chủ. Biên tập thủ công và nút AI chuẩn hóa LaTeX cho các câu được chọn là các thao tác riêng, không chạy khi nhập file.
 
 Mục **Cấu hình tạo đề** có 7 vị trí Câu 1–Câu 7, mỗi vị trí có mô tả và các chuyên đề được chọn. Khi tạo đề, hệ thống lấy một câu ngẫu nhiên cho mỗi vị trí, không trùng nguồn. Số Câu chỉ là vị trí trong đề; ngân hàng không phân loại theo số câu. Cần cấu hình đủ 7 vị trí trước khi học sinh tạo đề.
 
@@ -173,3 +173,14 @@ Migration `0008_automatic_imports.sql` thêm biên nhận tải lên, nguồn th
 Lỗi mạng, timeout hoặc dịch vụ tạm ngừng thử lại sau khoảng một phút; HTTP 429 tuân thủ Retry-After (mặc định một phút), lỗi key/model/số dư chờ 15 phút. Kết quả chưa phân loại được lùi tối đa năm phút. Mỗi lượt cron có ngân sách 180 giây, yêu cầu AI tối đa 150 giây, lease ít nhất 210 giây để tránh tác vụ chậm bị nhận trùng. Lưu cấu hình AI mới đánh thức các câu đang chờ ngay. Chỉ chuyên đề đã xuất bản và có mô tả được chọn cho luồng tự xuất bản. Các nguồn trắc nghiệm có lựa chọn tiếp tục được bỏ qua theo phạm vi nhập tự luận. Câu đã xóa không bị cron khôi phục; chỉ tải lại chính nguồn đó mới tạo lượt nhập mới.
 
 Khi quay về tab, focus cửa sổ hoặc có mạng trở lại, giao diện đọc ngay tiến độ từ máy chủ. Trạng thái hiện giờ thử lại; lease đã hết hạn được tính là chờ khôi phục. Việc cập nhật giao diện không khởi chạy thêm yêu cầu AI.
+
+
+## Xóa danh sách nhập và AI chuẩn hóa LaTeX theo chuyên đề
+
+- **Xóa danh sách nhập** nằm trong cột nhập file bên trái. Thao tác xóa các lượt tải và nguồn hàng đợi, hủy phần còn chờ; giữ nguyên câu hỏi/chuyên đề đã lưu. Máy chủ tăng generation để chặn các bản tải dở từ tab hoặc trình duyệt cũ tự gửi lại. Nút không xóa lịch sử nguồn đã lưu của câu hỏi trong kho.
+- Trong **Ngân hàng câu hỏi**, chọn chuyên đề ở bộ lọc, chọn từng câu hoặc **Chọn hết**, rồi bấm **AI chuẩn hóa LaTeX (N câu)**. Chọn hết áp dụng bộ lọc trên tất cả các trang. Một yêu cầu nhận tối đa 10.000 ID, ghi hàng đợi nguyên tử và dùng ID ổn định để thử lại khi mất phản hồi.
+- Đây là chế độ **Chuẩn hóa** của skill `chuan-hoa-latex-toan`: chỉ sửa cú pháp, định dạng và môi trường. Không kiểm tra/sửa đáp án, không viết thêm lời giải. Prompt dùng bản quy tắc người dùng cung cấp trong `server/normalization-rules.ts`. TikZ/macro được khóa và phục hồi nguyên văn; giữ immini, bảng và bố cục cột. Chuẩn hóa tự luận `ex` thành `bt`, giữ trắc nghiệm và shortans trong `ex`.
+- Mã được kiểm tra về cú pháp, dấu hiệu thay đổi nội dung, thứ tự ý, cấu trúc bảng và token hình. Kết quả không đạt được giữ bản gốc và báo cần kiểm tra; không đánh dấu thành công. Việc kiểm tra này không phải chứng minh đúng toán học hoặc biên dịch toàn bộ tài liệu.
+- Mỗi thay đổi nguồn có snapshot trước khi sửa trong `question_revisions`, cùng giao dịch với lưu mã và xác nhận hoàn thành. Kết quả cũ không ghi đè nguồn vừa được chỉnh ở nơi khác. Nhãn, thứ tự, preamble, liên kết chuyên đề và trạng thái xuất bản được giữ. Một câu dùng chung nhiều chuyên đề vẫn chỉ có một bản ghi nguồn.
+- Chuẩn hóa chạy bằng cron, không phụ thuộc cửa sổ admin. Mỗi lượt tối đa hai câu; khi cùng có nhập file và chuẩn hóa thì luân phiên để hai hàng đợi đều tiếp tục. Bộ đếm tiến độ lưu trong D1 để cập nhật giao diện không quét lại nguồn hay toàn bộ danh sách câu mỗi lần.
+- Migration `0010_admin_normalization.sql` chỉ thêm bảng điều khiển và hàng đợi/counter, không chuẩn hóa hay xóa dữ liệu cũ khi triển khai. Chủ web chọn câu và bấm nút để bắt đầu.

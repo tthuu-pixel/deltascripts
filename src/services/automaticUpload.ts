@@ -6,6 +6,7 @@ export interface AutomaticUploadDraft {
   questions: Question[];
   offset: number;
   createdAt: number;
+  generation?: number;
 }
 const database = 'deltascript-automatic-uploads';
 async function localStore<T>(
@@ -33,6 +34,7 @@ export const uploadDrafts = {
   all: () => localStore('readonly', (s) => s.getAll()) as Promise<AutomaticUploadDraft[]>,
   put: (draft: AutomaticUploadDraft) => localStore('readwrite', (s) => s.put(draft)),
   remove: (id: string) => localStore('readwrite', (s) => s.delete(id)),
+  clear: () => localStore('readwrite', (s) => s.clear()),
 };
 const stopped = () => new DOMException('Đã tạm dừng gửi file.', 'AbortError');
 export function uploadRetryDelay(ms: number, signal: AbortSignal) {
@@ -74,6 +76,10 @@ export async function sendAutomaticUpload(
       try {
         return await work();
       } catch (error) {
+        if ((error as { status?: number }).status === 410) {
+          await storage.remove(draft.id);
+          throw error;
+        }
         if (options.signal.aborted) throw stopped();
         const status = (error as { status?: number }).status;
         if (status && status >= 400 && status < 500 && ![408, 409, 429].includes(status))
@@ -91,7 +97,9 @@ export async function sendAutomaticUpload(
     }
   }
   await storage.put(draft);
-  await reliable(() => api.startAutomaticImport(draft.id, draft.files, total));
+  await reliable(() =>
+    api.startAutomaticImport(draft.id, draft.files, total, draft.generation || 0),
+  );
   while (draft.offset < total) {
     const batch: Question[] = [];
     let bytes = 0;
@@ -101,12 +109,12 @@ export async function sendAutomaticUpload(
       batch.push(q);
       bytes += size;
     }
-    await reliable(() => api.appendAutomaticImport(draft.id, batch));
+    await reliable(() => api.appendAutomaticImport(draft.id, batch, draft.generation || 0));
     draft = { ...draft, offset: draft.offset + batch.length };
     await storage.put(draft);
     options.onProgress(draft.offset, total, 'Đang chuyển nguồn lên máy chủ…');
   }
-  await reliable(() => api.finishAutomaticImport(draft.id));
+  await reliable(() => api.finishAutomaticImport(draft.id, draft.generation || 0));
   await storage.remove(draft.id);
   options.onProgress(
     total,

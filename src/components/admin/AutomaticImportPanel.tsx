@@ -14,6 +14,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     controller = useRef<AbortController | null>(null),
     reader = useRef<Worker | null>(null),
     running = useRef(false);
+  const [clearing, setClearing] = useState(false);
   const [uploading, setUploading] = useState(false),
     [message, setMessage] = useState(
       'Chỉ cần đưa file lên. AI chỉ nhận dạng, gắn chuyên đề và tự xuất bản.',
@@ -28,7 +29,13 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   const signature = useRef('');
   async function refresh() {
     try {
-      const items = await apiService.getAutomaticImports();
+      const { items, generation } = await apiService.getAutomaticImportState();
+      try {
+        for (const draft of await uploadDrafts.all())
+          if ((draft.generation || 0) < generation) await uploadDrafts.remove(draft.id);
+      } catch {
+        /* Server generation also prevents stale replay if local storage is unavailable. */
+      }
       if (!mounted.current) return;
       setNow(Date.now());
       setJobs(items);
@@ -114,6 +121,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     setMessage('Đang đọc và giữ lại nguồn tệp…');
     setProgress({ received: 0, total: 0 });
     try {
+      const { generation } = await apiService.getAutomaticImportState();
       const parsed = await new Promise<{
         questions: Question[];
         fileErrors?: string[];
@@ -144,6 +152,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         questions,
         offset: 0,
         createdAt: Date.now(),
+        generation,
       };
       if (parsed.fileErrors?.length) setNotice(parsed.fileErrors.join(' '));
       await send(draft);
@@ -152,6 +161,30 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     } finally {
       running.current = false;
       setUploading(false);
+    }
+  }
+  async function clearImports() {
+    if (
+      clearing ||
+      uploading ||
+      !confirm(
+        'Xóa danh sách nhập và hủy các lượt còn chờ? Các câu đã lưu trong kho được giữ nguyên.',
+      )
+    )
+      return;
+    setClearing(true);
+    try {
+      await apiService.clearAutomaticImports();
+      controller.current?.abort();
+      await uploadDrafts.clear().catch(() => {});
+      signature.current = '';
+      setJobs([]);
+      setMessage('Đã xóa danh sách nhập. Các câu đã lưu trong kho được giữ nguyên.');
+      await refresh();
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setClearing(false);
     }
   }
   return (
@@ -214,6 +247,17 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       </p>
       {jobs.length > 0 && (
         <div className="automatic-job-list" aria-label="Tiến trình xuất bản tự động">
+          <button
+            className="btn btn-danger"
+            disabled={clearing || uploading}
+            onClick={() => void clearImports()}
+          >
+            <Icon name="trash" size={18} />
+            {clearing ? 'Đang xóa…' : 'Xóa danh sách nhập'}
+          </button>
+          <p className="field-help">
+            Xóa các lượt nhập ở cột này, hủy phần còn chờ; giữ nguyên câu hỏi đã lưu.
+          </p>
           {jobs.map((job) => {
             const finished = job.published + job.skipped,
               done = job.submitted && job.received === job.expected && finished === job.expected;

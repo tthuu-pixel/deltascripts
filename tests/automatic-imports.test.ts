@@ -390,7 +390,7 @@ test('each default background run and upload part stays within the D1 Free query
   queries = 0;
   await automaticImportsRoute(db, '/api/admin/imports/items', 'POST', { id, items: questions });
   assert(
-    queries <= 47,
+    queries <= 48,
     `Upload used ${queries} queries, leaving room for authentication/rate limit.`,
   );
   await automaticImportsRoute(db, '/api/admin/imports/finish', 'POST', { id });

@@ -1,3 +1,4 @@
+import { normalizationRoute } from './latex-normalizations';
 import { automaticImportsRoute, wakeAutomaticImports } from './automatic-imports';
 import {
   questionFilters,
@@ -199,6 +200,12 @@ export function createApp(db: Database, options: Options = {}) {
         if (route === '/api/health' && method === 'GET') {
           await query(db, 'SELECT number FROM question_counts LIMIT 1');
           return json({ success: true, status: 'ok', database: 'd1' });
+        }
+        if (route.startsWith('/api/admin/normalizations')) {
+          await session(req, true);
+          if (method === 'POST')
+            await limit(`normalization:${await tokenHash(cookieToken(req))}`, 180);
+          return json({ success: true, ...(await normalizationRoute(db, route, method, body)) });
         }
         if (route.startsWith('/api/admin/imports')) {
           await session(req, true);

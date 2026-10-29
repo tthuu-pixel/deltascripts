@@ -44,7 +44,20 @@ Các câu cũ chưa được phân loại nằm ở bộ lọc **Chưa gắn chu
 - Vào **Cấu hình AI**, chọn Gemini, OpenAI/GPT, Claude hoặc DeepSeek, nhập Base URL/API key và chọn model. **Kiểm tra & lấy model** đọc danh sách model từ dịch vụ.
 - Nút **AI quét và sắp xếp toàn bộ kho** đọc mọi trang, gồm nháp và đã xuất bản. AI chỉ chọn chuyên đề theo mô tả; chỉ lưu liên kết chuyên đề, giữ nguyên nguồn và trạng thái xuất bản. Không phân loại theo Câu 1–7 hoặc tạo chuyên đề mới.
 - Chuyên đề chưa có mô tả không được chọn. Phân loại không khớp hoặc lỗi dịch vụ giữ nguồn để tự thử lại. Không ép gắn chuyên đề không liên quan.
-- Biên tập, đối chiếu và chuẩn hóa thủ công vẫn nằm trong phần tùy chọn. Không có sửa mã/chuẩn hóa bằng AI.
+- Biên tập và chuẩn hóa thủ công vẫn nằm trong phần tùy chọn. Chuẩn hóa bằng AI có nút riêng cho các câu được chọn, như hướng dẫn dưới đây.
+
+## Chuẩn hóa LaTeX các câu của một chuyên đề
+
+1. Vào **Ngân hàng câu hỏi**, chọn **Chuyên đề** trong bộ lọc.
+2. Chọn từng câu hoặc bấm **Chọn hết** để lấy toàn bộ câu khớp bộ lọc trên mọi trang.
+3. Bấm **AI chuẩn hóa LaTeX (N câu)**. Hệ thống nhận lựa chọn và xử lý ở nền; có thể chuyển tab hoặc đóng web sau khi nhận thông báo.
+4. Xem tiến độ ngay dưới bộ lọc. Câu đạt kiểm tra được lưu tự động cùng bản nguồn trước khi sửa. Câu không đạt giữ bản gốc và hiện lý do cần kiểm tra.
+
+AI áp dụng quy tắc của skill `chuan-hoa-latex-toan` ở chế độ Chuẩn hóa: không sửa dữ kiện/đáp án, không giải lại hoặc bổ sung lời giải; giữ nguyên TikZ và immini. Các câu không được chọn, phân loại chuyên đề và trạng thái xuất bản giữ nguyên. Nguồn dùng chung nhiều chuyên đề được chuẩn hóa trên bản ghi chung.
+
+## Xóa danh sách nhập bên trái
+
+Bấm **Xóa danh sách nhập** và xác nhận để dọn toàn bộ các thẻ file ở cột trái, đồng thời hủy các lượt nhập chưa hoàn tất. Câu đã lưu trong ngân hàng và nội dung chuyên đề vẫn còn. Các bản tải dở cũ không được tự gửi lại sau khi đã xóa.
 
 ## Nội dung Góc học tập
 

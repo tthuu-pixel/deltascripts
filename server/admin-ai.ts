@@ -133,6 +133,15 @@ async function credentials(body: any, row: StoredSettings | null, secret?: strin
   }
   return config;
 }
+export async function savedAiProvider(db: Database, options: AdminAiOptions) {
+  const row = await stored(db);
+  requireValue(row, 'Hãy lưu model và API key trong Cấu hình AI trước.', 503);
+  return credentials(
+    { provider: row.provider, baseUrl: row.base_url, model: row.model },
+    row,
+    options.aiSettingsKey,
+  );
+}
 export function validateSuggestions(value: any, ids: string[], topicIds: string[]): AiSuggestion[] {
   const allowedIds = new Set(ids),
     allowedTopics = new Set(topicIds);

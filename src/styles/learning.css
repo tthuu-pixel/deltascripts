@@ -846,3 +846,36 @@
   font-weight: 650;
   color: #647796;
 }
+
+.normalization-panel {
+  padding: 20px;
+  margin: 18px 0;
+  border-color: #cbd9ff;
+  background: linear-gradient(135deg, #f1f5ff, #fff7ed);
+}
+.normalization-panel > .field-help {
+  line-height: 1.7;
+}
+.normalization-job {
+  margin-top: 14px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #dce4fa;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+.normalization-job > strong {
+  display: block;
+  margin-bottom: 9px;
+}
+.normalization-job progress {
+  display: block;
+  width: 100%;
+  height: 9px;
+  accent-color: #2856ee;
+  margin: 12px 0;
+}
+.normalization-job p {
+  line-height: 1.65;
+  margin: 0.4rem 0;
+}

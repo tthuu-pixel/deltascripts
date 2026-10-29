@@ -63,8 +63,30 @@ export async function automaticImportsRoute(
   method: string,
   body: any,
 ) {
-  if (route === '/api/admin/imports' && method === 'GET')
-    return { items: await automaticImportJobs(db) };
+  if (route === '/api/admin/imports' && method === 'GET') {
+    const control = await db
+      .prepare('SELECT generation FROM automatic_import_control WHERE id=1')
+      .first<{ generation: number }>();
+    return { items: await automaticImportJobs(db), generation: control!.generation };
+  }
+  if (route === '/api/admin/imports/clear' && method === 'POST') {
+    const result = await db.batch([
+      db.prepare(
+        'UPDATE automatic_import_control SET generation=generation+1 WHERE id=1 RETURNING generation',
+      ),
+      db.prepare('DELETE FROM automatic_import_jobs'),
+      db.prepare('DELETE FROM automatic_import_sources'),
+    ]);
+    return { generation: Number((result[0].results[0] as { generation: number }).generation) };
+  }
+  const control = await db
+    .prepare('SELECT generation FROM automatic_import_control WHERE id=1')
+    .first<{ generation: number }>();
+  requireValue(
+    (body.generation ?? 0) === control!.generation,
+    'Lượt nhập đã được xóa; nguồn cũ sẽ không tự gửi lại.',
+    410,
+  );
   requireValue(uuid(body.id), 'Mã lượt tải không hợp lệ.');
   if (route === '/api/admin/imports/start' && method === 'POST') {
     requireValue(
@@ -81,9 +103,9 @@ export async function automaticImportsRoute(
     const now = Date.now();
     await db
       .prepare(
-        'INSERT OR IGNORE INTO automatic_import_jobs(id,files,expected,created_at,updated_at) VALUES(?,?,?,?,?)',
+        'INSERT OR IGNORE INTO automatic_import_jobs(id,files,expected,created_at,updated_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM automatic_import_control WHERE id=1 AND generation=?)',
       )
-      .bind(body.id, JSON.stringify(body.files), body.expected, now, now)
+      .bind(body.id, JSON.stringify(body.files), body.expected, now, now, body.generation ?? 0)
       .run();
     const job = await db
       .prepare('SELECT files,expected FROM automatic_import_jobs WHERE id=?')
