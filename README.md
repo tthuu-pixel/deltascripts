@@ -174,6 +174,8 @@ Lỗi mạng, timeout hoặc dịch vụ tạm ngừng thử lại sau khoảng 
 
 Khi quay về tab, focus cửa sổ hoặc có mạng trở lại, giao diện đọc ngay tiến độ từ máy chủ. Trạng thái hiện giờ thử lại; lease đã hết hạn được tính là chờ khôi phục. Việc cập nhật giao diện không khởi chạy thêm yêu cầu AI.
 
+Các yêu cầu chỉ đọc tự thử lại tối đa hai lần khi mất kết nối hoặc nhận HTTP 502/503/504. Điều này giúp bước đọc trạng thái trước khi tải file và bước tải ngân hàng phục hồi khi mạng chập chờn. Lỗi xác thực/kiểm tra dữ liệu không tự lặp; thao tác ghi vẫn dùng cơ chế biên nhận và ID riêng để tránh nhập trùng. Nếu hết thời gian chờ, giao diện phân biệt phản hồi chậm với lỗi kết nối; lượt nhập chưa xong được báo rõ.
+
 
 ## Xóa danh sách nhập và AI chuẩn hóa LaTeX theo chuyên đề
 

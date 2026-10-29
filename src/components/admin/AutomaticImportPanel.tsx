@@ -174,7 +174,10 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       };
       await send(draft);
     } catch (error) {
-      if ((error as Error).name !== 'AbortError') setNotice((error as Error).message);
+      if ((error as Error).name !== 'AbortError') {
+        setMessage('Lượt nhập chưa hoàn tất. Kiểm tra thông báo bên dưới trước khi thử lại.');
+        setNotice((error as Error).message);
+      }
     } finally {
       running.current = false;
       setUploading(false);

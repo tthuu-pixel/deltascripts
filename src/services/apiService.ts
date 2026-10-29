@@ -26,19 +26,11 @@ export function clearApiCache() {
   pending.clear();
 }
 
-export async function apiRequest<T = any>(
-  route: string,
-  body?: unknown,
-  ttl = 0,
-  signal?: AbortSignal,
-): Promise<T> {
-  if (body === undefined) {
-    const saved = cache.get(route);
-    if (saved && saved.expires > Date.now()) return saved.value;
-    if (pending.has(route)) return pending.get(route)!;
-  }
-  const currentRevision = revision;
-  const request = (async () => {
+async function fetchApiResponse(route: string, body: unknown, signal?: AbortSignal) {
+  // Reads can be replayed safely. Writes retain their own receipt/ID retry handling.
+  const maxAttempts = body === undefined ? 3 : 1;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (signal?.aborted) throw new DOMException('Đã dừng quét AI.', 'AbortError');
     let response: Response;
     try {
       response = await fetch(`/api${route}`, {
@@ -53,10 +45,42 @@ export async function apiRequest<T = any>(
           ),
         ]),
       });
-    } catch {
+    } catch (error) {
       if (signal?.aborted) throw new DOMException('Đã dừng quét AI.', 'AbortError');
-      throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.', 0);
+      if (attempt + 1 === maxAttempts)
+        throw new ApiError(
+          (error as Error).name === 'TimeoutError'
+            ? 'Máy chủ phản hồi quá chậm. Vui lòng thử lại khi kết nối ổn định.'
+            : 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.',
+          0,
+        );
+      await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+      continue;
     }
+    if (attempt + 1 < maxAttempts && [502, 503, 504].includes(response.status)) {
+      await response.body?.cancel().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+      continue;
+    }
+    return response;
+  }
+  throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.', 0);
+}
+
+export async function apiRequest<T = any>(
+  route: string,
+  body?: unknown,
+  ttl = 0,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (body === undefined) {
+    const saved = cache.get(route);
+    if (saved && saved.expires > Date.now()) return saved.value;
+    if (pending.has(route)) return pending.get(route)!;
+  }
+  const currentRevision = revision;
+  const request = (async () => {
+    const response = await fetchApiResponse(route, body, signal);
     let data: any;
     try {
       data = await response.json();

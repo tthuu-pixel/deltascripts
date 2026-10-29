@@ -84,14 +84,15 @@ test('topic exercise pages handle retry, separate answers and an empty topic', a
     statementRaw: `Đề bài riêng ${index + 1}: $x+1=3$.`,
     solutionRaw: index === 1 ? '' : `Lời giải riêng ${index + 1}: $x=2$.`,
   }));
-  let fail = true;
+  // Exhaust automatic read recovery before exercising the manual retry button.
+  let failures = 3;
   let topicId = '';
   await page.route('**/api/topic-questions?**', async (route) => {
     const params = new URL(route.request().url()).searchParams;
     expect(params.has('number')).toBe(false);
     topicId ||= params.get('topicId')!;
-    if (fail) {
-      fail = false;
+    if (failures > 0) {
+      failures--;
       return route.fulfill({
         status: 503,
         json: { success: false, error: 'Tạm thời chưa tải được bài tập.' },
@@ -113,6 +114,7 @@ test('topic exercise pages handle retry, separate answers and an empty topic', a
   await page.locator('.topic-card').first().click();
   await page.getByRole('tab', { name: 'Bài tập vận dụng', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Tạm thời chưa tải được bài tập.');
+  expect(failures).toBe(0);
   await page.getByRole('button', { name: 'Thử lại', exact: true }).click();
   const exercises = page.locator('.topic-exercise');
   await expect(exercises).toHaveCount(10);
