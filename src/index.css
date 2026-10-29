@@ -70,6 +70,44 @@
   border: 1px solid #d1d5db;
   padding: 0.5rem;
 }
+.math-content .tex-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.math-content .tex-table {
+  margin-inline: auto;
+  max-width: none;
+}
+.math-content .tex-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.math-content .tex-table-nested {
+  display: inline-table;
+  margin: 0;
+}
+.math-content .tex-table-nested td {
+  border: 0;
+  padding: 0;
+}
+.math-content .tex-list-ex > li {
+  break-inside: avoid;
+}
+.math-content .tex-list-cols-2 {
+  column-count: 2;
+}
+.math-content .tex-list-cols-3 {
+  column-count: 3;
+}
+.math-content .tex-list-cols-4 {
+  column-count: 4;
+}
+@media (max-width: 640px) {
+  .math-content .tex-list-ex {
+    column-count: 1;
+  }
+}
 .math-content img {
   max-width: 100%;
   height: auto;

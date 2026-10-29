@@ -53,6 +53,7 @@ export default function AdminView() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [page, setPage] = useState(1),
     [total, setTotal] = useState(0);
+  const [bankState, setBankState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
@@ -81,6 +82,7 @@ export default function AdminView() {
       return;
     }
     setBusy(true);
+    if (tab === 'questions') setBankState('loading');
     (tab === 'questions'
       ? apiService
           .getQuestions(page, { topicId: topicFilter, status: statusFilter, search })
@@ -88,6 +90,7 @@ export default function AdminView() {
             if (active) {
               setQuestions(data.items);
               setTotal(data.total);
+              setBankState('ready');
             }
           })
       : apiService.getAccessCodes().then((items) => {
@@ -95,7 +98,14 @@ export default function AdminView() {
         })
     )
       .catch((error) => {
-        if (active) setError(error.message);
+        if (active) {
+          if (tab === 'questions') setBankState('error');
+          setError(
+            tab === 'questions'
+              ? `Chưa tải được ngân hàng câu hỏi. ${error.message}`
+              : error.message,
+          );
+        }
       })
       .finally(() => {
         if (active) setBusy(false);
@@ -613,10 +623,17 @@ export default function AdminView() {
                 <span className="section-kicker">CHUẨN BỊ CHO NHỮNG GIỜ HỌC HAY</span>
                 <h2>Kho câu hỏi của bạn</h2>
                 <p className="muted">
-                  {busy
-                    ? 'Đang cập nhật nguồn câu hỏi…'
-                    : `${total} câu hỏi trong kho · Gồm bản nháp và bài đã xuất bản`}
+                  {bankState === 'error'
+                    ? 'Chưa tải được số lượng câu hỏi. Dữ liệu trong kho được giữ nguyên.'
+                    : busy || bankState === 'loading'
+                      ? 'Đang cập nhật nguồn câu hỏi…'
+                      : `${total} câu hỏi trong kho · Gồm bản nháp và bài đã xuất bản`}
                 </p>
+                {bankState === 'error' && (
+                  <button className="text-button" disabled={busy} onClick={reload}>
+                    <Icon name="refresh" size={18} /> Tải lại ngân hàng
+                  </button>
+                )}
               </div>
               <button
                 className="icon-button"
@@ -814,7 +831,7 @@ export default function AdminView() {
                 Đang xử lý…
               </p>
             )}
-            {!busy && !questions.length && !error && (
+            {!busy && bankState === 'ready' && !questions.length && !error && (
               <div className="surface empty-state bank-empty">
                 <div className="empty-illustration">
                   <Icon name="guide" size={60} />
@@ -913,19 +930,25 @@ export default function AdminView() {
             <div className="bank-pagination">
               <button
                 className={button}
-                disabled={busy || page <= 1}
+                disabled={busy || bankState !== 'ready' || page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
                 <Icon name="back" size={17} />
                 Trang trước
               </button>
               <span>
-                Trang <strong>{page}</strong> / {Math.max(1, Math.ceil(total / 20))}
-                <small>{total} câu hỏi</small>
+                {bankState === 'ready' ? (
+                  <>
+                    Trang <strong>{page}</strong> / {Math.max(1, Math.ceil(total / 20))}
+                    <small>{total} câu hỏi</small>
+                  </>
+                ) : (
+                  'Chưa tải được phân trang'
+                )}
               </span>
               <button
                 className={button}
-                disabled={busy || page * 20 >= total}
+                disabled={busy || bankState !== 'ready' || page * 20 >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
                 Trang sau

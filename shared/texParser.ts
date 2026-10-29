@@ -7,6 +7,7 @@ import {
   maskTexComments,
 } from './texSyntax.ts';
 import { extractTikz } from './tikz.ts';
+import { renderTexTables } from './texTables';
 export { findMatchingBrace } from './texSyntax.ts';
 
 export function removeTexComments(text: string): string {
@@ -98,26 +99,7 @@ export function normalizeTexContent(text: string): string {
     value = value.slice(0, im.index) + result + value.slice(secondEnd + 1);
     immini.lastIndex = im.index + result.length;
   }
-  value = value.replace(
-    /\\begin\{tabular\}\{(?:[^{}]|\{[^{}]*\})*\}([\s\S]*?)\\end\{tabular\}/g,
-    (_, body: string) =>
-      '<table><tbody>' +
-      body
-        .replace(/\\hline/g, '')
-        .split('\\\\')
-        .filter((row) => row.trim())
-        .map(
-          (row) =>
-            '<tr>' +
-            row
-              .split('&')
-              .map((cell) => `<td>${cell.trim()}</td>`)
-              .join('') +
-            '</tr>',
-        )
-        .join('') +
-      '</tbody></table>',
-  );
+  value = renderTexTables(value);
   for (const [command, tag] of [
     ['textbf', 'strong'],
     ['emph', 'em'],
@@ -165,7 +147,15 @@ export function normalizeTexContent(text: string): string {
     .replace(/\\end\{itemize\}/g, '</ul>')
     .replace(/\\begin\{enumerate\}(?:\[[^\]]*\])?/g, '<ol class="list-decimal ml-6">')
     .replace(/\\end\{enumerate\}/g, '</ol>')
+    .replace(
+      /\\begin\{listEX\}(?:\[(\d+)\])?/g,
+      (_, columns) =>
+        `<ol class="list-decimal ml-6 tex-list-ex tex-list-cols-${Math.min(4, Math.max(1, Number(columns) || 1))}">`,
+    )
+    .replace(/\\end\{listEX\}/g, '</ol>')
     .replace(/\\item(?:\[[^\]]*\])?\s*/g, '<li>')
+    .replace(/\\(?:lq\s*\\lq|rq\s*\\rq)\b/g, '&quot;')
+    .replace(/\\(?:lq|rq)\b/g, '&#39;')
     .replace(/\\\\/g, '<br/>');
   // Leave actual HTML intact; escape inequalities and other bare '<' characters.
   value = value.replace(/<(?!\/?[a-z][a-z0-9]*(?:\s|\/?>))/gi, '&lt;');

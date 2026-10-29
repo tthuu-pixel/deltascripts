@@ -28,9 +28,11 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   const changed = useRef(onChanged);
   changed.current = onChanged;
   const signature = useRef('');
+  const serverGeneration = useRef<number | null>(null);
   async function refresh() {
     try {
       const { items, generation } = await apiService.getAutomaticImportState();
+      serverGeneration.current = generation;
       try {
         for (const draft of await uploadDrafts.all())
           if (draft.kind !== 'topic-restore' && (draft.generation || 0) < generation)
@@ -72,11 +74,15 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     const timer = setTimeout(async () => {
       await refresh();
       if (!live || running.current) return;
-      running.current = true;
+      let ownsUpload = false;
       try {
         const drafts = await uploadDrafts.all();
-        if (!live) return;
-        if (drafts.length) setUploading(true);
+        if (!live || running.current || !drafts.length) return;
+        // Reading IndexedDB may be slow. Only own the upload lock once there is
+        // actual work, otherwise choosing a file during this read is silently ignored.
+        running.current = true;
+        ownsUpload = true;
+        setUploading(true);
         for (const draft of drafts.sort((a, b) => a.createdAt - b.createdAt)) {
           if (!live) break;
           await send(draft);
@@ -84,8 +90,10 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       } catch (error) {
         if (live && (error as Error).name !== 'AbortError') setNotice((error as Error).message);
       } finally {
-        running.current = false;
-        if (live) setUploading(false);
+        if (ownsUpload) {
+          running.current = false;
+          if (live) setUploading(false);
+        }
       }
     }, 0);
     const resume = () => {
@@ -125,7 +133,6 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     setMessage('Đang đọc và giữ lại nguồn tệp…');
     setProgress({ received: 0, total: 0 });
     try {
-      const { generation } = await apiService.getAutomaticImportState();
       const parsed = await new Promise<{
         questions: Question[];
         fileErrors?: string[];
@@ -164,6 +171,12 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       const questions = all.filter((q) => !q.topicRestore);
       if (!questions.length) return;
       if (questions.length > 10000) throw new Error('Mỗi lượt nhận tối đa 10.000 câu.');
+      setMessage(`Đã đọc ${questions.length} câu. Đang chuẩn bị gửi lên máy chủ…`);
+      // A slow progress poll must not hold a new file hostage. The server still
+      // checks this generation atomically and rejects work cleared in another tab.
+      const generation =
+        serverGeneration.current ?? (await apiService.getAutomaticImportState()).generation;
+      serverGeneration.current = generation;
       const draft = {
         id: crypto.randomUUID(),
         files: parsed.acceptedFiles,

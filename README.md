@@ -176,6 +176,12 @@ Khi quay về tab, focus cửa sổ hoặc có mạng trở lại, giao diện �
 
 Các yêu cầu chỉ đọc tự thử lại tối đa hai lần khi mất kết nối hoặc nhận HTTP 502/503/504. Điều này giúp bước đọc trạng thái trước khi tải file và bước tải ngân hàng phục hồi khi mạng chập chờn. Lỗi xác thực/kiểm tra dữ liệu không tự lặp; thao tác ghi vẫn dùng cơ chế biên nhận và ID riêng để tránh nhập trùng. Nếu hết thời gian chờ, giao diện phân biệt phản hồi chậm với lỗi kết nối; lượt nhập chưa xong được báo rõ.
 
+Khâu đọc bản tải dở trong IndexedDB không giữ khóa nhập file khi chưa có việc cần gửi. File mới được đọc ngay; dùng generation đã nhận khi mở trang để tránh phụ thuộc một lượt đọc tiến độ khác. Máy chủ vẫn kiểm tra generation để chặn nguồn đã xóa ở tab khác. Nếu không tải được ngân hàng, giao diện báo chưa đọc được số lượng và có nút **Tải lại ngân hàng**, thay vì hiển thị nhầm 0 câu.
+
+## Hiển thị bảng, danh sách và dấu ngoặc kép từ TeX
+
+Phần hiển thị đổi cặp `\lq\lq`, `\rq\rq` thành dấu ngoặc kép và hỗ trợ `listEX` (kể cả tùy chọn số cột). Bộ đọc bảng dùng cấu trúc môi trường để giữ đúng bảng `tabular` lồng, tùy chọn `[c]`, khai báo cột `@{}`, dòng xuống trong ô, `multicolumn`, `multirow` và các đường kẻ. Bảng rộng cuộn ngang trong khung, bảng con không có viền thừa. Chỉ HTML hiển thị thay đổi; mã TeX, số liệu, lời giải và TikZ đang lưu được giữ nguyên.
+
 
 ## Xóa danh sách nhập và AI chuẩn hóa LaTeX theo chuyên đề
 
