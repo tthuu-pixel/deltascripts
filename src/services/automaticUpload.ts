@@ -7,6 +7,7 @@ export interface AutomaticUploadDraft {
   offset: number;
   createdAt: number;
   generation?: number;
+  kind?: 'topic-restore';
 }
 const database = 'deltascript-automatic-uploads';
 async function localStore<T>(

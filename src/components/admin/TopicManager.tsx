@@ -4,6 +4,7 @@ import { apiService } from '../../services/apiService';
 import Icon from '../Icons';
 import LessonEditor from './LessonEditor';
 import IconPicker from './IconPicker';
+import TopicDownloadButton from './TopicDownloadButton';
 import { useUnsavedChanges } from './useUnsavedChanges';
 const empty = (): Partial<ManagedTopic> => ({
   title: '',
@@ -166,6 +167,18 @@ export default function TopicManager({
         <form className="surface content-editor" onSubmit={save}>
           <div className="section-heading">
             <h3>{draft.id ? 'Chỉnh sửa chuyên đề' : 'Chuyên đề mới'}</h3>
+            {draft.id && (
+              <TopicDownloadButton
+                topic={{ id: draft.id, title: draft.title || 'Chuyên đề' }}
+                disabled={busy}
+                onError={setError}
+                onDownloaded={(count) =>
+                  setNotice(
+                    `Đã tải ${count} câu thành một file TeX, gồm cả câu nháp và đã xuất bản. Giữ các dòng DELTASCRIPT để nhập lại đúng câu gốc.`,
+                  )
+                }
+              />
+            )}
             <button
               type="button"
               className="text-button"
@@ -307,6 +320,16 @@ export default function TopicManager({
                 </div>
               </div>
               <div className="managed-topic-actions">
+                <TopicDownloadButton
+                  topic={topic}
+                  disabled={busy}
+                  onError={setError}
+                  onDownloaded={(count) =>
+                    setNotice(
+                      `Đã tải ${count} câu của “${topic.title}”. Giữ các dòng DELTASCRIPT khi chuẩn hóa để nhập lại đúng câu gốc.`,
+                    )
+                  }
+                />
                 <button
                   className="btn btn-secondary"
                   disabled={busy}

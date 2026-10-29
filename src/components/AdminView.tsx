@@ -12,6 +12,7 @@ import type { ReviewMode } from './admin/QuestionReview';
 const ExamSettingsManager = lazy(() => import('./admin/ExamSettingsManager'));
 const AiSettingsManager = lazy(() => import('./admin/AiSettingsManager'));
 const AiBankScan = lazy(() => import('./admin/AiBankScan'));
+const TopicDownloadButton = lazy(() => import('./admin/TopicDownloadButton'));
 const LatexNormalizationPanel = lazy(() => import('./admin/LatexNormalizationPanel'));
 const AutomaticImportPanel = lazy(() => import('./admin/AutomaticImportPanel'));
 const QuestionReview = lazy(() => import('./admin/QuestionReview'));
@@ -704,6 +705,22 @@ export default function AdminView() {
                 Bỏ chọn
               </button>
             </div>
+            {topics.some((t) => t.id === topicFilter) && (
+              <Suspense fallback={null}>
+                <div className="review-actions">
+                  <TopicDownloadButton
+                    topic={topics.find((t) => t.id === topicFilter)!}
+                    disabled={busy}
+                    onError={setError}
+                    onDownloaded={(count) =>
+                      setNotice(
+                        `Đã tải toàn bộ ${count} câu của chuyên đề vào một file TeX. Giữ các dòng DELTASCRIPT để nhập lại cập nhật câu gốc.`,
+                      )
+                    }
+                  />
+                </div>
+              </Suspense>
+            )}
             <p className="field-help">
               “Chọn hết” áp dụng cho các câu theo bộ lọc trên tất cả các trang.
             </p>

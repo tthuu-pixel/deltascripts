@@ -8,6 +8,7 @@ import {
   type AutomaticUploadDraft,
 } from '../../services/automaticUpload';
 import Icon from '../Icons';
+import { sendTopicRestore, uniqueTopicRestores } from '../../services/topicTexArchive';
 
 export default function AutomaticImportPanel({ onChanged }: { onChanged: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null),
@@ -32,7 +33,8 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       const { items, generation } = await apiService.getAutomaticImportState();
       try {
         for (const draft of await uploadDrafts.all())
-          if ((draft.generation || 0) < generation) await uploadDrafts.remove(draft.id);
+          if (draft.kind !== 'topic-restore' && (draft.generation || 0) < generation)
+            await uploadDrafts.remove(draft.id);
       } catch {
         /* Server generation also prevents stale replay if local storage is unavailable. */
       }
@@ -50,15 +52,20 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   async function send(draft: AutomaticUploadDraft) {
     const abort = new AbortController();
     controller.current = abort;
-    await sendAutomaticUpload(draft, {
-      signal: abort.signal,
-      onProgress: (received, total, message) => {
-        setProgress({ received, total });
-        setMessage(message);
-      },
-    });
-    await refresh();
+    try {
+      await (draft.kind === 'topic-restore' ? sendTopicRestore : sendAutomaticUpload)(draft, {
+        signal: abort.signal,
+        onProgress: (received, total, message) => {
+          setProgress({ received, total });
+          setMessage(message);
+        },
+      });
+    } finally {
+      if (draft.kind === 'topic-restore' && mounted.current) changed.current();
+      await refresh();
+    }
   }
+
   useEffect(() => {
     let live = true;
     mounted.current = true;
@@ -75,10 +82,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           await send(draft);
         }
       } catch (error) {
-        if (live && (error as Error).name !== 'AbortError')
-          setNotice(
-            'Bản tải được giữ trên thiết bị. Hệ thống sẽ tiếp tục khi phiên đăng nhập hoạt động.',
-          );
+        if (live && (error as Error).name !== 'AbortError') setNotice((error as Error).message);
       } finally {
         running.current = false;
         if (live) setUploading(false);
@@ -141,10 +145,24 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           reader.current = null;
           reject(new Error('Chưa đọc được nội dung tệp.'));
         };
-        worker.postMessage({ files, preserveSource: true });
+        worker.postMessage({ files, preserveSource: true, restoreExports: true });
       });
       // Derived previews duplicate drawing data; queue the original source and parsed bodies only.
-      const questions = parsed.questions.map(({ rawTikzBlocks, rawImageRefs, ...q }) => q);
+      const all = parsed.questions.map(({ rawTikzBlocks, rawImageRefs, ...q }) => q);
+      if (parsed.fileErrors?.length) setNotice(parsed.fileErrors.join(' '));
+      const restoring = uniqueTopicRestores(all);
+      if (restoring.length) {
+        await send({
+          id: crypto.randomUUID(),
+          files: parsed.acceptedFiles,
+          questions: restoring,
+          offset: 0,
+          createdAt: Date.now(),
+          kind: 'topic-restore',
+        });
+      }
+      const questions = all.filter((q) => !q.topicRestore);
+      if (!questions.length) return;
       if (questions.length > 10000) throw new Error('Mỗi lượt nhận tối đa 10.000 câu.');
       const draft = {
         id: crypto.randomUUID(),
@@ -154,7 +172,6 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         createdAt: Date.now(),
         generation,
       };
-      if (parsed.fileErrors?.length) setNotice(parsed.fileErrors.join(' '));
       await send(draft);
     } catch (error) {
       if ((error as Error).name !== 'AbortError') setNotice((error as Error).message);
@@ -176,7 +193,12 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     try {
       await apiService.clearAutomaticImports();
       controller.current?.abort();
-      await uploadDrafts.clear().catch(() => {});
+      try {
+        for (const draft of await uploadDrafts.all())
+          if (draft.kind !== 'topic-restore') await uploadDrafts.remove(draft.id);
+      } catch {
+        /* Old generations are also rejected by the server. */
+      }
       signature.current = '';
       setJobs([]);
       setMessage('Đã xóa danh sách nhập. Các câu đã lưu trong kho được giữ nguyên.');
@@ -243,7 +265,8 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         </p>
       )}
       <p className="field-help">
-        Giữ nguyên mã TeX, lời giải và TikZ. AI chỉ phân chuyên đề, không sửa hay chuẩn hóa nguồn.
+        Giữ nguyên mã TeX, lời giải và TikZ. AI chỉ phân chuyên đề khi nhập nguồn mới. File tải từ
+        chuyên đề nhập lại sẽ cập nhật câu gốc; giữ các dòng DELTASCRIPT trong file.
       </p>
       {jobs.length > 0 && (
         <div className="automatic-job-list" aria-label="Tiến trình xuất bản tự động">

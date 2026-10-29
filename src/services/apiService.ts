@@ -87,6 +87,11 @@ export async function apiRequest<T = any>(
   return request;
 }
 export const apiService = {
+  async restoreTopicQuestions(
+    items: import('../../shared/topicTexArchive').TopicRestoreItem[],
+  ): Promise<{ updated: number; unchanged: number }> {
+    return apiRequest('/admin/topics/restore', { items });
+  },
   async getNormalizations(): Promise<import('../../shared/normalization').NormalizationJob[]> {
     return (await apiRequest('/admin/normalizations')).items;
   },

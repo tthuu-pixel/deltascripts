@@ -1,3 +1,4 @@
+import { restoreTopicTex } from './topic-tex-restore';
 import { normalizationRoute } from './latex-normalizations';
 import { automaticImportsRoute, wakeAutomaticImports } from './automatic-imports';
 import {
@@ -200,6 +201,11 @@ export function createApp(db: Database, options: Options = {}) {
         if (route === '/api/health' && method === 'GET') {
           await query(db, 'SELECT number FROM question_counts LIMIT 1');
           return json({ success: true, status: 'ok', database: 'd1' });
+        }
+        if (route === '/api/admin/topics/restore' && method === 'POST') {
+          await session(req, true);
+          await limit(`topic-restore:${await tokenHash(cookieToken(req))}`, 180);
+          return json({ success: true, ...(await restoreTopicTex(db, body)) });
         }
         if (route.startsWith('/api/admin/normalizations')) {
           await session(req, true);
