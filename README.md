@@ -178,6 +178,10 @@ Các yêu cầu chỉ đọc tự thử lại tối đa hai lần khi mất kế
 
 Khâu đọc bản tải dở trong IndexedDB không giữ khóa nhập file khi chưa có việc cần gửi. File mới được đọc ngay; dùng generation đã nhận khi mở trang để tránh phụ thuộc một lượt đọc tiến độ khác. Máy chủ vẫn kiểm tra generation để chặn nguồn đã xóa ở tab khác. Nếu không tải được ngân hàng, giao diện báo chưa đọc được số lượng và có nút **Tải lại ngân hàng**, thay vì hiển thị nhầm 0 câu.
 
+Mỗi gói tải mới chứa tối đa 5 câu, mục tiêu 64 KB; một câu lớn được gửi riêng. IndexedDB có giới hạn chờ 2 giây; khi bị chặn, hệ thống tiếp tục gửi từ bộ nhớ và nhắc giữ trang mở đến khi máy chủ xác nhận nhận đủ. Chỉ quét bản tải cũ khi generation thay đổi, thay vì đọc lại toàn bộ nguồn mỗi lần cập nhật tiến độ. File được chọn trong lúc đang gửi được giữ để gửi tiếp. Biên nhận đã hoàn tất chỉ xác nhận lại, không khôi phục câu đã bị xóa khi một bản cache cũ gửi lại.
+
+Nếu một bước chờ quá 15 giây hoặc phát sinh lỗi, trang hiện **Mã kiểm tra** và gửi số lượng, bước đang thực hiện cùng thời gian/trạng thái của tối đa 20 yêu cầu gần nhất. Không ghi nguồn TeX, body, query string, cookie, thông tin đăng nhập hoặc API key. Endpoint `/api/admin/imports/diagnostic` chỉ dành cho quản trị; migration `0011_import_diagnostics.sql` giữ tối đa 100 báo cáo trong `import_diagnostics`. Dữ liệu này giúp xác định chính xác bước bị treo trên trình duyệt thật.
+
 ## Hiển thị bảng, danh sách và dấu ngoặc kép từ TeX
 
 Phần hiển thị đổi cặp `\lq\lq`, `\rq\rq` thành dấu ngoặc kép và hỗ trợ `listEX` (kể cả tùy chọn số cột). Bộ đọc bảng dùng cấu trúc môi trường để giữ đúng bảng `tabular` lồng, tùy chọn `[c]`, khai báo cột `@{}`, dòng xuống trong ô, `multicolumn`, `multirow` và các đường kẻ. Bảng rộng cuộn ngang trong khung, bảng con không có viền thừa. Chỉ HTML hiển thị thay đổi; mã TeX, số liệu, lời giải và TikZ đang lưu được giữ nguyên.

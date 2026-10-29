@@ -5,17 +5,35 @@ import { apiService } from '../../services/apiService';
 import {
   sendAutomaticUpload,
   uploadDrafts,
+  hasVolatileUploads,
   type AutomaticUploadDraft,
 } from '../../services/automaticUpload';
 import Icon from '../Icons';
 import { sendTopicRestore, uniqueTopicRestores } from '../../services/topicTexArchive';
+import { reportImportDiagnostic } from '../../services/importDiagnostics';
 
 export default function AutomaticImportPanel({ onChanged }: { onChanged: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null),
     controller = useRef<AbortController | null>(null),
     reader = useRef<Worker | null>(null),
     running = useRef(false);
+  const waitingFiles = useRef<File[][]>([]);
+  const [queuedFiles, setQueuedFiles] = useState(0);
+  function nextFiles() {
+    if (!mounted.current || running.current || !waitingFiles.current.length) return;
+    const files = waitingFiles.current.shift()!;
+    setQueuedFiles(waitingFiles.current.reduce((sum, batch) => sum + batch.length, 0));
+    void upload(files);
+  }
   const [clearing, setClearing] = useState(false);
+  const [volatileUpload, setVolatileUpload] = useState(hasVolatileUploads);
+  const [diagnosticId, setDiagnosticId] = useState('');
+  const trace = useRef({ stage: '', bytes: 0, received: 0, total: 0, changedAt: Date.now() });
+  function reportStall() {
+    const t = trace.current;
+    const id = reportImportDiagnostic(t.stage, t.bytes, t.received, t.total, hasVolatileUploads());
+    if (id && mounted.current) setDiagnosticId(id);
+  }
   const [uploading, setUploading] = useState(false),
     [message, setMessage] = useState(
       'Chỉ cần đưa file lên. AI chỉ nhận dạng, gắn chuyên đề và tự xuất bản.',
@@ -29,16 +47,22 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   changed.current = onChanged;
   const signature = useRef('');
   const serverGeneration = useRef<number | null>(null);
+  const cleanedGeneration = useRef<number | null>(null);
   async function refresh() {
     try {
       const { items, generation } = await apiService.getAutomaticImportState();
       serverGeneration.current = generation;
-      try {
-        for (const draft of await uploadDrafts.all())
-          if (draft.kind !== 'topic-restore' && (draft.generation || 0) < generation)
-            await uploadDrafts.remove(draft.id);
-      } catch {
-        /* Server generation also prevents stale replay if local storage is unavailable. */
+      if (cleanedGeneration.current !== generation) {
+        cleanedGeneration.current = generation;
+        void (async () => {
+          try {
+            for (const draft of await uploadDrafts.all())
+              if (draft.kind !== 'topic-restore' && (draft.generation || 0) < generation)
+                await uploadDrafts.remove(draft.id);
+          } catch {
+            /* Server generation also prevents stale replay if local storage is unavailable. */
+          }
+        })();
       }
       if (!mounted.current) return;
       setNow(Date.now());
@@ -58,6 +82,13 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       await (draft.kind === 'topic-restore' ? sendTopicRestore : sendAutomaticUpload)(draft, {
         signal: abort.signal,
         onProgress: (received, total, message) => {
+          trace.current = {
+            ...trace.current,
+            stage: message,
+            received,
+            total,
+            changedAt: Date.now(),
+          };
           setProgress({ received, total });
           setMessage(message);
         },
@@ -71,6 +102,8 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
   useEffect(() => {
     let live = true;
     mounted.current = true;
+    const storageUpdate = () => setVolatileUpload(hasVolatileUploads());
+    window.addEventListener('upload-storage-change', storageUpdate);
     const timer = setTimeout(async () => {
       await refresh();
       if (!live || running.current) return;
@@ -94,6 +127,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
           running.current = false;
           if (live) setUploading(false);
         }
+        if (live) nextFiles();
       }
     }, 0);
     const resume = () => {
@@ -106,10 +140,12 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     const polling = setInterval(resume, 5000);
     const clock = setInterval(() => {
       if (live && document.visibilityState !== 'hidden') setNow(Date.now());
+      if (live && running.current && Date.now() - trace.current.changedAt > 15000) reportStall();
     }, 1000);
     return () => {
       live = false;
       mounted.current = false;
+      window.removeEventListener('upload-storage-change', storageUpdate);
       document.removeEventListener('visibilitychange', resume);
       window.removeEventListener('focus', resume);
       window.removeEventListener('online', resume);
@@ -122,15 +158,28 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
     };
   }, []);
   async function upload(files: File[]) {
-    if (!files.length || running.current) return;
+    if (!files.length) return;
     if (files.length > 100) {
       setNotice('Mỗi lượt nhận tối đa 100 tệp.');
+      return;
+    }
+    if (running.current) {
+      waitingFiles.current.push(files);
+      setQueuedFiles(waitingFiles.current.reduce((sum, batch) => sum + batch.length, 0));
       return;
     }
     running.current = true;
     setUploading(true);
     setNotice('');
     setMessage('Đang đọc và giữ lại nguồn tệp…');
+    setDiagnosticId('');
+    trace.current = {
+      stage: 'Đang đọc file trên thiết bị',
+      bytes: files.reduce((sum, f) => sum + f.size, 0),
+      received: 0,
+      total: 0,
+      changedAt: Date.now(),
+    };
     setProgress({ received: 0, total: 0 });
     try {
       const parsed = await new Promise<{
@@ -159,6 +208,12 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       if (parsed.fileErrors?.length) setNotice(parsed.fileErrors.join(' '));
       const restoring = uniqueTopicRestores(all);
       if (restoring.length) {
+        trace.current = {
+          ...trace.current,
+          stage: 'Đang cập nhật lại câu gốc',
+          total: restoring.length,
+          changedAt: Date.now(),
+        };
         await send({
           id: crypto.randomUUID(),
           files: parsed.acceptedFiles,
@@ -172,6 +227,12 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       if (!questions.length) return;
       if (questions.length > 10000) throw new Error('Mỗi lượt nhận tối đa 10.000 câu.');
       setMessage(`Đã đọc ${questions.length} câu. Đang chuẩn bị gửi lên máy chủ…`);
+      trace.current = {
+        ...trace.current,
+        stage: 'Đã đọc file, đang khởi tạo lượt nhập',
+        total: questions.length,
+        changedAt: Date.now(),
+      };
       // A slow progress poll must not hold a new file hostage. The server still
       // checks this generation atomically and rejects work cleared in another tab.
       const generation =
@@ -188,12 +249,14 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       await send(draft);
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
+        reportStall();
         setMessage('Lượt nhập chưa hoàn tất. Kiểm tra thông báo bên dưới trước khi thử lại.');
         setNotice((error as Error).message);
       }
     } finally {
       running.current = false;
       setUploading(false);
+      nextFiles();
     }
   }
   async function clearImports() {
@@ -235,7 +298,7 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (!uploading) void upload(Array.from(e.dataTransfer.files));
+          void upload(Array.from(e.dataTransfer.files));
         }}
       >
         <span className="icon-tile tone-blue">
@@ -267,6 +330,23 @@ export default function AutomaticImportPanel({ onChanged }: { onChanged: () => v
       <p className="notice automatic-upload-status" role="status">
         {message}
       </p>
+      {queuedFiles > 0 && (
+        <p className="field-help" role="status">
+          Đã giữ {queuedFiles} tệp mới để gửi tiếp sau lượt hiện tại. Giữ trang này mở đến khi nhận
+          đủ.
+        </p>
+      )}
+      {diagnosticId && (
+        <p className="field-help">
+          Mã kiểm tra: {diagnosticId.slice(0, 8)} · {trace.current.stage}
+        </p>
+      )}
+      {volatileUpload && (
+        <p className="field-help" role="status">
+          Trình duyệt chưa lưu được bản tải tạm. Giữ trang này mở đến khi máy chủ báo đã nhận đủ
+          file.
+        </p>
+      )}
       {uploading && progress.total > 0 && (
         <>
           <progress max={progress.total} value={progress.received} aria-label="Tiến độ gửi file" />

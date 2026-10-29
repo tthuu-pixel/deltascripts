@@ -8,6 +8,7 @@ import type { ManagedTopic, StudentSettings, TopicSummary } from '../../shared/c
 import { questionEnvironment } from '../../shared/questionEnvironment';
 import type { ExamSettings } from '../../shared/exam';
 import type { AiSettings, AiSuggestion } from '../../shared/ai';
+import { beginRequestTiming, endRequestTiming } from './importDiagnostics';
 
 export class ApiError extends Error {
   constructor(
@@ -32,6 +33,7 @@ async function fetchApiResponse(route: string, body: unknown, signal?: AbortSign
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (signal?.aborted) throw new DOMException('Đã dừng quét AI.', 'AbortError');
     let response: Response;
+    const timing = beginRequestTiming(route, body === undefined ? 'GET' : 'POST');
     try {
       response = await fetch(`/api${route}`, {
         method: body === undefined ? 'GET' : 'POST',
@@ -45,7 +47,9 @@ async function fetchApiResponse(route: string, body: unknown, signal?: AbortSign
           ),
         ]),
       });
+      endRequestTiming(timing, response.status);
     } catch (error) {
+      endRequestTiming(timing, 0);
       if (signal?.aborted) throw new DOMException('Đã dừng quét AI.', 'AbortError');
       if (attempt + 1 === maxAttempts)
         throw new ApiError(

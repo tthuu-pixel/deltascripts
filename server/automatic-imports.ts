@@ -7,6 +7,7 @@ import { validateQuestion } from './question-storage';
 import { adminAiRoute, classificationText, type AdminAiOptions } from './admin-ai';
 import { AiServiceError } from './ai-provider';
 import { HttpError, requireValue } from './errors';
+import { saveImportDiagnostic } from './import-diagnostics';
 
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9-]{36}$/i.test(v);
 export async function automaticSourceHash(q: Question) {
@@ -63,6 +64,8 @@ export async function automaticImportsRoute(
   method: string,
   body: any,
 ) {
+  if (route === '/api/admin/imports/diagnostic' && method === 'POST')
+    return saveImportDiagnostic(db, body);
   if (route === '/api/admin/imports' && method === 'GET') {
     const control = await db
       .prepare('SELECT generation FROM automatic_import_control WHERE id=1')
@@ -120,7 +123,7 @@ export async function automaticImportsRoute(
   }
   if (route === '/api/admin/imports/items' && method === 'POST') {
     const job = await db
-      .prepare('SELECT id FROM automatic_import_jobs WHERE id=?')
+      .prepare('SELECT id,submitted FROM automatic_import_jobs WHERE id=?')
       .bind(body.id)
       .first();
     requireValue(job, 'Lượt tải không tồn tại.', 404);
@@ -128,6 +131,9 @@ export async function automaticImportsRoute(
       Array.isArray(body.items) && body.items.length > 0 && body.items.length <= 15,
       'Mỗi lần nhận từ 1 đến 15 câu.',
     );
+    // A completed receipt can be replayed after a browser storage failure.
+    // It must never turn a subsequently deleted question into pending work.
+    if (job.submitted === 1) return { accepted: body.items.length };
     const statements: Statement[] = [];
     for (const input of body.items as Question[]) {
       const q = uploadedQuestion(input);

@@ -320,6 +320,40 @@ test('upload resumes from the last confirmed part with the same job and question
   assert.equal(persisted, undefined);
 });
 
+test('large TeX sources use small transport packets suitable for slow upload connections', async () => {
+  const questions = Array.from({ length: 17 }, (_, i) => ({
+    ...parseTexText(`\\begin{bt}Bài ${i + 1}.\\end{bt}`)[0],
+    statementRaw: 'x'.repeat(14000),
+    raw: 'y'.repeat(15000),
+  }));
+  const received = new Set<string>();
+  await sendAutomaticUpload(
+    {
+      id: crypto.randomUUID(),
+      files: ['large-drawings.tex'],
+      questions,
+      offset: 0,
+      createdAt: Date.now(),
+    },
+    {
+      signal: new AbortController().signal,
+      onProgress: () => {},
+      store: { put: async () => {}, remove: async () => {} },
+      api: {
+        startAutomaticImport: async () => ({}),
+        appendAutomaticImport: async (_id, batch) => {
+          assert(batch.length <= 5);
+          assert(new TextEncoder().encode(JSON.stringify(batch)).length <= 65000);
+          batch.forEach((q) => received.add(q.id));
+          return {};
+        },
+        finishAutomaticImport: async () => ({}),
+      },
+    },
+  );
+  assert.equal(received.size, 17);
+});
+
 test('automatic import endpoints are private to administrators', async (t) => {
   const runtime = await createRuntime();
   t.after(() => runtime.close());
